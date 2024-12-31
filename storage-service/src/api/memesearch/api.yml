@@ -1,0 +1,48 @@
+openapi: 3.0.0
+info:
+  description: ''
+  version: "1.0.0"
+  title: 'Meme-search'
+tags:
+  - name: meme-search
+    
+paths:
+  /api/v1/meme:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/MemeQuery"
+      tags: 
+        - meme-search
+      operationId: "SearchMeme"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemeDto"
+
+components: 
+  parameters:
+    MemeQuery:
+      in: query
+      required: true
+      name: MemeQuery
+      schema:
+        type: string
+
+  schemas:    
+    MemeDto:
+      type: object
+      properties:
+        Id:
+          type: string
+        OcrResult:
+          type: array
+          items: 
+            type: string
+        Hash:
+          type: string
+        

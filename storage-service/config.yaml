@@ -1,0 +1,13 @@
+storage:
+  Folder: temp/
+
+ocr:
+  Url: http://localhost:7002
+
+metadata-storage:
+  Elastic:
+    Addresses:
+      - "http://localhost:9200/"
+    Username: elastic
+    Password: elastic
+  Index: image-metadata

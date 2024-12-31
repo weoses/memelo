@@ -1,0 +1,7 @@
+# yaml-language-server: ...
+package: memesearch
+generate:
+  echo-server: true
+  strict-server: true
+  models: true
+output: api.gen.go
