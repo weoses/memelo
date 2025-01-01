@@ -24,9 +24,12 @@ type ElasticMetadataStorageServiceImpl struct {
 // Search implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) Search(ctx context.Context, queryString string) ([]*entity.ElasticImageMetaData, error) {
 	query := types.NewQuery()
-	query.QueryString = types.NewQueryStringQuery()
-	query.QueryString.Query = fmt.Sprintf("Result.Texts.Text: *%s*", queryString)
-
+	query.Match = map[string]types.MatchQuery{
+		"Result.Texts.Text": {
+			Query:     queryString,
+			Fuzziness: "AUTO",
+		},
+	}
 	result, err := e.client.Search().
 		Index(INDEX_NAME).
 		Query(query).
@@ -39,7 +42,7 @@ func (e *ElasticMetadataStorageServiceImpl) Search(ctx context.Context, queryStr
 	results := make([]*entity.ElasticImageMetaData, len(result.Hits.Hits))
 
 	for index, hit := range result.Hits.Hits {
-		item, err := unmarhallSearchResultDocument(hit.Source_)
+		item, err := unmarhalSearchResultDocument(hit.Source_)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +67,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, id stri
 		return nil, err
 	}
 
-	return unmarhallSearchResult(result)
+	return unmarhalSearchResult(result)
 }
 
 // GetByHash implements MetadataStorageService.
@@ -85,7 +88,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 		return nil, err
 	}
 
-	return unmarhallSearchResult(result)
+	return unmarhalSearchResult(result)
 }
 
 // Save implements MetadataStorageService.
@@ -110,7 +113,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 	return err
 }
 
-func unmarhallSearchResult(result *search.Response) (*entity.ElasticImageMetaData, error) {
+func unmarhalSearchResult(result *search.Response) (*entity.ElasticImageMetaData, error) {
 	hits := result.Hits.Hits
 	if len(hits) == 0 {
 		return nil, nil
@@ -119,10 +122,10 @@ func unmarhallSearchResult(result *search.Response) (*entity.ElasticImageMetaDat
 	hit := hits[0]
 	item := hit.Source_
 
-	return unmarhallSearchResultDocument(item)
+	return unmarhalSearchResultDocument(item)
 }
 
-func unmarhallSearchResultDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
+func unmarhalSearchResultDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
 
 	var document entity.ElasticImageMetaData
 	err := json.Unmarshal(result, &document)
@@ -131,7 +134,6 @@ func unmarhallSearchResultDocument(result json.RawMessage) (*entity.ElasticImage
 
 func NewElasticMetadataStorage(config *conf.MetadataStorageConfig) MetadataStorageService {
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
-
 	response, err := es8.Indices.
 		Create(config.Index).
 		Do(context.TODO())
