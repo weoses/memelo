@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"mine.local/ocr-gallery/image-collector/api/memesearch"
+	"mine.local/ocr-gallery/image-collector/utils"
 )
 
 type MemeSearchApiService struct {
@@ -13,9 +14,12 @@ type MemeSearchApiService struct {
 
 // SearchMeme implements memesearch.StrictServerInterface.
 func (m *MemeSearchApiService) SearchMeme(ctx context.Context, request memesearch.SearchMemeRequestObject) (memesearch.SearchMemeResponseObject, error) {
-	log.Printf("SearchMeme: query=%s", request.Params.MemeQuery)
+	query := request.Params.MemeQuery
+	query = utils.AlphabetFix(query)
 
-	metadata, err := m.metaStorage.Search(ctx, request.Params.MemeQuery)
+	log.Printf("SearchMeme: query=%s", query)
+
+	metadata, err := m.metaStorage.Search(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +29,7 @@ func (m *MemeSearchApiService) SearchMeme(ctx context.Context, request memesearc
 		response[index] = memesearch.MemeDto{
 			Hash:      &meta.Storage.Hash,
 			Id:        &meta.Id,
-			OcrResult: ocrResultToArray(&meta.Result),
+			OcrResult: ocrResultToArray(meta.Result),
 		}
 	}
 

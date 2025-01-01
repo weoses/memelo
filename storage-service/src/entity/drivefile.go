@@ -16,8 +16,8 @@ type OcrResultBulk struct {
 }
 
 type ElasticImageMetaData struct {
-	Storage StorageMetaData
-	Result  OcrResultBulk
+	Storage *StorageMetaData
+	Result  *OcrResultBulk
 	Id      string
 }
 

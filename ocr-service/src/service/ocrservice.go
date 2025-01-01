@@ -90,11 +90,9 @@ func (ocr *OcrServiceImpl) runForPreprocessor(processor Preprocessor, Name strin
 	}
 	log.Printf("Tesseract completes: file=%s textlen=%d", preprocessedFile, len(text))
 
-	normalizedText := AlphabetFix(text)
-
 	return &OcrResponseItem{
 		ProcessorKey: processor.GetName(),
-		Text:         normalizedText,
+		Text:         text,
 	}, nil
 }
 

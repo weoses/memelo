@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/image-collector/api/memestorage"
 	"mine.local/ocr-gallery/image-collector/entity"
+
+	"mine.local/ocr-gallery/image-collector/utils"
 )
 
 type MemeStorageApiService struct {
@@ -21,10 +24,13 @@ type MemeStorageApiService struct {
 func (a *MemeStorageApiService) CreateMeme(ctx context.Context, request memestorage.CreateMemeRequestObject) (memestorage.CreateMemeResponseObject, error) {
 	image := request.Body.Data
 	imageName := request.Body.Filename
+	if len(image) == 0 {
+		return nil, errors.New("image is empty")
+	}
 
-	log.Printf("CreateMeme: Filename=%s", *imageName)
+	log.Printf("CreateMeme: Filename=%s", imageName)
 
-	hash := calcHash(image)
+	hash := calcHash(&image)
 
 	log.Printf("Checking meme duplicates: hash=%s", hash)
 	metadata, err := a.metaStorage.GetByHash(ctx, hash)
@@ -38,15 +44,15 @@ func (a *MemeStorageApiService) CreateMeme(ctx context.Context, request memestor
 		return &memestorage.CreateMeme200JSONResponse{
 			Hash:      &hash,
 			Id:        &metadata.Id,
-			OcrResult: ocrResultToArray(&metadata.Result),
+			OcrResult: ocrResultToArray(metadata.Result),
 		}, nil
 	}
 
 	id, _ := uuid.NewRandom()
 	idStr := id.String()
 
-	log.Printf("Saving meme image: imageName=%s", *imageName)
-	storageId, err := a.imageStorage.Save(ctx, image)
+	log.Printf("Saving meme image: imageName=%s", imageName)
+	storageId, err := a.imageStorage.Save(ctx, &image)
 	if err != nil {
 		//TODO handle fail
 		return nil, err
@@ -54,31 +60,33 @@ func (a *MemeStorageApiService) CreateMeme(ctx context.Context, request memestor
 
 	fileMetaData := entity.StorageMetaData{
 		Id:   storageId,
-		Name: *imageName,
+		Name: imageName,
 		Hash: hash,
 	}
 
-	log.Printf("Ocring meme: storageId=%s imageName=%s", storageId, *imageName)
-	ocrResult, err := a.ocr.DoOcr(ctx, &fileMetaData, image)
+	log.Printf("Ocring meme: storageId=%s imageName=%s", storageId, imageName)
+	ocrResult, err := a.ocr.DoOcr(ctx, &fileMetaData, &image)
 	if err != nil {
 		//TODO handle fail
 		return nil, err
 	}
 
+	fixOcrResultAlphabet(ocrResult)
+
 	elasticMetadata := entity.ElasticImageMetaData{
-		Storage: fileMetaData,
-		Result:  *ocrResult,
+		Storage: &fileMetaData,
+		Result:  ocrResult,
 		Id:      idStr,
 	}
 
-	log.Printf("Saving meme metadata: id=%s storageId=%s imageName=%s", idStr, storageId, *imageName)
+	log.Printf("Saving meme metadata: id=%s storageId=%s imageName=%s", idStr, storageId, imageName)
 	err = a.metaStorage.Save(ctx, &elasticMetadata)
 	if err != nil {
 		//TODO handle fail
 		return nil, err
 	}
 
-	log.Printf("Meme processed: id=%s storageId=%s imageName=%s", idStr, storageId, *imageName)
+	log.Printf("Meme processed: id=%s storageId=%s imageName=%s", idStr, storageId, imageName)
 	return &memestorage.CreateMeme200JSONResponse{
 		Hash:      &hash,
 		Id:        &idStr,
@@ -100,8 +108,8 @@ func (a *MemeStorageApiService) GetMemeImage(ctx context.Context, request memest
 	}
 
 	return memestorage.GetMemeImage200JSONResponse{
-		Filename: &metadata.Storage.Name,
-		Data:     imgBase64,
+		Filename: metadata.Storage.Name,
+		Data:     *imgBase64,
 	}, err
 }
 
@@ -117,13 +125,21 @@ func calcHash(image *string) string {
 	return hex.EncodeToString(byteHash)
 }
 
-func ocrResultToArray(ocrResult *entity.OcrResultBulk) *[]string {
-	ocrResultStr := make([]string, len(*ocrResult.Texts))
+func ocrResultToArray(bulk *entity.OcrResultBulk) *[]string {
+	textData := *bulk.Texts
+	ocrResultStr := make([]string, len(textData))
 
-	for index, item := range *ocrResult.Texts {
-		ocrResultStr[index] = item.Text
+	for index := range textData {
+		ocrResultStr[index] = textData[index].Text
 	}
 	return &ocrResultStr
+}
+
+func fixOcrResultAlphabet(bulk *entity.OcrResultBulk) {
+	textData := *bulk.Texts
+	for i := range textData {
+		textData[i].Text = utils.AlphabetFix(textData[i].Text)
+	}
 }
 
 func NewMemeStorageApiService(

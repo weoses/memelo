@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 
-	mapper "github.com/dranikpg/dto-mapper"
 	"mine.local/ocr-gallery/image-collector/api/ocrserver"
 	"mine.local/ocr-gallery/image-collector/conf"
 	"mine.local/ocr-gallery/image-collector/entity"
@@ -51,17 +50,17 @@ func (ocr *OcrServiceImpl) DoOcr(
 	}
 
 	responseJson := response.JSON200
-	retVal := entity.OcrResultBulk{
-		Texts: &[]entity.OcrResult{},
+
+	ocrResultItems := make([]entity.OcrResult, len(*responseJson.Texts))
+	for i, item := range *responseJson.Texts {
+		ocrResultItems[i] = entity.OcrResult{
+			ProcessorKey: *item.ProcessorKey,
+			Text:         *item.Text,
+		}
 	}
-	err = mapper.Map(retVal, responseJson)
 
-	if err != nil {
-		return nil, wrapError(
-			err,
-			"failed to decode ocr response: imageid=%s",
-			imageMetadata.Id)
-
+	retVal := entity.OcrResultBulk{
+		Texts: &ocrResultItems,
 	}
 
 	return &retVal, nil

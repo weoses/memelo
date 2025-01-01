@@ -71,6 +71,9 @@ components:
   schemas:
     ImageDto:
       type: object
+      required:
+        - Filename
+        - Data
       properties:
         Filename:
           type: string
