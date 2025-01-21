@@ -1,0 +1,7 @@
+go 1.23.2
+
+use ./markov-chain
+
+use ./ocr-service/src
+
+use ./storage-service/src

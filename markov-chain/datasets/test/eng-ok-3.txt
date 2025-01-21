@@ -1,0 +1,2 @@
+You can enable network traffic capture through the selected router's interface. As a result, a special file will be created that can be opened for viewing and analysis on your computer in Wireshark or submitted to the support team for analysis.
+The network packet dump will help you diagnose network traffic problems and analyze what happens to specific packets. Based on this information, it will be possible to conclude the correctness or incorrectness of the routing, host or provider's gateway to determine the causes of the problem and options for fixing them.

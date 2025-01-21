@@ -1,0 +1,3 @@
+Perplexity is a measure used in natural language processing to evaluate how well a probabilistic model predicts a sample. It’s commonly used to assess the performance of language models. The perplexity (PP) of a language model for a given text is defined as the inverse probability of the test set, normalized by the number of words.
+
+For a bigram model, the perplexity is calculated using the bigram probabilities of the test sentences. Here’s how you can compute it, step by step, with a simple example
