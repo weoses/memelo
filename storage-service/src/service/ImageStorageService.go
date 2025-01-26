@@ -3,15 +3,19 @@ package service
 import (
 	"context"
 
-	"mine.local/ocr-gallery/image-collector/conf"
+	"github.com/google/uuid"
+	"mine.local/ocr-gallery/storage-service/conf"
+	"mine.local/ocr-gallery/storage-service/entity"
 )
 
 type ImageStorageService interface {
-	Save(ctx context.Context, base64Image *string) (string, error)
-	//Delete(ctx context.Context, id string)
-	Get(ctx context.Context, id string) (*string, error)
+	Save(ctx context.Context, id uuid.UUID, image *entity.Image, thumb *entity.Image) error
+	//GetImage(ctx context.Context, id string) *entity.Image
+
+	GetUrl(ctx context.Context, id uuid.UUID) (string, error)
+	GetUrlThumb(ctx context.Context, id uuid.UUID) (string, error)
 }
 
-func NewImageStorageService(config *conf.ImageStorageConfig) ImageStorageService {
-	return NewFilesystemImageStorageService(config)
+func NewImageStorageService(config *conf.ImageStorageConfig) (ImageStorageService, error) {
+	return NewMinioFileStorageServiceImpl(config)
 }

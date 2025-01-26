@@ -1,0 +1,161 @@
+openapi: 3.0.0
+info:
+  description: ''
+  version: "1.0.0"
+  title: 'Meme-server'
+ 
+paths:
+  /api/v1/accounts/{AccountId}/meme:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/MemeQuery"
+      operationId: "SearchMeme"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchMemeDto"
+    post:
+      operationId: "CreateMeme"
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImageDto"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemeDto"
+
+  /api/v1/accounts/{AccountId}/meme/{MemeId}/image/get:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/MemeId"
+      operationId: "GetMemeImage"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageDto"
+
+  /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/MemeId"
+      operationId: "GetMemeImageUrl"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUrlDto"
+
+  /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/get:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/MemeId"
+      operationId: "GetMemeImageThumb"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageDto"
+
+
+  /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/url:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/MemeId"
+      operationId: "GetMemeImageThumbUrl"
+      responses:
+        200:
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUrlDto"
+components: 
+  parameters:
+    MemeQuery:
+      in: query
+      required: true
+      name: MemeQuery
+      schema:
+        type: string
+    MemeId:
+      in: path
+      required: true
+      name: MemeId
+      schema:
+        type: string
+        format: uuid
+
+    AccountId:
+      in: path
+      required: true
+      name: AccountId
+      schema:
+        type: string
+        format: uuid
+
+  schemas:    
+    ImageUrlDto:
+      type: object
+      properties:
+        Url:
+          type: string
+
+    SearchMemeDto:
+      type: object
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OcrResult:
+          type: string
+        OcrResultHighlight:
+          type: array
+          items:
+            type: string
+        Hash:
+          type: string
+
+    MemeDto:
+      type: object
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OcrResult:
+          type: string
+        Hash:
+          type: string
+        
+    ImageDto:
+      type: object
+      properties:
+        MimeType:
+          type: string
+        ImageBase64:
+          type: string
+
+        

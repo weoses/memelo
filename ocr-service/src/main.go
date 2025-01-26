@@ -1,26 +1,43 @@
 package main
 
 import (
-	"os"
-
-	echo "github.com/labstack/echo/v4"
-	api "mine.local/ocr-gallery/ocr-server/api"
-	service "mine.local/ocr-gallery/ocr-server/service"
+	"github.com/labstack/echo/v4"
+	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
+	"go.uber.org/fx"
+	"mine.local/ocr-gallery/apispec/ocr-server/server"
+	"mine.local/ocr-gallery/common/commonconfig"
+	"mine.local/ocr-gallery/common/commonmiddleware"
+	"mine.local/ocr-gallery/ocr-server/api"
+	"mine.local/ocr-gallery/ocr-server/conf"
+	"mine.local/ocr-gallery/ocr-server/service"
 )
 
 func main() {
+	commonconfig.InitConfig()
 
-	e := echo.New()
-	argPreprocessor := []service.Preprocessor{
-		&service.AdaptiveThresholdPreprocessor{},
-		&service.EmptyPreprocessor{},
-	}
-	argTessConnector := service.NewTesseractConnector()
-	ocrService := service.NewOcrService(
-		argPreprocessor,
-		argTessConnector,
-		os.Getenv("OCR_SERVICE_DEBUG") == "true",
+	fx.New(
+		fx.Provide(commonconfig.NewServerConfig),
+		fx.Provide(conf.NewImageConverterConfig),
+		fx.Provide(api.NewApiHandler),
+		fx.Provide(service.NewVisionImageClient),
+		fx.Provide(service.NewOcrProcessor),
+		fx.Provide(service.NewImageConverter),
+		fx.Provide(service.NewImageService),
+		fx.Invoke(Startup),
+	).Run()
+}
+
+func Startup(handler server.StrictServerInterface, config *commonconfig.ServerConfig) {
+	srv := echo.New()
+
+	server.RegisterHandlers(
+		srv,
+		server.NewStrictHandler(
+			handler,
+			[]oapiEcho.StrictEchoMiddlewareFunc{
+				commonmiddleware.NewLoggingMiddleware(),
+			}),
 	)
-	api.RegisterHandlers(e, api.NewServerInterfaceImpl(ocrService))
-	e.Logger.Fatal(e.Start(":7002"))
+
+	srv.Start(config.ListenAddress)
 }

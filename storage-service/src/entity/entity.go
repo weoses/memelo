@@ -1,27 +1,31 @@
 package entity
 
-type StorageMetaData struct {
-	Id   string
-	Name string
-	Hash string
-}
+import "github.com/google/uuid"
 
 type OcrResult struct {
 	ProcessorKey string
 	Text         string
 }
 
-type OcrResultBulk struct {
-	Texts *[]OcrResult
-}
-
 type ElasticImageMetaData struct {
-	Storage *StorageMetaData
-	Result  *OcrResultBulk
-	Id      string
+	ImageId   uuid.UUID
+	AccountId uuid.UUID
+	Hash      string
+	Result    string
 }
 
-type StorageData struct {
+type ElasticMatchedContent struct {
+	Metadata      *ElasticImageMetaData
+	ResultMatched *[]string
+}
+
+type OcrProcessedResult struct {
+	OcrText   string
+	Thumbnail *Image
+	Image     *Image
+}
+
+type Image struct {
 	ImageBase64 *string
-	FileName    *StorageMetaData
+	MimeType    string
 }

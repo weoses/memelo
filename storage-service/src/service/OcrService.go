@@ -3,78 +3,81 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
+	"strings"
 
-	"mine.local/ocr-gallery/image-collector/api/ocrserver"
-	"mine.local/ocr-gallery/image-collector/conf"
-	"mine.local/ocr-gallery/image-collector/entity"
+	"github.com/google/uuid"
+	"mine.local/ocr-gallery/apispec/ocr-server/client"
+	"mine.local/ocr-gallery/storage-service/conf"
+	"mine.local/ocr-gallery/storage-service/entity"
+	"mine.local/ocr-gallery/storage-service/helper"
 )
 
 type OcrSerivce interface {
-	DoOcr(ctx context.Context, imageMetadata *entity.StorageMetaData, imageData *string) (*entity.OcrResultBulk, error)
+	DoOcr(ctx context.Context,
+		id uuid.UUID,
+		incomingImage *entity.Image,
+	) (*entity.OcrProcessedResult, error)
 }
 
 type OcrServiceImpl struct {
-	ocrclient ocrserver.ClientWithResponsesInterface
+	ocrclient client.ClientWithResponsesInterface
 }
 
 func (ocr *OcrServiceImpl) DoOcr(
 	ctx context.Context,
-	imageMetadata *entity.StorageMetaData,
-	imageData *string) (*entity.OcrResultBulk, error) {
+	id uuid.UUID,
+	incomingImage *entity.Image,
+) (*entity.OcrProcessedResult, error) {
 
-	log.Printf("DoOcr request: imageName=%s", imageMetadata.Name)
+	idStr := id.String()
 
-	request := ocrserver.OcrRequestDto{
-		ImageId:   &imageMetadata.Id,
-		ImageName: &imageMetadata.Name,
-		Image:     imageData,
+	request := client.OcrRequestDto{
+		ImageId: &idStr,
+		Image: &client.ImageDto{
+			ImageBase64: incomingImage.ImageBase64,
+			MimeType:    &incomingImage.MimeType,
+		},
 	}
 
 	response, err := ocr.ocrclient.PostApiV1OcrProcessWithResponse(ctx, request)
 	if err != nil {
-		return nil, wrapError(
-			err,
-			"request to ocr service failed: imageid=%s",
-			imageMetadata.Id)
+		return nil, err
 
 	}
 
 	if response.StatusCode() != 200 {
-		return nil, wrapError(
-			err,
-			"request to ocr service: imageid=%s status=%d",
-			imageMetadata.Id,
-			response.StatusCode())
+		return nil, errors.New("status code fault")
 	}
 
 	responseJson := response.JSON200
 
-	ocrResultItems := make([]entity.OcrResult, len(*responseJson.Texts))
-	for i, item := range *responseJson.Texts {
-		ocrResultItems[i] = entity.OcrResult{
-			ProcessorKey: *item.ProcessorKey,
-			Text:         *item.Text,
-		}
-	}
+	textVariants := responseJson.ImageText
+	thumbnail := responseJson.ImageThumb
+	image := responseJson.Image
 
-	retVal := entity.OcrResultBulk{
-		Texts: &ocrResultItems,
-	}
+	retval := new(entity.OcrProcessedResult)
+	retval.OcrText = textVariantsToString(textVariants)
+	retval.Thumbnail = helper.ImageToEntity(thumbnail)
+	retval.Image = helper.ImageToEntity(image)
 
-	return &retVal, nil
+	return retval, nil
 }
 
-func wrapError(e error, text string, arg ...any) error {
-	return errors.Join(fmt.Errorf(text, arg...), e)
+func textVariantsToString(textVariants *[]client.OcrResponseItem) string {
+	builder := strings.Builder{}
+	for _, textVariant := range *textVariants {
+		builder.WriteString(*textVariant.Text)
+		builder.WriteString(" ")
+	}
+	return builder.String()
 }
 
 func NewOcrService(conf *conf.OcrConfig) (OcrSerivce, error) {
 	ocrServiceUrl := conf.Url
 	log.Printf("Creating ocr service url=%s\n", ocrServiceUrl)
 
-	client, err := ocrserver.NewClientWithResponses(ocrServiceUrl)
+	client, err := client.NewClientWithResponses(ocrServiceUrl)
 	if err != nil {
 		return nil, err
 	}

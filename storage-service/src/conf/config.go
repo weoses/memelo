@@ -1,8 +1,6 @@
 package conf
 
 import (
-	"fmt"
-
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/spf13/viper"
 )
@@ -11,24 +9,20 @@ type MetadataStorageConfig struct {
 	Elastic *elasticsearch8.Config
 	Index   string
 }
+
+type ImageS3StorageConfig struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+}
+
 type ImageStorageConfig struct {
-	Folder string
+	S3 *ImageS3StorageConfig
 }
 
 type OcrConfig struct {
 	Url string
-}
-
-func InitConfig() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$APPLICATION_CONFIGPATH")
-	viper.AddConfigPath("$HOME/.appname")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %w", err))
-	}
 }
 
 func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {
@@ -45,6 +39,6 @@ func NewOcrConfig() (*OcrConfig, error) {
 
 func NewImageStorageConfig() (*ImageStorageConfig, error) {
 	conf := &ImageStorageConfig{}
-	err := viper.UnmarshalKey("storage", conf)
+	err := viper.UnmarshalKey("image-storage", conf)
 	return conf, err
 }

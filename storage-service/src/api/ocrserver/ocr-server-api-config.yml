@@ -1,6 +1,0 @@
-# yaml-language-server: ...
-package: ocrserver
-generate:
-  client: true
-  models: true
-output: ocrServerApiClient.gen.go

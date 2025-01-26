@@ -1,5 +1,13 @@
-storage:
-  Folder: temp/
+server:
+  ListenAddress: :7001
+
+image-storage:
+  S3:
+    Endpoint: localhost:9000
+    AccessKey: minio123
+    SecretKey: minio123
+    Bucket: images
+
 
 ocr:
   Url: http://localhost:7002

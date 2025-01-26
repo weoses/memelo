@@ -1,7 +1,9 @@
 go 1.23.2
 
-use ./markov-chain
-
-use ./ocr-service/src
-
-use ./storage-service/src
+use (
+	./apispec
+	./common
+	./ocr-service/src
+	./storage-service/src
+	./telegram-service/src
+)

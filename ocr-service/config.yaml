@@ -1,3 +1,5 @@
-languages:
-  - eng
-  - rus
+server:
+  ListenAddress: :7002
+
+image-converter:
+  ThumbSize: 250
