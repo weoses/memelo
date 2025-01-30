@@ -22,7 +22,7 @@ type ImageStorageConfig struct {
 }
 
 type OcrConfig struct {
-	Url string
+	Uri string
 }
 
 func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {
@@ -33,7 +33,7 @@ func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {
 
 func NewOcrConfig() (*OcrConfig, error) {
 	conf := &OcrConfig{}
-	err := viper.UnmarshalKey("ocr", conf)
+	err := viper.UnmarshalKey("ocr-service", conf)
 	return conf, err
 }
 

@@ -39,6 +39,8 @@ type MemeDto struct {
 type SearchMemeDto struct {
 	Hash               *string             `json:"Hash,omitempty"`
 	Id                 *openapi_types.UUID `json:"Id,omitempty"`
+	ImageThumbUrl      *string             `json:"ImageThumbUrl,omitempty"`
+	ImageUrl           *string             `json:"ImageUrl,omitempty"`
 	OcrResult          *string             `json:"OcrResult,omitempty"`
 	OcrResultHighlight *[]string           `json:"OcrResultHighlight,omitempty"`
 }
@@ -52,9 +54,17 @@ type MemeId = openapi_types.UUID
 // MemeQuery defines model for MemeQuery.
 type MemeQuery = string
 
+// PageSize defines model for PageSize.
+type PageSize = int
+
+// SearchAfterId defines model for SearchAfterId.
+type SearchAfterId = openapi_types.UUID
+
 // SearchMemeParams defines parameters for SearchMeme.
 type SearchMemeParams struct {
-	MemeQuery MemeQuery `form:"MemeQuery" json:"MemeQuery"`
+	MemeQuery     MemeQuery      `form:"MemeQuery" json:"MemeQuery"`
+	SearchAfterId *SearchAfterId `form:"SearchAfterId,omitempty" json:"SearchAfterId,omitempty"`
+	PageSize      *PageSize      `form:"PageSize,omitempty" json:"PageSize,omitempty"`
 }
 
 // CreateMemeJSONRequestBody defines body for CreateMeme for application/json ContentType.
@@ -141,12 +151,6 @@ type ClientInterface interface {
 
 	CreateMeme(ctx context.Context, accountId AccountId, body CreateMemeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetMemeImage request
-	GetMemeImage(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetMemeImageThumb request
-	GetMemeImageThumb(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetMemeImageThumbUrl request
 	GetMemeImageThumbUrl(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -180,30 +184,6 @@ func (c *Client) CreateMemeWithBody(ctx context.Context, accountId AccountId, co
 
 func (c *Client) CreateMeme(ctx context.Context, accountId AccountId, body CreateMemeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateMemeRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetMemeImage(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetMemeImageRequest(c.Server, accountId, memeId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetMemeImageThumb(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetMemeImageThumbRequest(c.Server, accountId, memeId)
 	if err != nil {
 		return nil, err
 	}
@@ -279,6 +259,38 @@ func NewSearchMemeRequest(server string, accountId AccountId, params *SearchMeme
 			}
 		}
 
+		if params.SearchAfterId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "SearchAfterId", runtime.ParamLocationQuery, *params.SearchAfterId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "PageSize", runtime.ParamLocationQuery, *params.PageSize); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -333,88 +345,6 @@ func NewCreateMemeRequestWithBody(server string, accountId AccountId, contentTyp
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetMemeImageRequest generates requests for GetMemeImage
-func NewGetMemeImageRequest(server string, accountId AccountId, memeId MemeId) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "MemeId", runtime.ParamLocationPath, memeId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/accounts/%s/meme/%s/image/get", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetMemeImageThumbRequest generates requests for GetMemeImageThumb
-func NewGetMemeImageThumbRequest(server string, accountId AccountId, memeId MemeId) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "MemeId", runtime.ParamLocationPath, memeId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/accounts/%s/meme/%s/image/thumb/get", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -552,12 +482,6 @@ type ClientWithResponsesInterface interface {
 
 	CreateMemeWithResponse(ctx context.Context, accountId AccountId, body CreateMemeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMemeResponse, error)
 
-	// GetMemeImageWithResponse request
-	GetMemeImageWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageResponse, error)
-
-	// GetMemeImageThumbWithResponse request
-	GetMemeImageThumbWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageThumbResponse, error)
-
 	// GetMemeImageThumbUrlWithResponse request
 	GetMemeImageThumbUrlWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageThumbUrlResponse, error)
 
@@ -603,50 +527,6 @@ func (r CreateMemeResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateMemeResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetMemeImageResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ImageDto
-}
-
-// Status returns HTTPResponse.Status
-func (r GetMemeImageResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetMemeImageResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetMemeImageThumbResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ImageDto
-}
-
-// Status returns HTTPResponse.Status
-func (r GetMemeImageThumbResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetMemeImageThumbResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -723,24 +603,6 @@ func (c *ClientWithResponses) CreateMemeWithResponse(ctx context.Context, accoun
 	return ParseCreateMemeResponse(rsp)
 }
 
-// GetMemeImageWithResponse request returning *GetMemeImageResponse
-func (c *ClientWithResponses) GetMemeImageWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageResponse, error) {
-	rsp, err := c.GetMemeImage(ctx, accountId, memeId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetMemeImageResponse(rsp)
-}
-
-// GetMemeImageThumbWithResponse request returning *GetMemeImageThumbResponse
-func (c *ClientWithResponses) GetMemeImageThumbWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageThumbResponse, error) {
-	rsp, err := c.GetMemeImageThumb(ctx, accountId, memeId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetMemeImageThumbResponse(rsp)
-}
-
 // GetMemeImageThumbUrlWithResponse request returning *GetMemeImageThumbUrlResponse
 func (c *ClientWithResponses) GetMemeImageThumbUrlWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageThumbUrlResponse, error) {
 	rsp, err := c.GetMemeImageThumbUrl(ctx, accountId, memeId, reqEditors...)
@@ -801,58 +663,6 @@ func ParseCreateMemeResponse(rsp *http.Response) (*CreateMemeResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest MemeDto
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetMemeImageResponse parses an HTTP response from a GetMemeImageWithResponse call
-func ParseGetMemeImageResponse(rsp *http.Response) (*GetMemeImageResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetMemeImageResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ImageDto
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetMemeImageThumbResponse parses an HTTP response from a GetMemeImageThumbWithResponse call
-func ParseGetMemeImageThumbResponse(rsp *http.Response) (*GetMemeImageThumbResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetMemeImageThumbResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ImageDto
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

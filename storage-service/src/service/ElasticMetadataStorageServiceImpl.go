@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
@@ -23,7 +24,13 @@ type ElasticMetadataStorageServiceImpl struct {
 }
 
 // Search implements MetadataStorageService.
-func (e *ElasticMetadataStorageServiceImpl) Search(ctx context.Context, accountId uuid.UUID, queryString string) ([]*entity.ElasticMatchedContent, error) {
+func (e *ElasticMetadataStorageServiceImpl) Search(
+	ctx context.Context,
+	accountId uuid.UUID,
+	queryString string,
+	searchAfter *uuid.UUID,
+	pageSize *int,
+) ([]*entity.ElasticMatchedContent, error) {
 	q1 := types.NewQuery()
 	q1.Match = map[string]types.MatchQuery{
 		"Result": {
@@ -56,13 +63,28 @@ func (e *ElasticMetadataStorageServiceImpl) Search(ctx context.Context, accountI
 	resultField := types.NewFieldAndFormat()
 	resultField.Field = "Result"
 
-	result, err := e.client.Search().
+	sortCreated := types.NewSortOptions()
+	sortCreated.SortOptions["Created"] = *types.NewFieldSort()
+
+	sortId := types.NewSortOptions()
+	sortId.SortOptions["Id"] = *types.NewFieldSort()
+
+	search := e.client.Search().
 		Index(INDEX_NAME).
 		Query(query).
 		Fields(*resultField).
 		Highlight(highlight).
-		Do(ctx)
+		Sort(sortCreated, sortId)
 
+	if searchAfter != nil {
+		search = search.SearchAfter(searchAfter.String())
+	}
+
+	if pageSize != nil {
+		search = search.Size(*pageSize)
+	}
+
+	result, err := search.Do(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +169,9 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHashAndAccountId(
 
 // Save implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *entity.ElasticImageMetaData) error {
+
+	file.Created = time.Now().UnixMicro()
+
 	buff := bytes.NewBuffer(nil)
 	jsonEncoder := json.NewEncoder(buff)
 	jsonEncoder.Encode(file)
@@ -207,8 +232,17 @@ func unmarhalSearchResultDocument(result json.RawMessage) (*entity.ElasticImageM
 
 func NewElasticMetadataStorage(config *conf.MetadataStorageConfig) MetadataStorageService {
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
+
+	indexTypeMapping := types.NewTypeMapping()
+
+	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
+	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
+	indexTypeMapping.Properties["Hash"] = types.NewKeywordProperty()
+	indexTypeMapping.Properties["Id"] = types.NewKeywordProperty()
+
 	response, err := es8.Indices.
 		Create(config.Index).
+		Mappings(indexTypeMapping).
 		Do(context.Background())
 
 	log.Printf("Elastic create index response: %s error: %v", render.Render(response), err)

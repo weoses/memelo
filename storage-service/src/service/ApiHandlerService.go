@@ -29,7 +29,7 @@ func (a *ApiHandler) GetMemeImageThumbUrl(ctx context.Context, request server.Ge
 		return nil, echo.ErrNotFound
 	}
 
-	url, err := a.imageStorage.GetUrlThumb(ctx, request.MemeId)
+	url, err := a.imageStorage.GetUrlThumb(ctx, memeMetadata.S3Id)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (a *ApiHandler) GetMemeImageUrl(ctx context.Context, request server.GetMeme
 		return nil, echo.ErrNotFound
 	}
 
-	url, err := a.imageStorage.GetUrl(ctx, request.MemeId)
+	url, err := a.imageStorage.GetUrl(ctx, memeMetadata.S3Id)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +117,7 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 
 	elasticMetaData := entity.ElasticImageMetaData{
 		ImageId:   idUuid,
+		S3Id:      idUuid,
 		AccountId: request.AccountId,
 		Hash:      hash,
 		Result:    ocrResult.OcrText,
@@ -133,31 +134,40 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 	return response, nil
 }
 
-// GetMemeImage implements server.StrictServerInterface.
-func (a *ApiHandler) GetMemeImage(ctx context.Context, request server.GetMemeImageRequestObject) (server.GetMemeImageResponseObject, error) {
-	panic("unimplemented")
-}
-
-// GetMemeImageThumb implements server.StrictServerInterface.
-func (a *ApiHandler) GetMemeImageThumb(ctx context.Context, request server.GetMemeImageThumbRequestObject) (server.GetMemeImageThumbResponseObject, error) {
-	panic("unimplemented")
-}
-
 // SearchMeme implements server.StrictServerInterface.
 func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRequestObject) (server.SearchMemeResponseObject, error) {
 	query := request.Params.MemeQuery
 
 	log.Printf("SearchMeme: query=%s", query)
 
-	matchedMetadata, err := a.metaStorage.Search(ctx, request.AccountId, query)
+	matchedMetadata, err := a.metaStorage.Search(
+		ctx,
+		request.AccountId,
+		query,
+		request.Params.SearchAfterId,
+		request.Params.PageSize,
+	)
+
 	if err != nil {
 		return nil, err
 	}
 
 	response := make(server.SearchMeme200JSONResponse, len(matchedMetadata))
 	for index, metadataItem := range matchedMetadata {
+
+		imageThumbUrl, err := a.imageStorage.GetUrlThumb(ctx, metadataItem.Metadata.S3Id)
+		if err != nil {
+			return nil, err
+		}
+		imageUrl, err := a.imageStorage.GetUrl(ctx, metadataItem.Metadata.S3Id)
+		if err != nil {
+			return nil, err
+		}
+
 		dto := server.SearchMemeDto{}
 		helper.ElasticToSearchMemeDto(metadataItem, &dto)
+		dto.ImageThumbUrl = &imageThumbUrl
+		dto.ImageUrl = &imageUrl
 		response[index] = dto
 	}
 

@@ -37,6 +37,8 @@ type MemeDto struct {
 type SearchMemeDto struct {
 	Hash               *string             `json:"Hash,omitempty"`
 	Id                 *openapi_types.UUID `json:"Id,omitempty"`
+	ImageThumbUrl      *string             `json:"ImageThumbUrl,omitempty"`
+	ImageUrl           *string             `json:"ImageUrl,omitempty"`
 	OcrResult          *string             `json:"OcrResult,omitempty"`
 	OcrResultHighlight *[]string           `json:"OcrResultHighlight,omitempty"`
 }
@@ -50,9 +52,17 @@ type MemeId = openapi_types.UUID
 // MemeQuery defines model for MemeQuery.
 type MemeQuery = string
 
+// PageSize defines model for PageSize.
+type PageSize = int
+
+// SearchAfterId defines model for SearchAfterId.
+type SearchAfterId = openapi_types.UUID
+
 // SearchMemeParams defines parameters for SearchMeme.
 type SearchMemeParams struct {
-	MemeQuery MemeQuery `form:"MemeQuery" json:"MemeQuery"`
+	MemeQuery     MemeQuery      `form:"MemeQuery" json:"MemeQuery"`
+	SearchAfterId *SearchAfterId `form:"SearchAfterId,omitempty" json:"SearchAfterId,omitempty"`
+	PageSize      *PageSize      `form:"PageSize,omitempty" json:"PageSize,omitempty"`
 }
 
 // CreateMemeJSONRequestBody defines body for CreateMeme for application/json ContentType.
@@ -66,12 +76,6 @@ type ServerInterface interface {
 
 	// (POST /api/v1/accounts/{AccountId}/meme)
 	CreateMeme(ctx echo.Context, accountId AccountId) error
-
-	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/get)
-	GetMemeImage(ctx echo.Context, accountId AccountId, memeId MemeId) error
-
-	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/get)
-	GetMemeImageThumb(ctx echo.Context, accountId AccountId, memeId MemeId) error
 
 	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/url)
 	GetMemeImageThumbUrl(ctx echo.Context, accountId AccountId, memeId MemeId) error
@@ -105,6 +109,20 @@ func (w *ServerInterfaceWrapper) SearchMeme(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter MemeQuery: %s", err))
 	}
 
+	// ------------- Optional query parameter "SearchAfterId" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "SearchAfterId", ctx.QueryParams(), &params.SearchAfterId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter SearchAfterId: %s", err))
+	}
+
+	// ------------- Optional query parameter "PageSize" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "PageSize", ctx.QueryParams(), &params.PageSize)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter PageSize: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SearchMeme(ctx, accountId, params)
 	return err
@@ -123,54 +141,6 @@ func (w *ServerInterfaceWrapper) CreateMeme(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateMeme(ctx, accountId)
-	return err
-}
-
-// GetMemeImage converts echo context to params.
-func (w *ServerInterfaceWrapper) GetMemeImage(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "AccountId" -------------
-	var accountId AccountId
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, ctx.Param("AccountId"), &accountId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter AccountId: %s", err))
-	}
-
-	// ------------- Path parameter "MemeId" -------------
-	var memeId MemeId
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "MemeId", runtime.ParamLocationPath, ctx.Param("MemeId"), &memeId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter MemeId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetMemeImage(ctx, accountId, memeId)
-	return err
-}
-
-// GetMemeImageThumb converts echo context to params.
-func (w *ServerInterfaceWrapper) GetMemeImageThumb(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "AccountId" -------------
-	var accountId AccountId
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, ctx.Param("AccountId"), &accountId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter AccountId: %s", err))
-	}
-
-	// ------------- Path parameter "MemeId" -------------
-	var memeId MemeId
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "MemeId", runtime.ParamLocationPath, ctx.Param("MemeId"), &memeId)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter MemeId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetMemeImageThumb(ctx, accountId, memeId)
 	return err
 }
 
@@ -252,8 +222,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme", wrapper.SearchMeme)
 	router.POST(baseURL+"/api/v1/accounts/:AccountId/meme", wrapper.CreateMeme)
-	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/get", wrapper.GetMemeImage)
-	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/thumb/get", wrapper.GetMemeImageThumb)
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/thumb/url", wrapper.GetMemeImageThumbUrl)
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/url", wrapper.GetMemeImageUrl)
 
@@ -289,42 +257,6 @@ type CreateMemeResponseObject interface {
 type CreateMeme200JSONResponse MemeDto
 
 func (response CreateMeme200JSONResponse) VisitCreateMemeResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetMemeImageRequestObject struct {
-	AccountId AccountId `json:"AccountId"`
-	MemeId    MemeId    `json:"MemeId"`
-}
-
-type GetMemeImageResponseObject interface {
-	VisitGetMemeImageResponse(w http.ResponseWriter) error
-}
-
-type GetMemeImage200JSONResponse ImageDto
-
-func (response GetMemeImage200JSONResponse) VisitGetMemeImageResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetMemeImageThumbRequestObject struct {
-	AccountId AccountId `json:"AccountId"`
-	MemeId    MemeId    `json:"MemeId"`
-}
-
-type GetMemeImageThumbResponseObject interface {
-	VisitGetMemeImageThumbResponse(w http.ResponseWriter) error
-}
-
-type GetMemeImageThumb200JSONResponse ImageDto
-
-func (response GetMemeImageThumb200JSONResponse) VisitGetMemeImageThumbResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
@@ -375,12 +307,6 @@ type StrictServerInterface interface {
 
 	// (POST /api/v1/accounts/{AccountId}/meme)
 	CreateMeme(ctx context.Context, request CreateMemeRequestObject) (CreateMemeResponseObject, error)
-
-	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/get)
-	GetMemeImage(ctx context.Context, request GetMemeImageRequestObject) (GetMemeImageResponseObject, error)
-
-	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/get)
-	GetMemeImageThumb(ctx context.Context, request GetMemeImageThumbRequestObject) (GetMemeImageThumbResponseObject, error)
 
 	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/url)
 	GetMemeImageThumbUrl(ctx context.Context, request GetMemeImageThumbUrlRequestObject) (GetMemeImageThumbUrlResponseObject, error)
@@ -452,58 +378,6 @@ func (sh *strictHandler) CreateMeme(ctx echo.Context, accountId AccountId) error
 		return err
 	} else if validResponse, ok := response.(CreateMemeResponseObject); ok {
 		return validResponse.VisitCreateMemeResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// GetMemeImage operation middleware
-func (sh *strictHandler) GetMemeImage(ctx echo.Context, accountId AccountId, memeId MemeId) error {
-	var request GetMemeImageRequestObject
-
-	request.AccountId = accountId
-	request.MemeId = memeId
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetMemeImage(ctx.Request().Context(), request.(GetMemeImageRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetMemeImage")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(GetMemeImageResponseObject); ok {
-		return validResponse.VisitGetMemeImageResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// GetMemeImageThumb operation middleware
-func (sh *strictHandler) GetMemeImageThumb(ctx echo.Context, accountId AccountId, memeId MemeId) error {
-	var request GetMemeImageThumbRequestObject
-
-	request.AccountId = accountId
-	request.MemeId = memeId
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetMemeImageThumb(ctx.Request().Context(), request.(GetMemeImageThumbRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetMemeImageThumb")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(GetMemeImageThumbResponseObject); ok {
-		return validResponse.VisitGetMemeImageThumbResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

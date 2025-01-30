@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -12,8 +13,9 @@ type TelegramBotService interface {
 }
 
 type TelegramBotServiceImpl struct {
-	token string
-	debug bool
+	token  string
+	debug  bool
+	inline InlineService
 }
 
 func (srv *TelegramBotServiceImpl) StartBot() {
@@ -33,33 +35,30 @@ func (srv *TelegramBotServiceImpl) StartBot() {
 
 	for update := range updates {
 		if update.InlineQuery != nil {
-			query := update.InlineQuery.Query
-
-			log.Println(query)
-
-			inlineConf := tgbotapi.InlineConfig{
-				InlineQueryID: update.InlineQuery.ID,
-				IsPersonal:    true,
-				CacheTime:     0,
-				Results: []interface{}{
-					tgbotapi.NewInlineQueryResultArticle(
-						"test1",
-						"tittle",
-						"body",
-					),
-				},
-			}
-
-			if _, err := bot.Request(inlineConf); err != nil {
+			log.Printf("Bot inline request: %+v", update.InlineQuery)
+			inlineResponse, err := srv.inline.ProcessQuery(context.Background(), update.InlineQuery)
+			if err != nil {
 				log.Println(err)
+				continue
+			}
+			log.Printf("Bot inline response: %+v", inlineResponse)
+
+			_, err = bot.Request(inlineResponse)
+			if err != nil {
+				log.Println(err)
+				continue
 			}
 		}
 	}
 }
 
-func NewTelegramBotService(config *conf.TelegramConfig) TelegramBotService {
+func NewTelegramBotService(
+	config *conf.TelegramConfig,
+	inline InlineService,
+) TelegramBotService {
 	return &TelegramBotServiceImpl{
-		token: config.BotToken,
-		debug: config.Debug,
+		token:  config.BotToken,
+		debug:  config.Debug,
+		inline: inline,
 	}
 }

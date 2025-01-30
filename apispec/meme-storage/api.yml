@@ -10,6 +10,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/AccountId"
         - $ref: "#/components/parameters/MemeQuery"
+        - $ref: "#/components/parameters/SearchAfterId"
+        - $ref: "#/components/parameters/PageSize"
       operationId: "SearchMeme"
       responses:
         200:
@@ -37,19 +39,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/MemeDto"
 
-  /api/v1/accounts/{AccountId}/meme/{MemeId}/image/get:
-    get:
-      parameters:
-        - $ref: "#/components/parameters/AccountId"
-        - $ref: "#/components/parameters/MemeId"
-      operationId: "GetMemeImage"
-      responses:
-        200:
-          description: ok
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ImageDto"
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url:
     get:
@@ -64,21 +53,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImageUrlDto"
-
-  /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/get:
-    get:
-      parameters:
-        - $ref: "#/components/parameters/AccountId"
-        - $ref: "#/components/parameters/MemeId"
-      operationId: "GetMemeImageThumb"
-      responses:
-        200:
-          description: ok
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ImageDto"
-
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/url:
     get:
@@ -101,6 +75,20 @@ components:
       name: MemeQuery
       schema:
         type: string
+    SearchAfterId:
+      in: query
+      required: false
+      name: SearchAfterId
+      schema:
+        type: string
+        format: uuid
+    PageSize:
+      in: query
+      required: false
+      name: PageSize
+      schema:
+        type: integer
+      
     MemeId:
       in: path
       required: true
@@ -136,6 +124,10 @@ components:
           type: array
           items:
             type: string
+        ImageUrl:
+          type: string
+        ImageThumbUrl:
+          type: string
         Hash:
           type: string
 

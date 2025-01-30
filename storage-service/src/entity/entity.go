@@ -9,9 +9,11 @@ type OcrResult struct {
 
 type ElasticImageMetaData struct {
 	ImageId   uuid.UUID
+	S3Id      uuid.UUID
 	AccountId uuid.UUID
 	Hash      string
 	Result    string
+	Created   int64
 }
 
 type ElasticMatchedContent struct {

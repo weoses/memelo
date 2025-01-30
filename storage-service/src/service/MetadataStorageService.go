@@ -13,7 +13,12 @@ type MetadataStorageService interface {
 	GetByHash(ctx context.Context, hash string) (*entity.ElasticImageMetaData, error)
 	GetByHashAndAccountId(ctx context.Context, accountId uuid.UUID, hash string) (*entity.ElasticImageMetaData, error)
 	GetById(ctx context.Context, id uuid.UUID) (*entity.ElasticImageMetaData, error)
-	Search(ctx context.Context, accountId uuid.UUID, query string) ([]*entity.ElasticMatchedContent, error)
+	Search(ctx context.Context,
+		accountId uuid.UUID,
+		query string,
+		searchAfter *uuid.UUID,
+		pageSize *int,
+	) ([]*entity.ElasticMatchedContent, error)
 
 	//Delete(ctx context.Context, id string) error
 	//Exists(ctx context.Context, id string) (bool, error)

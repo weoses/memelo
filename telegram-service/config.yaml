@@ -1,2 +1,12 @@
 telegram:
-  BotToken:
+  BotToken: 7959296036:AAFHRV_rK9BegdBxLPs-X4rKcQBbcX5hnOo
+
+mongo:
+  Uri: "mongodb://mongo:mongo@localhost:27017/"
+  Database: telegram
+
+inline:
+  PageSize: 20
+
+storage-service:
+  Uri: http://localhost:7001

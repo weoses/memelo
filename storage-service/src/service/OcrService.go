@@ -74,7 +74,7 @@ func textVariantsToString(textVariants *[]client.OcrResponseItem) string {
 }
 
 func NewOcrService(conf *conf.OcrConfig) (OcrSerivce, error) {
-	ocrServiceUrl := conf.Url
+	ocrServiceUrl := conf.Uri
 	log.Printf("Creating ocr service url=%s\n", ocrServiceUrl)
 
 	client, err := client.NewClientWithResponses(ocrServiceUrl)

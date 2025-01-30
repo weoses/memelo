@@ -30,7 +30,7 @@ services:
     image: minio/minio:latest
     environment:
       MINIO_ACCESS_KEY: minio123
-      MINIO_SECRET_KEY: minio123
+      MINIO_SECRET_KEY: 9f97d6bcfe2d2130
     ports:
       - 9000:9000
     command: server /data
@@ -42,9 +42,17 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 3;
-      /usr/bin/mc alias set myminio http://minio:9000 minio123 minio123;
+      /usr/bin/mc alias set myminio http://minio:9000 minio123 9f97d6bcfe2d2130;
       /usr/bin/mc mb myminio/images;
       exit 0;
       "
+  mongodb:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+      MONGO_INITDB_DATABASE: telegram
+    ports:
+      - '27017:27017'
 networks:
   elastic:
