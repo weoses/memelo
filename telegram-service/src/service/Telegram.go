@@ -13,52 +13,81 @@ type TelegramBotService interface {
 }
 
 type TelegramBotServiceImpl struct {
-	token  string
-	debug  bool
-	inline InlineService
+	inline  InlineHandlerService
+	message MessageHandlerService
+	bot     *tgbotapi.BotAPI
 }
 
 func (srv *TelegramBotServiceImpl) StartBot() {
-	bot, err := tgbotapi.NewBotAPI(srv.token)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	bot.Debug = srv.debug
-
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	log.Printf("Authorized on account %s", srv.bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates := bot.GetUpdatesChan(u)
+	updates := srv.bot.GetUpdatesChan(u)
 
 	for update := range updates {
-		if update.InlineQuery != nil {
-			log.Printf("Bot inline request: %+v", update.InlineQuery)
-			inlineResponse, err := srv.inline.ProcessQuery(context.Background(), update.InlineQuery)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			log.Printf("Bot inline response: %+v", inlineResponse)
 
-			_, err = bot.Request(inlineResponse)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+		if update.InlineQuery != nil {
+			srv.HandleInlineRequest(&update)
+		} else if update.Message != nil {
+			srv.HandleMessage(&update)
 		}
 	}
 }
 
+func (srv *TelegramBotServiceImpl) HandleMessage(update *tgbotapi.Update) {
+	log.Printf("Bot message request: %+v", update.Message)
+	answer, err := srv.message.ProcessMessage(update.Message)
+	if err != nil {
+		log.Println(err)
+		message := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
+		message.ReplyToMessageID = update.Message.MessageID
+		_, err = srv.bot.Send(message)
+		return
+	}
+
+	message := tgbotapi.NewMessage(update.Message.Chat.ID, answer.Message)
+	message.ReplyToMessageID = update.Message.MessageID
+	_, err = srv.bot.Send(message)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+func (srv *TelegramBotServiceImpl) HandleInlineRequest(update *tgbotapi.Update) {
+	log.Printf("Bot inline request: %+v", update.InlineQuery)
+	inlineResponse, err := srv.inline.ProcessQuery(context.Background(), update.InlineQuery)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Printf("Bot inline response: %+v", inlineResponse)
+
+	_, err = srv.bot.Request(inlineResponse)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func NewTelegramBot(config *conf.TelegramConfig) *tgbotapi.BotAPI {
+	bot, err := tgbotapi.NewBotAPI(config.BotToken)
+	if err != nil {
+		log.Panic(err)
+	}
+	bot.Debug = config.Debug
+	return bot
+}
+
 func NewTelegramBotService(
-	config *conf.TelegramConfig,
-	inline InlineService,
+	bot *tgbotapi.BotAPI,
+	inline InlineHandlerService,
+	message MessageHandlerService,
 ) TelegramBotService {
 	return &TelegramBotServiceImpl{
-		token:  config.BotToken,
-		debug:  config.Debug,
-		inline: inline,
+		bot:     bot,
+		inline:  inline,
+		message: message,
 	}
 }

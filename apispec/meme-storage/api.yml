@@ -112,6 +112,16 @@ components:
         Url:
           type: string
 
+    SearchMemeThumb:
+      type: object
+      properties:
+        ThumbUrl:
+          type: string
+        ThumbWidth:
+          type: integer
+        ThumbHeight:
+          type: integer
+        
     SearchMemeDto:
       type: object
       properties:
@@ -126,8 +136,8 @@ components:
             type: string
         ImageUrl:
           type: string
-        ImageThumbUrl:
-          type: string
+        Thumbnail:
+          $ref: "#/components/schemas/SearchMemeThumb"
         Hash:
           type: string
 

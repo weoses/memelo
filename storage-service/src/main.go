@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 	"go.uber.org/fx"
@@ -15,6 +16,7 @@ func main() {
 	commonconfig.InitConfig()
 
 	fx.New(
+		fx.Provide(NewValidator),
 		fx.Provide(commonconfig.NewServerConfig),
 		fx.Provide(conf.NewOcrConfig),
 		fx.Provide(conf.NewMetadataStorageConfig),
@@ -42,4 +44,8 @@ func Startup(
 	)
 
 	srv.Start(conf.ListenAddress)
+}
+
+func NewValidator() *validator.Validate {
+	return validator.New(validator.WithRequiredStructEnabled())
 }

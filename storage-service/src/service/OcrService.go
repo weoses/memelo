@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/apispec/ocr-server/client"
 	"mine.local/ocr-gallery/storage-service/conf"
@@ -22,6 +23,7 @@ type OcrSerivce interface {
 
 type OcrServiceImpl struct {
 	ocrclient client.ClientWithResponsesInterface
+	validate  *validator.Validate
 }
 
 func (ocr *OcrServiceImpl) DoOcr(
@@ -58,10 +60,13 @@ func (ocr *OcrServiceImpl) DoOcr(
 
 	retval := new(entity.OcrProcessedResult)
 	retval.OcrText = textVariantsToString(textVariants)
-	retval.Thumbnail = helper.ImageToEntity(thumbnail)
 	retval.Image = helper.ImageToEntity(image)
+	retval.Thumbnail = new(entity.OcrThumbnail)
+	retval.Thumbnail.Image = helper.ImageToEntity(thumbnail.Image)
+	retval.Thumbnail.Width = *thumbnail.Width
+	retval.Thumbnail.Height = *thumbnail.Height
 
-	return retval, nil
+	return retval, ocr.validate.Struct(retval)
 }
 
 func textVariantsToString(textVariants *[]client.OcrResponseItem) string {
@@ -73,7 +78,7 @@ func textVariantsToString(textVariants *[]client.OcrResponseItem) string {
 	return builder.String()
 }
 
-func NewOcrService(conf *conf.OcrConfig) (OcrSerivce, error) {
+func NewOcrService(conf *conf.OcrConfig, validate *validator.Validate) (OcrSerivce, error) {
 	ocrServiceUrl := conf.Uri
 	log.Printf("Creating ocr service url=%s\n", ocrServiceUrl)
 
@@ -83,6 +88,7 @@ func NewOcrService(conf *conf.OcrConfig) (OcrSerivce, error) {
 	}
 	return &OcrServiceImpl{
 			ocrclient: client,
+			validate:  validate,
 		},
 		nil
 }

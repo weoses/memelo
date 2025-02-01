@@ -10,7 +10,7 @@ import (
 
 type ImageConveter interface {
 	ConvertImage(ctx context.Context, image *entity.Image) (*entity.Image, error)
-	MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, error)
+	MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, *entity.ImageSizes, error)
 }
 
 type ImageConveterImpl struct {
@@ -32,17 +32,28 @@ func (i *ImageConveterImpl) ConvertImage(ctx context.Context, image *entity.Imag
 }
 
 // MakeThumb implements ImageConveter.
-func (i *ImageConveterImpl) MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, error) {
+func (i *ImageConveterImpl) MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, *entity.ImageSizes, error) {
 	img := bimg.NewImage(*image.Data)
-	bytesData, err := img.Thumbnail(i.config.ThumbSize)
+
+	size, err := img.Size()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	sizes := new(entity.ImageSizes)
+
+	sizes.Width = i.config.ThumbSize
+	sizes.Height = int(float64(i.config.ThumbSize) / float64(size.Width) * float64(size.Height))
+
+	bytesData, err := img.Resize(size.Width, size.Height)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	retval := new(entity.Image)
 	retval.MimeType = image.MimeType
 	retval.Data = &bytesData
-	return retval, nil
+	return retval, sizes, nil
 }
 
 func NewImageConverter(config *conf.ImageConverterConfig) (ImageConveter, error) {

@@ -1,5 +1,5 @@
 telegram:
-  BotToken: 7959296036:AAFHRV_rK9BegdBxLPs-X4rKcQBbcX5hnOo
+  BotToken: 
 
 mongo:
   Uri: "mongodb://mongo:mongo@localhost:27017/"
@@ -10,3 +10,6 @@ inline:
 
 storage-service:
   Uri: http://localhost:7001
+
+user-account:
+  StaticUuid: f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6

@@ -90,7 +90,7 @@ func NewMinioFileStorageServiceImpl(config *conf.ImageStorageConfig) (ImageStora
 			config.S3.AccessKey,
 			config.S3.SecretKey,
 			""),
-		Secure: false,
+		Secure: true,
 	})
 
 	if err != nil {

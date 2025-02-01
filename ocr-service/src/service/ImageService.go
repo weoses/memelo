@@ -28,7 +28,7 @@ func (i *ImageServiceImpl) ProcessImage(ctx context.Context, image server.PostAp
 		return nil, err
 	}
 
-	imageThumbEnt, err := i.conv.MakeThumb(ctx, imageEnt)
+	imageThumbEnt, imgThumbSizes, err := i.conv.MakeThumb(ctx, imageEnt)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,10 @@ func (i *ImageServiceImpl) ProcessImage(ctx context.Context, image server.PostAp
 	response := new(server.PostApiV1OcrProcess200JSONResponse)
 
 	response.Image = imageEntityToDto(imageEnt)
-	response.ImageThumb = imageEntityToDto(imageThumbEnt)
+	response.ImageThumb = new(server.ThumbnailDto)
+	response.ImageThumb.Image = imageEntityToDto(imageThumbEnt)
+	response.ImageThumb.Height = &imgThumbSizes.Height
+	response.ImageThumb.Width = &imgThumbSizes.Width
 	response.ImageText = &[]server.OcrResponseItem{
 		{
 			ProcessorKey: &processorName,

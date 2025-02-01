@@ -37,10 +37,17 @@ type MemeDto struct {
 type SearchMemeDto struct {
 	Hash               *string             `json:"Hash,omitempty"`
 	Id                 *openapi_types.UUID `json:"Id,omitempty"`
-	ImageThumbUrl      *string             `json:"ImageThumbUrl,omitempty"`
 	ImageUrl           *string             `json:"ImageUrl,omitempty"`
 	OcrResult          *string             `json:"OcrResult,omitempty"`
 	OcrResultHighlight *[]string           `json:"OcrResultHighlight,omitempty"`
+	Thumbnail          *SearchMemeThumb    `json:"Thumbnail,omitempty"`
+}
+
+// SearchMemeThumb defines model for SearchMemeThumb.
+type SearchMemeThumb struct {
+	ThumbHeight *int    `json:"ThumbHeight,omitempty"`
+	ThumbUrl    *string `json:"ThumbUrl,omitempty"`
+	ThumbWidth  *int    `json:"ThumbWidth,omitempty"`
 }
 
 // AccountId defines model for AccountId.

@@ -8,21 +8,21 @@ import (
 	"mine.local/ocr-gallery/telegram-service/conf"
 )
 
-type InlineService interface {
+type InlineHandlerService interface {
 	ProcessQuery(
 		ctx context.Context,
 		request *tgbotapi.InlineQuery,
 	) (*tgbotapi.InlineConfig, error)
 }
 
-type InineServiceImpl struct {
+type InineHandlerServiceImpl struct {
 	userAccount UserAccountService
 	storage     StorageConnector
 	config      *conf.InlineConfig
 }
 
 // ProcessQuery implements InlineService.
-func (i *InineServiceImpl) ProcessQuery(
+func (i *InineHandlerServiceImpl) ProcessQuery(
 	ctx context.Context,
 	request *tgbotapi.InlineQuery,
 ) (*tgbotapi.InlineConfig, error) {
@@ -72,12 +72,9 @@ func (i *InineServiceImpl) ProcessQuery(
 			*item.ImageUrl,
 			*item.ImageUrl,
 		)
-
-		result := (*item.OcrResult)
-
-		inlineChoice.InputMessageContent = tgbotapi.InputTextMessageContent{
-			Text: result,
-		}
+		inlineChoice.MimeType = "image/jpeg"
+		inlineChoice.Height = *item.Thumbnail.ThumbHeight
+		inlineChoice.Width = *item.Thumbnail.ThumbWidth
 
 		photos[index] = inlineChoice
 	}
@@ -116,9 +113,9 @@ func NewInlineService(
 	userAccount UserAccountService,
 	storage StorageConnector,
 	config *conf.InlineConfig,
-) InlineService {
+) InlineHandlerService {
 
-	return &InineServiceImpl{
+	return &InineHandlerServiceImpl{
 		userAccount: userAccount,
 		storage:     storage,
 		config:      config,

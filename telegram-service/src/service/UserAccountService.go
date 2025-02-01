@@ -49,7 +49,22 @@ func (u *UserAccountServiceImpl) MapUserToAccount(ctx context.Context, userId in
 	return binding.AccountId, nil
 }
 
-func NewUserAccountService(config *conf.MongodbConfig) (UserAccountService, error) {
+type UserAccountServiceStaticImpl struct {
+	staticUuid uuid.UUID
+}
+
+// MapUserToAccount implements UserAccountService.
+func (u *UserAccountServiceStaticImpl) MapUserToAccount(ctx context.Context, userId int64) (uuid.UUID, error) {
+	return u.staticUuid, nil
+}
+
+func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.UserAccountConfig) (UserAccountService, error) {
+	if userAccountConfig.StaticUuid != "" {
+		return &UserAccountServiceStaticImpl{
+			staticUuid: uuid.MustParse(userAccountConfig.StaticUuid),
+		}, nil
+	}
+
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	opts := options.Client().
 		ApplyURI(config.Uri).

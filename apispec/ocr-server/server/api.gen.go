@@ -29,13 +29,20 @@ type OcrRequestDto struct {
 type OcrResponseDto struct {
 	Image      *ImageDto          `json:"Image,omitempty"`
 	ImageText  *[]OcrResponseItem `json:"ImageText,omitempty"`
-	ImageThumb *ImageDto          `json:"ImageThumb,omitempty"`
+	ImageThumb *ThumbnailDto      `json:"ImageThumb,omitempty"`
 }
 
 // OcrResponseItem defines model for OcrResponseItem.
 type OcrResponseItem struct {
 	ProcessorKey *string `json:"ProcessorKey,omitempty"`
 	Text         *string `json:"Text,omitempty"`
+}
+
+// ThumbnailDto defines model for ThumbnailDto.
+type ThumbnailDto struct {
+	Height *int      `json:"Height,omitempty"`
+	Image  *ImageDto `json:"Image,omitempty"`
+	Width  *int      `json:"Width,omitempty"`
 }
 
 // PostApiV1OcrProcessJSONRequestBody defines body for PostApiV1OcrProcess for application/json ContentType.

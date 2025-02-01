@@ -54,10 +54,20 @@ components:
       type: object
       properties:
         ImageThumb:
-          $ref: "#/components/schemas/ImageDto"
+          $ref: "#/components/schemas/ThumbnailDto"
         Image:
           $ref: "#/components/schemas/ImageDto"
         ImageText:
           type: array
           items:
             $ref: "#/components/schemas/OcrResponseItem"
+
+    ThumbnailDto:
+      type: object
+      properties:
+        Image:
+            $ref: "#/components/schemas/ImageDto"
+        Width:
+          type: integer
+        Height:
+          type: integer

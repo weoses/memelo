@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"mine.local/ocr-gallery/apispec/meme-storage/server"
@@ -16,6 +17,7 @@ type ApiHandler struct {
 	metaStorage  MetadataStorageService
 	imageStorage ImageStorageService
 	ocr          OcrSerivce
+	validate     *validator.Validate
 }
 
 // GetMemeImageThumbUrl implements server.StrictServerInterface.
@@ -110,7 +112,7 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 		return nil, err
 	}
 
-	err = a.imageStorage.Save(ctx, idUuid, ocrResult.Image, ocrResult.Thumbnail)
+	err = a.imageStorage.Save(ctx, idUuid, ocrResult.Image, ocrResult.Thumbnail.Image)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +121,17 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 		ImageId:   idUuid,
 		S3Id:      idUuid,
 		AccountId: request.AccountId,
-		Hash:      hash,
-		Result:    ocrResult.OcrText,
+		ThumbSize: &entity.ElasticSizes{
+			Height: ocrResult.Thumbnail.Height,
+			Width:  ocrResult.Thumbnail.Width,
+		},
+		Hash:   hash,
+		Result: ocrResult.OcrText,
+	}
+	err = a.validate.Struct(elasticMetaData)
+	if err != nil {
+		//TODO handle fail
+		return nil, err
 	}
 
 	err = a.metaStorage.Save(ctx, &elasticMetaData)
@@ -166,8 +177,11 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 
 		dto := server.SearchMemeDto{}
 		helper.ElasticToSearchMemeDto(metadataItem, &dto)
-		dto.ImageThumbUrl = &imageThumbUrl
 		dto.ImageUrl = &imageUrl
+		dto.Thumbnail = new(server.SearchMemeThumb)
+		dto.Thumbnail.ThumbUrl = &imageThumbUrl
+		dto.Thumbnail.ThumbHeight = &metadataItem.Metadata.ThumbSize.Height
+		dto.Thumbnail.ThumbWidth = &metadataItem.Metadata.ThumbSize.Width
 		response[index] = dto
 	}
 
@@ -178,10 +192,12 @@ func NewApiHandler(
 	metaStorage MetadataStorageService,
 	imageStorage ImageStorageService,
 	ocr OcrSerivce,
+	validator *validator.Validate,
 ) server.StrictServerInterface {
 	return &ApiHandler{
 		metaStorage:  metaStorage,
 		imageStorage: imageStorage,
 		ocr:          ocr,
+		validate:     validator,
 	}
 }

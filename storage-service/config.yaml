@@ -3,7 +3,7 @@ server:
 
 image-storage:
   S3:
-    Endpoint: eropus.ru:9000
+    Endpoint: eropus.ru
     AccessKey: minio123
     SecretKey: 9f97d6bcfe2d2130
     Bucket: images

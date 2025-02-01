@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/storage-service/conf"
 	"mine.local/ocr-gallery/storage-service/entity"
@@ -24,6 +25,6 @@ type MetadataStorageService interface {
 	//Exists(ctx context.Context, id string) (bool, error)
 }
 
-func NewMetadataStorageService(config *conf.MetadataStorageConfig) MetadataStorageService {
-	return NewElasticMetadataStorage(config)
+func NewMetadataStorageService(config *conf.MetadataStorageConfig, validate *validator.Validate) MetadataStorageService {
+	return NewElasticMetadataStorage(config, validate)
 }

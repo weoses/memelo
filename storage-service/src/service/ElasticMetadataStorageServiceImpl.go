@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/gdexlab/go-render/render"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/storage-service/conf"
 	"mine.local/ocr-gallery/storage-service/entity"
@@ -20,7 +21,8 @@ import (
 const INDEX_NAME = "image-metadata"
 
 type ElasticMetadataStorageServiceImpl struct {
-	client *elasticsearch8.TypedClient
+	client   *elasticsearch8.TypedClient
+	validate *validator.Validate
 }
 
 // Search implements MetadataStorageService.
@@ -98,9 +100,12 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 		if err != nil {
 			return nil, err
 		}
+		err = e.validate.Struct(item)
+		if err != nil {
+			return nil, err
+		}
 		results[index] = item
 	}
-
 	return results, nil
 }
 
@@ -119,7 +124,12 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, id uuid
 		return nil, err
 	}
 
-	return unmarhalSearchResultToElasticEntity(0, result)
+	data, err := unmarhalSearchResultToElasticEntity(0, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, e.validate.Struct(data)
 }
 
 // GetByHash implements MetadataStorageService.
@@ -140,7 +150,16 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 		return nil, err
 	}
 
-	return unmarhalSearchResultToElasticEntity(0, result)
+	data, err := unmarhalSearchResultToElasticEntity(0, result)
+	if err != nil {
+		return nil, err
+	}
+
+	if data == nil {
+		return nil, nil
+	}
+
+	return data, e.validate.Struct(data)
 }
 
 // GetByHashAndAccountId implements MetadataStorageService.
@@ -164,7 +183,12 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHashAndAccountId(
 		return nil, err
 	}
 
-	return unmarhalSearchResultToElasticEntity(0, result)
+	data, err := unmarhalSearchResultToElasticEntity(0, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, e.validate.Struct(data)
 }
 
 // Save implements MetadataStorageService.
@@ -230,7 +254,10 @@ func unmarhalSearchResultDocument(result json.RawMessage) (*entity.ElasticImageM
 	return &document, err
 }
 
-func NewElasticMetadataStorage(config *conf.MetadataStorageConfig) MetadataStorageService {
+func NewElasticMetadataStorage(
+	config *conf.MetadataStorageConfig,
+	validate *validator.Validate,
+) MetadataStorageService {
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 
 	indexTypeMapping := types.NewTypeMapping()
@@ -248,6 +275,7 @@ func NewElasticMetadataStorage(config *conf.MetadataStorageConfig) MetadataStora
 	log.Printf("Elastic create index response: %s error: %v", render.Render(response), err)
 
 	return &ElasticMetadataStorageServiceImpl{
-		client: es8,
+		client:   es8,
+		validate: validate,
 	}
 }

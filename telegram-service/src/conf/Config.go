@@ -22,6 +22,10 @@ type StorageConfig struct {
 	Uri string
 }
 
+type UserAccountConfig struct {
+	StaticUuid string
+}
+
 func NewTelegramConfig() (*TelegramConfig, error) {
 	conf := &TelegramConfig{}
 	err := viper.UnmarshalKey("telegram", conf)
@@ -43,5 +47,11 @@ func NewInlineConfig() (*InlineConfig, error) {
 func NewStorageConfig() (*StorageConfig, error) {
 	conf := &StorageConfig{}
 	err := viper.UnmarshalKey("storage-service", conf)
+	return conf, err
+}
+
+func NewUserAccountConfig() (*UserAccountConfig, error) {
+	conf := &UserAccountConfig{}
+	err := viper.UnmarshalKey("user-account", conf)
 	return conf, err
 }

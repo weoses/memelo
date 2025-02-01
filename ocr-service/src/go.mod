@@ -63,6 +63,7 @@ require (
 
 require (
 	cloud.google.com/go/vision v1.2.0
+	github.com/chigopher/pathlib v0.19.1
 	github.com/h2non/bimg v1.1.9
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

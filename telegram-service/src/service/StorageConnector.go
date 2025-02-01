@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 
 	"github.com/google/uuid"
@@ -17,6 +19,8 @@ type StorageConnector interface {
 		pageSize int,
 		searchAfter *uuid.UUID,
 	) (*[]client.SearchMemeDto, error)
+
+	CreateMeme(file []byte, mime string, accountId uuid.UUID) (uuid.UUID, error)
 }
 
 type StorageConnectorImpl struct {
@@ -50,6 +54,35 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 	}
 
 	return response.JSON200, err
+}
+
+// CreateMeme implements UploadService.
+func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uuid.UUID) (uuid.UUID, error) {
+	strbuf := bytes.NewBufferString("")
+	encoder := base64.NewEncoder(base64.RawStdEncoding, strbuf)
+	encoder.Write(file)
+	encoder.Close()
+	data := strbuf.String()
+
+	reqBody := client.CreateMemeJSONRequestBody{}
+	reqBody.ImageBase64 = &data
+	reqBody.MimeType = &mime
+
+	resp, err := u.cl.CreateMemeWithResponse(
+		context.TODO(),
+		accountId,
+		reqBody,
+	)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if resp.StatusCode() != 200 {
+		return uuid.Nil, errors.New("UploadFile() - failed - storage service status code non 2xx ")
+	}
+
+	return *resp.JSON200.Id, nil
 }
 
 func NewStorageConnector(config *conf.StorageConfig) (StorageConnector, error) {
