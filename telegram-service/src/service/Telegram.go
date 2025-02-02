@@ -72,7 +72,7 @@ func (srv *TelegramBotServiceImpl) HandleInlineRequest(update *tgbotapi.Update) 
 }
 
 func NewTelegramBot(config *conf.TelegramConfig) *tgbotapi.BotAPI {
-	bot, err := tgbotapi.NewBotAPI(config.BotToken)
+	bot, err := tgbotapi.NewBotAPI(config.Token)
 	if err != nil {
 		log.Panic(err)
 	}
