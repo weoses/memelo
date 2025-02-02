@@ -15,6 +15,7 @@ type ImageS3StorageConfig struct {
 	AccessKey string
 	SecretKey string
 	Bucket    string
+	Secure    bool
 }
 
 type ImageStorageConfig struct {
