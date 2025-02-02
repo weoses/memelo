@@ -5,8 +5,8 @@ import (
 )
 
 type TelegramConfig struct {
-	BotToken string
-	Debug    bool
+	Token string
+	Debug bool
 }
 
 type InlineConfig struct {
