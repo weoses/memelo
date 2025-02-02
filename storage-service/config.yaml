@@ -3,9 +3,9 @@ server:
 
 image-storage:
   S3:
-    Endpoint: eropus.ru
-    AccessKey: minio123
-    SecretKey: 9f97d6bcfe2d2130
+    Endpoint: localhost:9000
+    AccessKey: 
+    SecretKey: 
     Bucket: images
 
 
@@ -16,6 +16,6 @@ metadata-storage:
   Elastic:
     Addresses:
       - "http://localhost:9200/"
-    Username: elastic
-    Password: elastic
+    Username: 
+    Password: 
   Index: image-metadata

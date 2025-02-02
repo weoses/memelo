@@ -11,7 +11,13 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/storage-service/src",
-            "cwd": "${workspaceFolder}/storage-service"
+            "cwd": "${workspaceFolder}/storage-service",
+            "env": {
+                "METADATA-STORAGE_ELASTIC_USERNAME": "elastic",
+                "METADATA-STORAGE_ELASTIC_PASSWORD": "elastic",
+                "IMAGE-STORAGE.S3.ACCESSKEY": "minio123", 
+                "IMAGE-STORAGE.S3.SECRETKEY": "9f97d6bcfe2d2130"
+            }
         },
         {
             "name": "OCR-service",
