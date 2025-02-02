@@ -1,0 +1,33 @@
+FROM golang:1.23.2-alpine as builder
+
+WORKDIR /app/src
+RUN apk add --update --no-cache bash curl \
+    gcc g++ vips vips-dev vips-poppler pkgconf \
+    poppler-dev musl-dev libc6-compat 
+RUN go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.3.0
+
+COPY ./apispec apispec/
+COPY ./common common/
+COPY ./ocr-service ./ocr-service
+COPY ./storage-service ./storage-service
+COPY ./telegram-service ./telegram-service
+COPY ./go.work ./go.work
+COPY ./go.work.sum ./go.work.sum
+
+RUN go generate apispec/meme-storage/client/api.go
+RUN go generate apispec/meme-storage/server/api.go
+RUN go generate apispec/ocr-server/client/api.go
+RUN go generate apispec/ocr-server/server/api.go
+
+RUN go build -a -installsuffix cgo -o storage-service.bin ./storage-service/src 
+
+FROM alpine:latest 
+
+WORKDIR /app
+COPY --from=builder /app/src/storage-service.bin storage-service
+
+WORKDIR /app/config
+ENV APPLICATION_CONFIGPATH "/app/config"
+
+WORKDIR /app
+ENTRYPOINT [ "/app/storage-service" ]
