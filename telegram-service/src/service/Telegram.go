@@ -49,6 +49,7 @@ func (srv *TelegramBotServiceImpl) HandleMessage(update *tgbotapi.Update) {
 
 	message := tgbotapi.NewMessage(update.Message.Chat.ID, answer.Message)
 	message.ReplyToMessageID = update.Message.MessageID
+	message.ParseMode = answer.ParseMode
 	_, err = srv.bot.Send(message)
 	if err != nil {
 		log.Println(err)
