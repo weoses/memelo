@@ -15,8 +15,8 @@
             "env": {
                 "METADATA-STORAGE_ELASTIC_USERNAME": "elastic",
                 "METADATA-STORAGE_ELASTIC_PASSWORD": "elastic",
-                "IMAGE-STORAGE.S3.ACCESSKEY": "minio123", 
-                "IMAGE-STORAGE.S3.SECRETKEY": "9f97d6bcfe2d2130"
+                "IMAGE-STORAGE_S3_ACCESSKEY": "minio123", 
+                "IMAGE-STORAGE_S3_SECRETKEY": "9f97d6bcfe2d2130"
             }
         },
         {

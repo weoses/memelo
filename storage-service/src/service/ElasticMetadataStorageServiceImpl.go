@@ -11,6 +11,7 @@ import (
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -25,19 +26,16 @@ type ElasticMetadataStorageServiceImpl struct {
 	validate *validator.Validate
 }
 
-// Search implements MetadataStorageService.
-func (e *ElasticMetadataStorageServiceImpl) Search(
-	ctx context.Context,
+func (e *ElasticMetadataStorageServiceImpl) defaultQuery(
 	accountId uuid.UUID,
 	queryString string,
-	searchAfter *uuid.UUID,
-	pageSize *int,
-) ([]*entity.ElasticMatchedContent, error) {
+) *types.Query {
 	q1 := types.NewQuery()
 	q1.Match = map[string]types.MatchQuery{
 		"Result": {
 			Query:     queryString,
-			Fuzziness: "AUTO",
+			Fuzziness: "0",
+			Operator:  &operator.And,
 		},
 	}
 
@@ -46,6 +44,7 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 		"AccountId": {
 			Query:     accountId.String(),
 			Fuzziness: 0,
+			Operator:  &operator.And,
 		},
 	}
 
@@ -54,7 +53,46 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 	query.Bool.Must = []types.Query{
 		*q1, *q2,
 	}
+	return query
+}
 
+func (e *ElasticMetadataStorageServiceImpl) fuzzyQuery(
+	accountId uuid.UUID,
+	queryString string,
+) *types.Query {
+	q1 := types.NewQuery()
+	q1.Match = map[string]types.MatchQuery{
+		"Result": {
+			Query:     queryString,
+			Fuzziness: "AUTO",
+			Operator:  &operator.And,
+		},
+	}
+
+	q2 := types.NewQuery()
+	q2.Match = map[string]types.MatchQuery{
+		"AccountId": {
+			Query:     accountId.String(),
+			Fuzziness: 0,
+			Operator:  &operator.And,
+		},
+	}
+
+	query := types.NewQuery()
+	query.Bool = types.NewBoolQuery()
+	query.Bool.Must = []types.Query{
+		*q1, *q2,
+	}
+	return query
+}
+
+// Search implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) processQuery(
+	ctx context.Context,
+	query *types.Query,
+	searchAfter *uuid.UUID,
+	pageSize *int,
+) (*search.Response, error) {
 	highlight := types.NewHighlight()
 	highlight.PreTags = []string{"<MATCH>"}
 	highlight.PostTags = []string{"</MATCH>"}
@@ -86,12 +124,34 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 		search = search.Size(*pageSize)
 	}
 
-	result, err := search.Do(ctx)
+	return search.Do(ctx)
+}
+
+// Search implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) Search(
+	ctx context.Context,
+	accountId uuid.UUID,
+	queryString string,
+	searchAfter *uuid.UUID,
+	pageSize *int,
+) ([]*entity.ElasticMatchedContent, error) {
+	log.Printf("Search using default query: query: '%s' account: '%s'", queryString, accountId)
+	query := e.defaultQuery(accountId, queryString)
+	result, err := e.processQuery(ctx, query, searchAfter, pageSize)
 	if err != nil {
 		return nil, err
 	}
 
 	resultsSize := len(result.Hits.Hits)
+	if searchAfter == nil && (pageSize == nil || *pageSize > 0) && resultsSize == 0 {
+		log.Printf("Search using fuzzy query: query: '%s' account: '%s'", queryString, accountId)
+		query = e.fuzzyQuery(accountId, queryString)
+		result, err = e.processQuery(ctx, query, searchAfter, pageSize)
+		if err != nil {
+			return nil, err
+		}
+		resultsSize = len(result.Hits.Hits)
+	}
 
 	results := make([]*entity.ElasticMatchedContent, resultsSize)
 
