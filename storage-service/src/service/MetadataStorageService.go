@@ -17,7 +17,7 @@ type MetadataStorageService interface {
 	Search(ctx context.Context,
 		accountId uuid.UUID,
 		query string,
-		searchAfter *uuid.UUID,
+		sortIdAfter *int64,
 		pageSize *int,
 	) ([]*entity.ElasticMatchedContent, error)
 

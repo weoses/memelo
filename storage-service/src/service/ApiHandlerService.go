@@ -99,8 +99,12 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 			}
 			helper.ElasticToCreateResponse(&copyMetadata, &response)
 		} else {
+			copyMetadata := *hashDuplicate
+			copyMetadata.ImageId = idUuid
+			copyMetadata.AccountId = request.AccountId
+			err = a.metaStorage.Save(ctx, &copyMetadata)
 			log.Printf("Found meme duplicate in this account: id=%s hash=%s", hashAccountDuplicate.ImageId, hash)
-			helper.ElasticToCreateResponse(hashAccountDuplicate, &response)
+			helper.ElasticToCreateResponse(&copyMetadata, &response)
 		}
 
 		return response, nil
@@ -155,7 +159,7 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 		ctx,
 		request.AccountId,
 		query,
-		request.Params.SearchAfterId,
+		request.Params.SearchAfterSortId,
 		request.Params.PageSize,
 	)
 

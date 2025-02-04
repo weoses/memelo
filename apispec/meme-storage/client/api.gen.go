@@ -42,6 +42,7 @@ type SearchMemeDto struct {
 	ImageUrl           *string             `json:"ImageUrl,omitempty"`
 	OcrResult          *string             `json:"OcrResult,omitempty"`
 	OcrResultHighlight *[]string           `json:"OcrResultHighlight,omitempty"`
+	SortId             *int64              `json:"SortId,omitempty"`
 	Thumbnail          *SearchMemeThumb    `json:"Thumbnail,omitempty"`
 }
 
@@ -65,13 +66,13 @@ type MemeQuery = string
 type PageSize = int
 
 // SearchAfterId defines model for SearchAfterId.
-type SearchAfterId = openapi_types.UUID
+type SearchAfterId = int64
 
 // SearchMemeParams defines parameters for SearchMeme.
 type SearchMemeParams struct {
-	MemeQuery     MemeQuery      `form:"MemeQuery" json:"MemeQuery"`
-	SearchAfterId *SearchAfterId `form:"SearchAfterId,omitempty" json:"SearchAfterId,omitempty"`
-	PageSize      *PageSize      `form:"PageSize,omitempty" json:"PageSize,omitempty"`
+	MemeQuery         MemeQuery      `form:"MemeQuery" json:"MemeQuery"`
+	SearchAfterSortId *SearchAfterId `form:"SearchAfterSortId,omitempty" json:"SearchAfterSortId,omitempty"`
+	PageSize          *PageSize      `form:"PageSize,omitempty" json:"PageSize,omitempty"`
 }
 
 // CreateMemeJSONRequestBody defines body for CreateMeme for application/json ContentType.
@@ -266,9 +267,9 @@ func NewSearchMemeRequest(server string, accountId AccountId, params *SearchMeme
 			}
 		}
 
-		if params.SearchAfterId != nil {
+		if params.SearchAfterSortId != nil {
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "SearchAfterId", runtime.ParamLocationQuery, *params.SearchAfterId); err != nil {
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "SearchAfterSortId", runtime.ParamLocationQuery, *params.SearchAfterSortId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

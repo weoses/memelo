@@ -40,6 +40,7 @@ type SearchMemeDto struct {
 	ImageUrl           *string             `json:"ImageUrl,omitempty"`
 	OcrResult          *string             `json:"OcrResult,omitempty"`
 	OcrResultHighlight *[]string           `json:"OcrResultHighlight,omitempty"`
+	SortId             *int64              `json:"SortId,omitempty"`
 	Thumbnail          *SearchMemeThumb    `json:"Thumbnail,omitempty"`
 }
 
@@ -63,13 +64,13 @@ type MemeQuery = string
 type PageSize = int
 
 // SearchAfterId defines model for SearchAfterId.
-type SearchAfterId = openapi_types.UUID
+type SearchAfterId = int64
 
 // SearchMemeParams defines parameters for SearchMeme.
 type SearchMemeParams struct {
-	MemeQuery     MemeQuery      `form:"MemeQuery" json:"MemeQuery"`
-	SearchAfterId *SearchAfterId `form:"SearchAfterId,omitempty" json:"SearchAfterId,omitempty"`
-	PageSize      *PageSize      `form:"PageSize,omitempty" json:"PageSize,omitempty"`
+	MemeQuery         MemeQuery      `form:"MemeQuery" json:"MemeQuery"`
+	SearchAfterSortId *SearchAfterId `form:"SearchAfterSortId,omitempty" json:"SearchAfterSortId,omitempty"`
+	PageSize          *PageSize      `form:"PageSize,omitempty" json:"PageSize,omitempty"`
 }
 
 // CreateMemeJSONRequestBody defines body for CreateMeme for application/json ContentType.
@@ -116,11 +117,11 @@ func (w *ServerInterfaceWrapper) SearchMeme(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter MemeQuery: %s", err))
 	}
 
-	// ------------- Optional query parameter "SearchAfterId" -------------
+	// ------------- Optional query parameter "SearchAfterSortId" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "SearchAfterId", ctx.QueryParams(), &params.SearchAfterId)
+	err = runtime.BindQueryParameter("form", true, false, "SearchAfterSortId", ctx.QueryParams(), &params.SearchAfterSortId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter SearchAfterId: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter SearchAfterSortId: %s", err))
 	}
 
 	// ------------- Optional query parameter "PageSize" -------------

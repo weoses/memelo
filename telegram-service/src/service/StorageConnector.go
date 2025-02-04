@@ -18,7 +18,7 @@ type StorageConnector interface {
 		accountId uuid.UUID,
 		query string,
 		pageSize int,
-		searchAfter *uuid.UUID,
+		searchAfterSortId *int64,
 	) ([]*entity.MemeSearchResult, error)
 
 	CreateMeme(file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
@@ -34,16 +34,16 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 	accountId uuid.UUID,
 	query string,
 	pageSize int,
-	searchAfter *uuid.UUID,
+	searchAfterSortId *int64,
 ) ([]*entity.MemeSearchResult, error) {
 
 	response, err := s.cl.SearchMemeWithResponse(
 		ctx,
 		accountId,
 		&client.SearchMemeParams{
-			MemeQuery:     query,
-			PageSize:      &pageSize,
-			SearchAfterId: searchAfter,
+			MemeQuery:         query,
+			PageSize:          &pageSize,
+			SearchAfterSortId: searchAfterSortId,
 		})
 
 	if err != nil {
@@ -62,6 +62,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 			ThumbUrl:    *dto.Thumbnail.ThumbUrl,
 			ThumbWidth:  *dto.Thumbnail.ThumbWidth,
 			ThumbHeight: *dto.Thumbnail.ThumbHeight,
+			SortId:      *dto.SortId,
 		}
 	}
 	return entityResult, err

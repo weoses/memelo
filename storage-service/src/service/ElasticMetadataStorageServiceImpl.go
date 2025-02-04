@@ -90,7 +90,7 @@ func (e *ElasticMetadataStorageServiceImpl) fuzzyQuery(
 func (e *ElasticMetadataStorageServiceImpl) processQuery(
 	ctx context.Context,
 	query *types.Query,
-	searchAfter *uuid.UUID,
+	sortIdAfter *int64,
 	pageSize *int,
 ) (*search.Response, error) {
 	highlight := types.NewHighlight()
@@ -103,21 +103,18 @@ func (e *ElasticMetadataStorageServiceImpl) processQuery(
 	resultField := types.NewFieldAndFormat()
 	resultField.Field = "Result"
 
-	sortCreated := types.NewSortOptions()
-	sortCreated.SortOptions["Created"] = *types.NewFieldSort()
-
 	sortId := types.NewSortOptions()
-	sortId.SortOptions["Id"] = *types.NewFieldSort()
+	sortId.SortOptions["Created"] = *types.NewFieldSort()
 
 	search := e.client.Search().
 		Index(INDEX_NAME).
 		Query(query).
 		Fields(*resultField).
 		Highlight(highlight).
-		Sort(sortCreated, sortId)
+		Sort(sortId)
 
-	if searchAfter != nil {
-		search = search.SearchAfter(searchAfter.String())
+	if sortIdAfter != nil {
+		search = search.SearchAfter(*sortIdAfter)
 	}
 
 	if pageSize != nil {
@@ -132,21 +129,22 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 	ctx context.Context,
 	accountId uuid.UUID,
 	queryString string,
-	searchAfter *uuid.UUID,
+	sortIdAfter *int64,
 	pageSize *int,
 ) ([]*entity.ElasticMatchedContent, error) {
-	log.Printf("Search using default query: query: '%s' account: '%s'", queryString, accountId)
+	log.Printf("Search using default query: query: '%s' account: '%s' after: %v",
+		queryString, accountId, sortIdAfter)
 	query := e.defaultQuery(accountId, queryString)
-	result, err := e.processQuery(ctx, query, searchAfter, pageSize)
+	result, err := e.processQuery(ctx, query, sortIdAfter, pageSize)
 	if err != nil {
 		return nil, err
 	}
 
 	resultsSize := len(result.Hits.Hits)
-	if searchAfter == nil && (pageSize == nil || *pageSize > 0) && resultsSize == 0 {
+	if sortIdAfter == nil && (pageSize == nil || *pageSize > 0) && resultsSize == 0 {
 		log.Printf("Search using fuzzy query: query: '%s' account: '%s'", queryString, accountId)
 		query = e.fuzzyQuery(accountId, queryString)
-		result, err = e.processQuery(ctx, query, searchAfter, pageSize)
+		result, err = e.processQuery(ctx, query, sortIdAfter, pageSize)
 		if err != nil {
 			return nil, err
 		}
@@ -325,7 +323,7 @@ func NewElasticMetadataStorage(
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
 	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["Hash"] = types.NewKeywordProperty()
-	indexTypeMapping.Properties["Id"] = types.NewKeywordProperty()
+	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()
 
 	response, err := es8.Indices.
 		Create(config.Index).
