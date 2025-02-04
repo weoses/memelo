@@ -63,25 +63,23 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		return &retval, nil
 	}
 
-	resultsUnr := *results
-
-	photos := make([]interface{}, len(resultsUnr))
-	for index, item := range resultsUnr {
+	photos := make([]interface{}, len(results))
+	for index, item := range results {
 		inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
 			item.Id.String(),
-			*item.ImageUrl,
-			*item.ImageUrl,
+			item.ImageUrl,
+			item.ImageUrl,
 		)
 		inlineChoice.MimeType = "image/jpeg"
-		inlineChoice.Height = *item.Thumbnail.ThumbHeight
-		inlineChoice.Width = *item.Thumbnail.ThumbWidth
+		inlineChoice.Height = item.ThumbHeight
+		inlineChoice.Width = item.ThumbWidth
 
 		photos[index] = inlineChoice
 	}
 
 	nextOffset := ""
-	if len(resultsUnr) == i.config.PageSize {
-		nextOffset = resultsUnr[i.config.PageSize].Id.String()
+	if len(results) == i.config.PageSize {
+		nextOffset = results[i.config.PageSize].Id.String()
 	}
 
 	retval := tgbotapi.InlineConfig{

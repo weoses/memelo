@@ -13,7 +13,8 @@ type MessageHandlerService interface {
 }
 
 type MessageHandlerResponse struct {
-	Message string
+	Message   string
+	ParseMode string
 }
 
 type MessageHandlerServiceImpl struct {
@@ -44,13 +45,14 @@ func (m MessageHandlerServiceImpl) ProcessMessage(message *tgbotapi.Message) (*M
 		return nil, err
 	}
 
-	id, err := m.storage.CreateMeme(file, "image/jpeg", accountId)
+	result, err := m.storage.CreateMeme(file, "image/jpeg", accountId)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MessageHandlerResponse{
-		Message: fmt.Sprintf("Saved meme: id=%s", id.String()),
+		Message:   fmt.Sprintf("\n```Text\n%s\n```\n ID %s", result.Text, result.Id),
+		ParseMode: "Markdown",
 	}, nil
 }
 

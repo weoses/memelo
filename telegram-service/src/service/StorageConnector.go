@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/apispec/meme-storage/client"
 	"mine.local/ocr-gallery/telegram-service/conf"
+	"mine.local/ocr-gallery/telegram-service/entity"
 )
 
 type StorageConnector interface {
@@ -18,9 +19,9 @@ type StorageConnector interface {
 		query string,
 		pageSize int,
 		searchAfter *uuid.UUID,
-	) (*[]client.SearchMemeDto, error)
+	) ([]*entity.MemeSearchResult, error)
 
-	CreateMeme(file []byte, mime string, accountId uuid.UUID) (uuid.UUID, error)
+	CreateMeme(file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
 }
 
 type StorageConnectorImpl struct {
@@ -34,7 +35,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 	query string,
 	pageSize int,
 	searchAfter *uuid.UUID,
-) (*[]client.SearchMemeDto, error) {
+) ([]*entity.MemeSearchResult, error) {
 
 	response, err := s.cl.SearchMemeWithResponse(
 		ctx,
@@ -53,11 +54,21 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		return nil, errors.New("failed to request storage service")
 	}
 
-	return response.JSON200, err
+	entityResult := make([]*entity.MemeSearchResult, len(*response.JSON200))
+	for i, dto := range *response.JSON200 {
+		entityResult[i] = &entity.MemeSearchResult{
+			Id:          *dto.Id,
+			ImageUrl:    *dto.ImageUrl,
+			ThumbUrl:    *dto.Thumbnail.ThumbUrl,
+			ThumbWidth:  *dto.Thumbnail.ThumbWidth,
+			ThumbHeight: *dto.Thumbnail.ThumbHeight,
+		}
+	}
+	return entityResult, err
 }
 
 // CreateMeme implements UploadService.
-func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uuid.UUID) (uuid.UUID, error) {
+func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
 	strbuf := bytes.NewBufferString("")
 	encoder := base64.NewEncoder(base64.RawStdEncoding, strbuf)
 	encoder.Write(file)
@@ -75,14 +86,18 @@ func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uu
 	)
 
 	if err != nil {
-		return uuid.Nil, err
+		return nil, err
 	}
 
 	if resp.StatusCode() != 200 {
-		return uuid.Nil, errors.New("UploadFile() - failed - storage service status code non 2xx ")
+		return nil, errors.New("UploadFile() - failed - storage service status code non 2xx ")
 	}
 
-	return *resp.JSON200.Id, nil
+	return &entity.MemeCreateResult{
+			Id:   *resp.JSON200.Id,
+			Text: *resp.JSON200.OcrResult,
+		},
+		nil
 }
 
 func NewStorageConnector(config *conf.StorageConfig) (StorageConnector, error) {
