@@ -26,6 +26,7 @@ func ElasticToSearchMemeDto(elasticEntity *entity.ElasticMatchedContent, dto *se
 	dto.OcrResult = &elasticEntity.Metadata.Result
 	dto.Hash = &elasticEntity.Metadata.Hash
 	dto.Id = &elasticEntity.Metadata.ImageId
+	dto.SortId = &elasticEntity.Metadata.Created
 
 	highlightText := *elasticEntity.ResultMatched
 	dto.OcrResultHighlight = &highlightText

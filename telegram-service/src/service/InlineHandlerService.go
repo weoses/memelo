@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
+	"log"
+	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/google/uuid"
 	"mine.local/ocr-gallery/telegram-service/conf"
 )
 
@@ -29,14 +30,17 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	userId := request.From.ID
 	query := request.Query
 
+	log.Printf("Inline query: userid: '%d' id: '%s' text: '%s' offset: '%s'",
+		userId, request.ID, request.Query, request.Offset)
+
 	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	var searchAfter *uuid.UUID
+	var searchAfter *int64
 	if request.Offset != "" {
-		offset, err := uuid.Parse(request.Offset)
+		offset, err := strconv.ParseInt(request.Offset, 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -77,9 +81,12 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		photos[index] = inlineChoice
 	}
 
+	log.Printf("Result count is %d", len(results))
+
 	nextOffset := ""
-	if len(results) == i.config.PageSize {
-		nextOffset = results[i.config.PageSize].Id.String()
+	if len(results) == i.config.PageSize && i.config.PageSize > 0 {
+		nextOffset = strconv.FormatInt(results[i.config.PageSize-1].SortId, 10)
+		log.Printf("Next offset is %s", nextOffset)
 	}
 
 	retval := tgbotapi.InlineConfig{

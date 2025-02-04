@@ -78,10 +78,10 @@ components:
     SearchAfterId:
       in: query
       required: false
-      name: SearchAfterId
+      name: SearchAfterSortId
       schema:
-        type: string
-        format: uuid
+        type: integer
+        format: int64
     PageSize:
       in: query
       required: false
@@ -128,6 +128,9 @@ components:
         Id:
           type: string
           format: uuid
+        SortId:
+          type: integer
+          format: int64
         OcrResult:
           type: string
         OcrResultHighlight:
