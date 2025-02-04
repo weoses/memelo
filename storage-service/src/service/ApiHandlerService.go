@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -114,6 +115,10 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 	ocrResult, err := a.ocr.DoOcr(ctx, idUuid, reqImage)
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.TrimSpace(ocrResult.OcrText) == "" {
+		return nil, errors.New("no text on image")
 	}
 
 	err = a.imageStorage.Save(ctx, idUuid, ocrResult.Image, ocrResult.Thumbnail.Image)
