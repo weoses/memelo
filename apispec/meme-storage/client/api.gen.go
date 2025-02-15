@@ -162,6 +162,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// CheckDuplicates request
+	CheckDuplicates(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchMeme request
 	SearchMeme(ctx context.Context, accountId AccountId, params *SearchMemeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -175,6 +178,21 @@ type ClientInterface interface {
 
 	// GetMemeImageUrl request
 	GetMemeImageUrl(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOcr request
+	UpdateOcr(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) CheckDuplicates(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCheckDuplicatesRequest(c.Server, accountId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) SearchMeme(ctx context.Context, accountId AccountId, params *SearchMemeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -235,6 +253,52 @@ func (c *Client) GetMemeImageUrl(ctx context.Context, accountId AccountId, memeI
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateOcr(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOcrRequest(c.Server, accountId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewCheckDuplicatesRequest generates requests for CheckDuplicates
+func NewCheckDuplicatesRequest(server string, accountId AccountId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/accounts/%s/check-duplicates", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewSearchMemeRequest generates requests for SearchMeme
@@ -450,6 +514,40 @@ func NewGetMemeImageUrlRequest(server string, accountId AccountId, memeId MemeId
 	return req, nil
 }
 
+// NewUpdateOcrRequest generates requests for UpdateOcr
+func NewUpdateOcrRequest(server string, accountId AccountId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/accounts/%s/update-ocr", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -493,6 +591,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// CheckDuplicatesWithResponse request
+	CheckDuplicatesWithResponse(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*CheckDuplicatesResponse, error)
+
 	// SearchMemeWithResponse request
 	SearchMemeWithResponse(ctx context.Context, accountId AccountId, params *SearchMemeParams, reqEditors ...RequestEditorFn) (*SearchMemeResponse, error)
 
@@ -506,6 +607,30 @@ type ClientWithResponsesInterface interface {
 
 	// GetMemeImageUrlWithResponse request
 	GetMemeImageUrlWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*GetMemeImageUrlResponse, error)
+
+	// UpdateOcrWithResponse request
+	UpdateOcrWithResponse(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*UpdateOcrResponse, error)
+}
+
+type CheckDuplicatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r CheckDuplicatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CheckDuplicatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type SearchMemeResponse struct {
@@ -596,6 +721,36 @@ func (r GetMemeImageUrlResponse) StatusCode() int {
 	return 0
 }
 
+type UpdateOcrResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOcrResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOcrResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// CheckDuplicatesWithResponse request returning *CheckDuplicatesResponse
+func (c *ClientWithResponses) CheckDuplicatesWithResponse(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*CheckDuplicatesResponse, error) {
+	rsp, err := c.CheckDuplicates(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCheckDuplicatesResponse(rsp)
+}
+
 // SearchMemeWithResponse request returning *SearchMemeResponse
 func (c *ClientWithResponses) SearchMemeWithResponse(ctx context.Context, accountId AccountId, params *SearchMemeParams, reqEditors ...RequestEditorFn) (*SearchMemeResponse, error) {
 	rsp, err := c.SearchMeme(ctx, accountId, params, reqEditors...)
@@ -638,6 +793,31 @@ func (c *ClientWithResponses) GetMemeImageUrlWithResponse(ctx context.Context, a
 		return nil, err
 	}
 	return ParseGetMemeImageUrlResponse(rsp)
+}
+
+// UpdateOcrWithResponse request returning *UpdateOcrResponse
+func (c *ClientWithResponses) UpdateOcrWithResponse(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*UpdateOcrResponse, error) {
+	rsp, err := c.UpdateOcr(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOcrResponse(rsp)
+}
+
+// ParseCheckDuplicatesResponse parses an HTTP response from a CheckDuplicatesWithResponse call
+func ParseCheckDuplicatesResponse(rsp *http.Response) (*CheckDuplicatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CheckDuplicatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
 // ParseSearchMemeResponse parses an HTTP response from a SearchMemeWithResponse call
@@ -739,6 +919,22 @@ func ParseGetMemeImageUrlResponse(rsp *http.Response) (*GetMemeImageUrlResponse,
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOcrResponse parses an HTTP response from a UpdateOcrWithResponse call
+func ParseUpdateOcrResponse(rsp *http.Response) (*UpdateOcrResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOcrResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -19,6 +20,58 @@ type ApiHandler struct {
 	imageStorage ImageStorageService
 	ocr          OcrSerivce
 	validate     *validator.Validate
+}
+
+// CheckDuplicates implements server.StrictServerInterface.
+func (a *ApiHandler) CheckDuplicates(ctx context.Context, request server.CheckDuplicatesRequestObject) (server.CheckDuplicatesResponseObject, error) {
+	panic("unimplemented")
+}
+
+// UpdateOcr implements server.StrictServerInterface.
+func (a *ApiHandler) UpdateOcr(ctx context.Context, request server.UpdateOcrRequestObject) (server.UpdateOcrResponseObject, error) {
+	items, err := a.metaStorage.Search(ctx, request.AccountId, "", nil, addr(1000))
+
+	for err == nil && len(items) > 0 {
+		for _, item := range items {
+
+			id := item.Metadata.ImageId
+			accountId := item.Metadata.AccountId
+			hash := item.Metadata.Hash
+			s3id := item.Metadata.S3Id
+			created := item.Metadata.Created
+
+			log.Printf("UpdateOcr: checking image id=%s", id)
+
+			img, err := a.imageStorage.GetImage(ctx, s3id)
+			if err != nil {
+				log.Printf("Failed to read image from storage : id=%s, err=%v", id, err)
+				continue
+			}
+
+			ocrResult, err := a.ocr.DoOcr(ctx, id, img)
+			if err != nil {
+				log.Printf("Failed to doOcr for image id=%s, err=%v", id, err)
+				continue
+			}
+
+			elasticObject := OcrResultToElastic(id, accountId, hash, created, ocrResult)
+			err = a.metaStorage.Save(ctx, elasticObject)
+			if err != nil {
+				log.Printf("Failed to save new metadata for image id=%s, err=%v", id, err)
+				continue
+			}
+		}
+
+		if len(items) > 0 {
+			items, err = a.metaStorage.Search(ctx, request.AccountId, "", &items[len(items)-1].Metadata.Created, addr(1000))
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return new(server.UpdateOcr200Response), err
 }
 
 // GetMemeImageThumbUrl implements server.StrictServerInterface.
@@ -152,21 +205,13 @@ func (a *ApiHandler) CreateMeme(
 		return nil, err
 	}
 
-	elasticMetaData := entity.ElasticImageMetaData{
-		ImageId:   idUuid,
-		S3Id:      idUuid,
-		AccountId: request.AccountId,
-		ThumbSize: &entity.ElasticSizes{
-			Height: ocrResult.Thumbnail.Height,
-			Width:  ocrResult.Thumbnail.Width,
-		},
-		Hash:   hash,
-		Result: ocrResult.OcrText,
-		EmbeddingV1: &entity.ElasticEmbeddingV1{
-			Data:  &ocrResult.Embedding.Data,
-			Model: ocrResult.Embedding.Model,
-		},
-	}
+	elasticMetaData := OcrResultToElastic(
+		idUuid,
+		request.AccountId,
+		hash,
+		time.Now().UnixMicro(),
+		ocrResult,
+	)
 
 	err = a.validate.Struct(elasticMetaData)
 	if err != nil {
@@ -174,14 +219,14 @@ func (a *ApiHandler) CreateMeme(
 		return nil, err
 	}
 
-	err = a.metaStorage.Save(ctx, &elasticMetaData)
+	err = a.metaStorage.Save(ctx, elasticMetaData)
 	if err != nil {
 		//TODO handle fail
 		return nil, err
 	}
 
 	response := server.CreateMeme200JSONResponse{}
-	helper.ElasticToCreateResponse(&elasticMetaData, server.New, &response)
+	helper.ElasticToCreateResponse(elasticMetaData, server.New, &response)
 	return response, nil
 }
 
@@ -226,6 +271,25 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 	}
 
 	return response, nil
+}
+
+func OcrResultToElastic(idUuid uuid.UUID, accountId uuid.UUID, hash string, created int64, ocrResult *OcrProcessedResult) *entity.ElasticImageMetaData {
+	return &entity.ElasticImageMetaData{
+		ImageId:   idUuid,
+		S3Id:      idUuid,
+		AccountId: accountId,
+		ThumbSize: &entity.ElasticSizes{
+			Height: ocrResult.Thumbnail.Height,
+			Width:  ocrResult.Thumbnail.Width,
+		},
+		Created: created,
+		Hash:    hash,
+		Result:  ocrResult.OcrText,
+		EmbeddingV1: &entity.ElasticEmbeddingV1{
+			Data:  &ocrResult.Embedding.Data,
+			Model: ocrResult.Embedding.Model,
+		},
+	}
 }
 
 func NewApiHandler(

@@ -28,6 +28,11 @@ type ElasticMetadataStorageServiceImpl struct {
 	validate               *validator.Validate
 }
 
+// GetListByAccountId implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) GetListByAccountId(ctx context.Context, accountId uuid.UUID) ([]*entity.ElasticImageMetaData, error) {
+	panic("unimplemented")
+}
+
 func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnSearch(ctx context.Context, img entity.ElasticEmbeddingV1) *types.KnnSearch {
 	// sizeXfloat := float64(img.SizeX)
 	// sizeYfloat := float64(img.SizeY)
@@ -71,7 +76,12 @@ func (e *ElasticMetadataStorageServiceImpl) accountIdQuery(accountId uuid.UUID) 
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchAllQuery(accountId uuid.UUID) *types.Query {
-	return e.accountIdQuery(accountId)
+	query := types.NewQuery()
+	query.Bool = types.NewBoolQuery()
+	query.Bool.Must = []types.Query{
+		*e.accountIdQuery(accountId),
+	}
+	return query
 }
 
 func (e *ElasticMetadataStorageServiceImpl) simpleSearchQuery(
@@ -344,7 +354,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHashAndAccountId(
 // Save implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *entity.ElasticImageMetaData) error {
 
-	file.Created = time.Now().UnixMicro()
+	file.Updated = time.Now().UnixMicro()
 
 	buff := bytes.NewBuffer(nil)
 	jsonEncoder := json.NewEncoder(buff)
@@ -419,6 +429,7 @@ func NewElasticMetadataStorage(
 
 	indexTypeMapping := types.NewTypeMapping()
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
+	indexTypeMapping.Properties["Updated"] = types.NewLongNumberProperty()
 	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["Hash"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()

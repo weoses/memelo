@@ -5,6 +5,23 @@ info:
   title: 'Meme-server'
  
 paths:
+  /api/v1/accounts/{AccountId}/check-duplicates:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      operationId: "CheckDuplicates"
+      responses:
+        200:
+          description: ok
+  /api/v1/accounts/{AccountId}/update-ocr:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+      operationId: "UpdateOcr"
+      responses:
+        200:
+          description: ok
+
   /api/v1/accounts/{AccountId}/meme:
     get:
       parameters:

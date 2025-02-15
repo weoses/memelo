@@ -90,6 +90,9 @@ type CreateMemeJSONRequestBody = ImageDto
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (POST /api/v1/accounts/{AccountId}/check-duplicates)
+	CheckDuplicates(ctx echo.Context, accountId AccountId) error
+
 	// (GET /api/v1/accounts/{AccountId}/meme)
 	SearchMeme(ctx echo.Context, accountId AccountId, params SearchMemeParams) error
 
@@ -101,11 +104,30 @@ type ServerInterface interface {
 
 	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url)
 	GetMemeImageUrl(ctx echo.Context, accountId AccountId, memeId MemeId) error
+
+	// (POST /api/v1/accounts/{AccountId}/update-ocr)
+	UpdateOcr(ctx echo.Context, accountId AccountId) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// CheckDuplicates converts echo context to params.
+func (w *ServerInterfaceWrapper) CheckDuplicates(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "AccountId" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, ctx.Param("AccountId"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter AccountId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CheckDuplicates(ctx, accountId)
+	return err
 }
 
 // SearchMeme converts echo context to params.
@@ -211,6 +233,22 @@ func (w *ServerInterfaceWrapper) GetMemeImageUrl(ctx echo.Context) error {
 	return err
 }
 
+// UpdateOcr converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateOcr(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "AccountId" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, ctx.Param("AccountId"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter AccountId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateOcr(ctx, accountId)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -239,11 +277,29 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/api/v1/accounts/:AccountId/check-duplicates", wrapper.CheckDuplicates)
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme", wrapper.SearchMeme)
 	router.POST(baseURL+"/api/v1/accounts/:AccountId/meme", wrapper.CreateMeme)
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/thumb/url", wrapper.GetMemeImageThumbUrl)
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/url", wrapper.GetMemeImageUrl)
+	router.POST(baseURL+"/api/v1/accounts/:AccountId/update-ocr", wrapper.UpdateOcr)
 
+}
+
+type CheckDuplicatesRequestObject struct {
+	AccountId AccountId `json:"AccountId"`
+}
+
+type CheckDuplicatesResponseObject interface {
+	VisitCheckDuplicatesResponse(w http.ResponseWriter) error
+}
+
+type CheckDuplicates200Response struct {
+}
+
+func (response CheckDuplicates200Response) VisitCheckDuplicatesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
 }
 
 type SearchMemeRequestObject struct {
@@ -318,8 +374,27 @@ func (response GetMemeImageUrl200JSONResponse) VisitGetMemeImageUrlResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateOcrRequestObject struct {
+	AccountId AccountId `json:"AccountId"`
+}
+
+type UpdateOcrResponseObject interface {
+	VisitUpdateOcrResponse(w http.ResponseWriter) error
+}
+
+type UpdateOcr200Response struct {
+}
+
+func (response UpdateOcr200Response) VisitUpdateOcrResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+
+	// (POST /api/v1/accounts/{AccountId}/check-duplicates)
+	CheckDuplicates(ctx context.Context, request CheckDuplicatesRequestObject) (CheckDuplicatesResponseObject, error)
 
 	// (GET /api/v1/accounts/{AccountId}/meme)
 	SearchMeme(ctx context.Context, request SearchMemeRequestObject) (SearchMemeResponseObject, error)
@@ -332,6 +407,9 @@ type StrictServerInterface interface {
 
 	// (GET /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url)
 	GetMemeImageUrl(ctx context.Context, request GetMemeImageUrlRequestObject) (GetMemeImageUrlResponseObject, error)
+
+	// (POST /api/v1/accounts/{AccountId}/update-ocr)
+	UpdateOcr(ctx context.Context, request UpdateOcrRequestObject) (UpdateOcrResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -344,6 +422,31 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
+}
+
+// CheckDuplicates operation middleware
+func (sh *strictHandler) CheckDuplicates(ctx echo.Context, accountId AccountId) error {
+	var request CheckDuplicatesRequestObject
+
+	request.AccountId = accountId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CheckDuplicates(ctx.Request().Context(), request.(CheckDuplicatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CheckDuplicates")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CheckDuplicatesResponseObject); ok {
+		return validResponse.VisitCheckDuplicatesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
 
 // SearchMeme operation middleware
@@ -449,6 +552,31 @@ func (sh *strictHandler) GetMemeImageUrl(ctx echo.Context, accountId AccountId, 
 		return err
 	} else if validResponse, ok := response.(GetMemeImageUrlResponseObject); ok {
 		return validResponse.VisitGetMemeImageUrlResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateOcr operation middleware
+func (sh *strictHandler) UpdateOcr(ctx echo.Context, accountId AccountId) error {
+	var request UpdateOcrRequestObject
+
+	request.AccountId = accountId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateOcr(ctx.Request().Context(), request.(UpdateOcrRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateOcr")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateOcrResponseObject); ok {
+		return validResponse.VisitUpdateOcrResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

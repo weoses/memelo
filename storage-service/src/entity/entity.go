@@ -13,8 +13,9 @@ type ElasticImageMetaData struct {
 	AccountId   uuid.UUID `validator:required`
 	Hash        string
 	Result      string
-	ThumbSize   *ElasticSizes       `validator:required`
-	Created     int64               `validator:required`
+	ThumbSize   *ElasticSizes `validator:required`
+	Created     int64         `validator:required`
+	Updated     int64
 	EmbeddingV1 *ElasticEmbeddingV1 `validator:required`
 }
 

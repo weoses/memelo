@@ -10,7 +10,7 @@ import (
 
 type ImageStorageService interface {
 	Save(ctx context.Context, id uuid.UUID, image *entity.Image, thumb *entity.Image) error
-	//GetImage(ctx context.Context, id string) *entity.Image
+	GetImage(ctx context.Context, id uuid.UUID) (*entity.Image, error)
 
 	GetUrl(ctx context.Context, id uuid.UUID) (string, error)
 	GetUrlThumb(ctx context.Context, id uuid.UUID) (string, error)
