@@ -63,8 +63,54 @@ func (a *ApiHandler) GetMemeImageUrl(ctx context.Context, request server.GetMeme
 	return resp, nil
 }
 
+func (a *ApiHandler) findHashDuplicates(
+	ctx context.Context,
+	hash string,
+) (*entity.ElasticImageMetaData, error) {
+	return a.metaStorage.GetByHash(ctx, hash)
+}
+
+func (a *ApiHandler) findContentDuplicates(
+	ctx context.Context,
+	ocrResult *OcrProcessedResult,
+) (*entity.ElasticImageMetaData, error) {
+	embedding := entity.ElasticEmbeddingV1{
+		Data:  &ocrResult.Embedding.Data,
+		Model: ocrResult.Embedding.Model,
+	}
+	return a.metaStorage.GetByEmbeddingV1(ctx, embedding)
+}
+
+func (a *ApiHandler) HandleDuplicate(
+	ctx context.Context,
+	status server.DuplicateStatus,
+	duplicate *entity.ElasticImageMetaData,
+	request server.CreateMemeRequestObject,
+) (server.CreateMemeResponseObject, error) {
+	response := server.CreateMeme200JSONResponse{}
+	if duplicate.AccountId != request.AccountId {
+		copyMetadata := *duplicate
+		log.Printf("Found meme duplicate in another account: id=%s", duplicate.ImageId)
+		copyMetadata.ImageId, _ = uuid.NewRandom()
+		copyMetadata.AccountId = request.AccountId
+		err := a.metaStorage.Save(ctx, &copyMetadata)
+		if err != nil {
+			return nil, err
+		}
+		helper.ElasticToCreateResponse(&copyMetadata, status, &response)
+	} else {
+		log.Printf("Found meme duplicate in this account: id=%s", duplicate.ImageId)
+		helper.ElasticToCreateResponse(duplicate, status, &response)
+	}
+
+	return response, nil
+}
+
 // CreateMeme implements server.StrictServerInterface.
-func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRequestObject) (server.CreateMemeResponseObject, error) {
+func (a *ApiHandler) CreateMeme(
+	ctx context.Context,
+	request server.CreateMemeRequestObject,
+) (server.CreateMemeResponseObject, error) {
 	image := request.Body
 
 	idUuid, _ := uuid.NewRandom()
@@ -72,45 +118,29 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 		return nil, errors.New("image is empty")
 	}
 
-	hash := helper.CalcHash(image.ImageBase64)
-
-	hashDuplicate, err := a.metaStorage.GetByHash(ctx, hash)
+	hash := helper.CalcHash(request.Body.ImageBase64)
+	hashDuplicate, err := a.findHashDuplicates(ctx, hash)
 	if err != nil {
-		//TODO handle fail
 		return nil, err
 	}
 
 	if hashDuplicate != nil {
-		hashAccountDuplicate, err := a.metaStorage.GetByHashAndAccountId(ctx, request.AccountId, hash)
-		if err != nil {
-			//TODO handle fail
-			return nil, err
-		}
-
-		response := server.CreateMeme200JSONResponse{}
-
-		if hashAccountDuplicate == nil {
-			copyMetadata := *hashDuplicate
-			log.Printf("Found meme duplicate in another account: id=%s hash=%s", hashDuplicate.ImageId, hash)
-			copyMetadata.ImageId = idUuid
-			copyMetadata.AccountId = request.AccountId
-			err = a.metaStorage.Save(ctx, &copyMetadata)
-			if err != nil {
-				return nil, err
-			}
-			helper.ElasticToCreateResponse(&copyMetadata, &response)
-		} else {
-			log.Printf("Found meme duplicate in this account: id=%s hash=%s", hashAccountDuplicate.ImageId, hash)
-			helper.ElasticToCreateResponse(hashAccountDuplicate, &response)
-		}
-
-		return response, nil
+		return a.HandleDuplicate(ctx, server.DuplicateHash, hashDuplicate, request)
 	}
 
 	reqImage := helper.ImageToEntity2(request.Body)
 	ocrResult, err := a.ocr.DoOcr(ctx, idUuid, reqImage)
 	if err != nil {
 		return nil, err
+	}
+
+	contentDuplicate, err := a.findContentDuplicates(ctx, ocrResult)
+	if err != nil {
+		return nil, err
+	}
+
+	if contentDuplicate != nil {
+		return a.HandleDuplicate(ctx, server.DuplicateImage, contentDuplicate, request)
 	}
 
 	if strings.TrimSpace(ocrResult.OcrText) == "" {
@@ -132,7 +162,12 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 		},
 		Hash:   hash,
 		Result: ocrResult.OcrText,
+		EmbeddingV1: &entity.ElasticEmbeddingV1{
+			Data:  &ocrResult.Embedding.Data,
+			Model: ocrResult.Embedding.Model,
+		},
 	}
+
 	err = a.validate.Struct(elasticMetaData)
 	if err != nil {
 		//TODO handle fail
@@ -146,7 +181,7 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 	}
 
 	response := server.CreateMeme200JSONResponse{}
-	helper.ElasticToCreateResponse(&elasticMetaData, &response)
+	helper.ElasticToCreateResponse(&elasticMetaData, server.New, &response)
 	return response, nil
 }
 

@@ -37,7 +37,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MemeDto"
+                $ref: "#/components/schemas/CreateMemeResponseDto"
 
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url:
@@ -144,7 +144,7 @@ components:
         Hash:
           type: string
 
-    MemeDto:
+    CreateMemeResponseDto:
       type: object
       properties:
         Id:
@@ -154,6 +154,8 @@ components:
           type: string
         Hash:
           type: string
+        DuplicateStatus:
+          $ref: "#/components/schemas/DuplicateStatus"
         
     ImageDto:
       type: object
@@ -163,4 +165,10 @@ components:
         ImageBase64:
           type: string
 
-        
+    DuplicateStatus:
+      type: string
+      enum:
+        - duplicate_image
+        - duplicate_hash
+        - new
+

@@ -17,6 +17,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for DuplicateStatus.
+const (
+	DuplicateHash  DuplicateStatus = "duplicate_hash"
+	DuplicateImage DuplicateStatus = "duplicate_image"
+	New            DuplicateStatus = "new"
+)
+
+// CreateMemeResponseDto defines model for CreateMemeResponseDto.
+type CreateMemeResponseDto struct {
+	DuplicateStatus *DuplicateStatus    `json:"DuplicateStatus,omitempty"`
+	Hash            *string             `json:"Hash,omitempty"`
+	Id              *openapi_types.UUID `json:"Id,omitempty"`
+	OcrResult       *string             `json:"OcrResult,omitempty"`
+}
+
+// DuplicateStatus defines model for DuplicateStatus.
+type DuplicateStatus string
+
 // ImageDto defines model for ImageDto.
 type ImageDto struct {
 	ImageBase64 *string `json:"ImageBase64,omitempty"`
@@ -26,13 +44,6 @@ type ImageDto struct {
 // ImageUrlDto defines model for ImageUrlDto.
 type ImageUrlDto struct {
 	Url *string `json:"Url,omitempty"`
-}
-
-// MemeDto defines model for MemeDto.
-type MemeDto struct {
-	Hash      *string             `json:"Hash,omitempty"`
-	Id        *openapi_types.UUID `json:"Id,omitempty"`
-	OcrResult *string             `json:"OcrResult,omitempty"`
 }
 
 // SearchMemeDto defines model for SearchMemeDto.
@@ -522,7 +533,7 @@ func (r SearchMemeResponse) StatusCode() int {
 type CreateMemeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MemeDto
+	JSON200      *CreateMemeResponseDto
 }
 
 // Status returns HTTPResponse.Status
@@ -670,7 +681,7 @@ func ParseCreateMemeResponse(rsp *http.Response) (*CreateMemeResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MemeDto
+		var dest CreateMemeResponseDto
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

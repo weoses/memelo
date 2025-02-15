@@ -16,8 +16,9 @@ type ImageService interface {
 }
 
 type ImageServiceImpl struct {
-	ocr  OcrProcessor
-	conv ImageConveter
+	ocr     OcrProcessor
+	conv    ImageConveter
+	comarer ImageEmbeddingExtractor
 }
 
 // ProcessImage implements ImageService.
@@ -39,6 +40,11 @@ func (i *ImageServiceImpl) ProcessImage(ctx context.Context, image server.PostAp
 		return nil, err
 	}
 
+	embedding, err := i.comarer.GetImageEmbeddingV1(ctx, imageEnt)
+	if err != nil {
+		return nil, err
+	}
+
 	response := new(server.PostApiV1OcrProcess200JSONResponse)
 
 	response.Image = imageEntityToDto(imageEnt)
@@ -52,8 +58,19 @@ func (i *ImageServiceImpl) ProcessImage(ctx context.Context, image server.PostAp
 			Text:         &stringData,
 		},
 	}
+	response.Embedding = &server.EmbeddingDto{
+		ModelName: &embedding.Model,
+		Data:      &embedding.Data,
+	}
 	return response, nil
+}
 
+func pixels(uintArr []uint16) []int {
+	intArr := make([]int, len(uintArr))
+	for i, v := range uintArr {
+		intArr[i] = int(v)
+	}
+	return intArr
 }
 
 func imageDtoToEntity(dto *server.ImageDto) *entity.Image {
@@ -81,9 +98,10 @@ func imageEntityToDto(entity *entity.Image) *server.ImageDto {
 	return retval
 }
 
-func NewImageService(ocr OcrProcessor, conv ImageConveter) (ImageService, error) {
+func NewImageService(ocr OcrProcessor, conv ImageConveter, comp ImageEmbeddingExtractor) (ImageService, error) {
 	return &ImageServiceImpl{
-		ocr:  ocr,
-		conv: conv,
+		ocr:     ocr,
+		conv:    conv,
+		comarer: comp,
 	}, nil
 }

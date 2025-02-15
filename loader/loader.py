@@ -1,3 +1,4 @@
+import time
 import requests
 import sys
 import pathlib
@@ -14,9 +15,15 @@ url = sys.argv[2]
 path = pathlib.Path(folder)
 for i in path.glob("*"):
     print(f"Load image {i}")
+
+    mimeType = "image/jpeg"
+    if i.name.lower().endswith("png"):
+        mimeType = "image/png"
+   
     payload = {
-        "Filename" : i.name,
-        "Data": base64.b64encode(i.read_bytes()).decode("utf-8")
+        "MimeType" : mimeType,
+        "ImageBase64": base64.b64encode(i.read_bytes()).decode("utf-8")
     }
     response = requests.post(f"{url}/api/v1/meme", json=payload).json()
     print(response)
+    time.sleep(1)

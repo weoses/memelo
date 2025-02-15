@@ -12,6 +12,7 @@ import (
 type MetadataStorageService interface {
 	Save(ctx context.Context, file *entity.ElasticImageMetaData) error
 	GetByHash(ctx context.Context, hash string) (*entity.ElasticImageMetaData, error)
+	GetByEmbeddingV1(ctx context.Context, img entity.ElasticEmbeddingV1) (*entity.ElasticImageMetaData, error)
 	GetByHashAndAccountId(ctx context.Context, accountId uuid.UUID, hash string) (*entity.ElasticImageMetaData, error)
 	GetById(ctx context.Context, id uuid.UUID) (*entity.ElasticImageMetaData, error)
 	Search(ctx context.Context,

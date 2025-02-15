@@ -16,10 +16,15 @@ func CalcHash(base64Image *string) string {
 	return hex.EncodeToString(byteHash)
 }
 
-func ElasticToCreateResponse(elasticEntity *entity.ElasticImageMetaData, dto *server.CreateMeme200JSONResponse) {
+func ElasticToCreateResponse(
+	elasticEntity *entity.ElasticImageMetaData,
+	duplicate server.DuplicateStatus,
+	dto *server.CreateMeme200JSONResponse,
+) {
 	dto.Hash = &elasticEntity.Hash
 	dto.Id = &elasticEntity.ImageId
 	dto.OcrResult = &elasticEntity.Result
+	dto.DuplicateStatus = &duplicate
 }
 
 func ElasticToSearchMemeDto(elasticEntity *entity.ElasticMatchedContent, dto *server.SearchMemeDto) {

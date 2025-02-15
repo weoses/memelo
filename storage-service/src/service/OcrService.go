@@ -18,7 +18,7 @@ type OcrSerivce interface {
 	DoOcr(ctx context.Context,
 		id uuid.UUID,
 		incomingImage *entity.Image,
-	) (*entity.OcrProcessedResult, error)
+	) (*OcrProcessedResult, error)
 }
 
 type OcrServiceImpl struct {
@@ -26,11 +26,28 @@ type OcrServiceImpl struct {
 	validate  *validator.Validate
 }
 
+type OcrProcessedResult struct {
+	OcrText   string
+	Thumbnail *OcrThumbnail `validator:required`
+	Image     *entity.Image `validator:required`
+	Embedding *OcrEmbedding
+}
+type OcrThumbnail struct {
+	Image  *entity.Image `validator:required`
+	Width  int           `validator:required`
+	Height int           `validator:required`
+}
+
+type OcrEmbedding struct {
+	Data  []float32 `validator:required`
+	Model string
+}
+
 func (ocr *OcrServiceImpl) DoOcr(
 	ctx context.Context,
 	id uuid.UUID,
 	incomingImage *entity.Image,
-) (*entity.OcrProcessedResult, error) {
+) (*OcrProcessedResult, error) {
 
 	idStr := id.String()
 
@@ -55,16 +72,26 @@ func (ocr *OcrServiceImpl) DoOcr(
 	responseJson := response.JSON200
 
 	textVariants := responseJson.ImageText
-	thumbnail := responseJson.ImageThumb
+
 	image := responseJson.Image
 
-	retval := new(entity.OcrProcessedResult)
+	retval := new(OcrProcessedResult)
 	retval.OcrText = textVariantsToString(textVariants)
 	retval.Image = helper.ImageToEntity(image)
-	retval.Thumbnail = new(entity.OcrThumbnail)
-	retval.Thumbnail.Image = helper.ImageToEntity(thumbnail.Image)
-	retval.Thumbnail.Width = *thumbnail.Width
-	retval.Thumbnail.Height = *thumbnail.Height
+
+	if responseJson.ImageThumb != nil {
+		thumbnail := responseJson.ImageThumb
+		retval.Thumbnail = new(OcrThumbnail)
+		retval.Thumbnail.Image = helper.ImageToEntity(thumbnail.Image)
+		retval.Thumbnail.Width = *thumbnail.Width
+		retval.Thumbnail.Height = *thumbnail.Height
+	}
+
+	if responseJson.Embedding != nil {
+		retval.Embedding = new(OcrEmbedding)
+		retval.Embedding.Data = *responseJson.Embedding.Data
+		retval.Embedding.Model = *responseJson.Embedding.ModelName
+	}
 
 	return retval, ocr.validate.Struct(retval)
 }
