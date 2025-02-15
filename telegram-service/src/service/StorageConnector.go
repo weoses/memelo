@@ -94,11 +94,16 @@ func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uu
 		return nil, errors.New("UploadFile() - failed - storage service status code non 2xx ")
 	}
 
-	return &entity.MemeCreateResult{
-			Id:   *resp.JSON200.Id,
-			Text: *resp.JSON200.OcrResult,
-		},
-		nil
+	creationResult := &entity.MemeCreateResult{
+		Id:   *resp.JSON200.Id,
+		Text: *resp.JSON200.OcrResult,
+	}
+
+	if resp.JSON200.DuplicateStatus != nil {
+		creationResult.DuplicateStatus = string(*resp.JSON200.DuplicateStatus)
+	}
+
+	return creationResult, nil
 }
 
 func NewStorageConnector(config *conf.StorageConfig) (StorageConnector, error) {
