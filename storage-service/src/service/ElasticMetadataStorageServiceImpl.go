@@ -28,38 +28,16 @@ type ElasticMetadataStorageServiceImpl struct {
 	validate               *validator.Validate
 }
 
-// GetListByAccountId implements MetadataStorageService.
-func (e *ElasticMetadataStorageServiceImpl) GetListByAccountId(ctx context.Context, accountId uuid.UUID) ([]*entity.ElasticImageMetaData, error) {
-	panic("unimplemented")
-}
-
-func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnSearch(ctx context.Context, img entity.ElasticEmbeddingV1) *types.KnnSearch {
-	// sizeXfloat := float64(img.SizeX)
-	// sizeYfloat := float64(img.SizeY)
-
-	// filterQuery := types.NewQuery()
-
-	// rangeSizeQueryX := types.NewNumberRangeQuery()
-	// rangeSizeQueryX.Lte = addr(types.Float64(sizeXfloat + sizeXfloat*0.1))
-	// rangeSizeQueryX.Gte = addr(types.Float64(sizeXfloat - sizeXfloat*0.1))
-
-	// rangeSizeQueryY := types.NewNumberRangeQuery()
-	// rangeSizeQueryY.Lte = addr(types.Float64(sizeYfloat + sizeYfloat*0.1))
-	// rangeSizeQueryY.Gte = addr(types.Float64(sizeYfloat - sizeYfloat*0.1))
-
-	// filterQuery.Bool = types.NewBoolQuery()
-	// filterQuery.Bool.Must = []types.Query{
-	// 	*types.NewQuery(),
-	// 	*types.NewQuery(),
-	// }
-	// filterQuery.Bool.Must[0].Range["ComparerKeyV1.SizeX"] = rangeSizeQueryX
-	// filterQuery.Bool.Must[1].Range["ComparerKeyV1.SizeY"] = rangeSizeQueryY
+func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnQuery(
+	img *entity.ElasticEmbeddingV1,
+	count int,
+) *types.KnnSearch {
 
 	query := types.NewKnnSearch()
 	query.Field = "EmbeddingV1.Data"
 	query.QueryVector = *img.Data
 	query.NumCandidates = addr(1000)
-	query.K = addr(1)
+	query.K = addr(count)
 	return query
 }
 
@@ -75,7 +53,7 @@ func (e *ElasticMetadataStorageServiceImpl) accountIdQuery(accountId uuid.UUID) 
 	return accountIdQuery
 }
 
-func (e *ElasticMetadataStorageServiceImpl) searchAllQuery(accountId uuid.UUID) *types.Query {
+func (e *ElasticMetadataStorageServiceImpl) allQuery(accountId uuid.UUID) *types.Query {
 	query := types.NewQuery()
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
@@ -84,7 +62,7 @@ func (e *ElasticMetadataStorageServiceImpl) searchAllQuery(accountId uuid.UUID) 
 	return query
 }
 
-func (e *ElasticMetadataStorageServiceImpl) simpleSearchQuery(
+func (e *ElasticMetadataStorageServiceImpl) simpleQuery(
 	accountId uuid.UUID,
 	queryString string,
 ) *types.Query {
@@ -126,21 +104,39 @@ func (e *ElasticMetadataStorageServiceImpl) fuzzySearchQuery(
 	return query
 }
 
+// Delete implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) Delete(ctx context.Context, id uuid.UUID) error {
+	response, err := e.client.
+		Delete(INDEX_NAME, id.String()).
+		Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Delete metadata document: elastic, id=%s response=%s", id, render.Render(response))
+	return err
+}
+
 // Search implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) processKnn(
 	ctx context.Context,
 	query types.KnnSearch,
 ) (*search.Response, error) {
 
+	sortId := types.NewSortOptions()
+	sortId.SortOptions["Created"] = *types.NewFieldSort()
+
 	search := e.client.Search().
 		Index(INDEX_NAME).
-		Knn(query)
+		Sort(sortId).
+		Knn(query).
+		TrackScores(true)
 
 	return search.Do(ctx)
 }
 
 // Search implements MetadataStorageService.
-func (e *ElasticMetadataStorageServiceImpl) processQuery(
+func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	ctx context.Context,
 	query *types.Query,
 	sortIdAfter *int64,
@@ -177,7 +173,7 @@ func (e *ElasticMetadataStorageServiceImpl) processQuery(
 	return search.Do(ctx)
 }
 
-func (e *ElasticMetadataStorageServiceImpl) executeQuery(
+func (e *ElasticMetadataStorageServiceImpl) searchQueryInternal(
 	ctx context.Context,
 	accountId uuid.UUID,
 	queryString string,
@@ -191,14 +187,14 @@ func (e *ElasticMetadataStorageServiceImpl) executeQuery(
 	if queryString == "" {
 		log.Printf("Search using ALL query: query: '%s' account: '%s' after: %v",
 			queryString, accountId, sortIdAfter)
-		q := e.searchAllQuery(accountId)
-		return e.processQuery(ctx, q, sortIdAfter, pageSize)
+		q := e.allQuery(accountId)
+		return e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
 	}
 
 	log.Printf("Search using simple query: query: '%s' account: '%s' after: %v",
 		queryString, accountId, sortIdAfter)
-	q := e.simpleSearchQuery(accountId, queryString)
-	res, err := e.processQuery(ctx, q, sortIdAfter, pageSize)
+	q := e.simpleQuery(accountId, queryString)
+	res, err := e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +206,7 @@ func (e *ElasticMetadataStorageServiceImpl) executeQuery(
 
 	log.Printf("Search using fuzzy query: query: '%s' account: '%s'", queryString, accountId)
 	q = e.fuzzySearchQuery(accountId, queryString)
-	return e.processQuery(ctx, q, sortIdAfter, pageSize)
+	return e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
 
 }
 
@@ -223,7 +219,7 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 	pageSize *int,
 ) ([]*entity.ElasticMatchedContent, error) {
 
-	result, err := e.executeQuery(ctx, accountId, queryString, sortIdAfter, pageSize)
+	result, err := e.searchQueryInternal(ctx, accountId, queryString, sortIdAfter, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +228,7 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 	results := make([]*entity.ElasticMatchedContent, resultsSize)
 
 	for index := range resultsSize {
-		item, err := unmarhalSearchResult(index, result)
+		item, err := unmarhalSearchResultToMatchedContent(index, result)
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +273,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	query.QueryString = types.NewQueryStringQuery()
 	query.QueryString.Query = fmt.Sprintf("Hash: \"%s\"", hash)
 
-	result, err := e.processQuery(ctx, query, nil, nil)
+	result, err := e.runSearchQuery(ctx, query, nil, nil)
 
 	if err != nil {
 		return nil, err
@@ -298,28 +294,34 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 // GetByPixels implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 	ctx context.Context,
-	img entity.ElasticEmbeddingV1,
-) (*entity.ElasticImageMetaData, error) {
-	query := e.embeddingV1KnnSearch(ctx, img)
+	img *entity.ElasticEmbeddingV1,
+	count int,
+) ([]*entity.ElasticImageMetaData, error) {
+	query := e.embeddingV1KnnQuery(img, count)
 	result, err := e.processKnn(ctx, *query)
 	if err != nil {
 		return nil, err
 	}
 
-	if result.Hits.MaxScore == nil || float64(*result.Hits.MaxScore) < e.embeddingMatchTreshold {
-		return nil, nil
-	}
+	resultsSize := len(result.Hits.Hits)
+	resultsEntity := make([]*entity.ElasticImageMetaData, 0)
 
-	data, err := unmarhalSearchResultToElasticEntity(0, result)
-	if err != nil {
-		return nil, err
-	}
+	for index := range resultsSize {
+		if float64(*(result.Hits.Hits[index].Score_)) < e.embeddingMatchTreshold {
+			continue
+		}
 
-	if data == nil {
-		return nil, nil
+		item, err := unmarhalSearchResultToElasticEntity(index, result)
+		if err != nil {
+			return nil, err
+		}
+		err = e.validate.Struct(item)
+		if err != nil {
+			return nil, err
+		}
+		resultsEntity = append(resultsEntity, item)
 	}
-
-	return data, e.validate.Struct(data)
+	return resultsEntity, nil
 }
 
 // GetByHashAndAccountId implements MetadataStorageService.
@@ -376,7 +378,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 	return err
 }
 
-func unmarhalSearchResult(i int, result *search.Response) (*entity.ElasticMatchedContent, error) {
+func unmarhalSearchResultToMatchedContent(i int, result *search.Response) (*entity.ElasticMatchedContent, error) {
 	hits := result.Hits.Hits
 	if len(hits) == 0 {
 		return nil, nil
@@ -384,7 +386,7 @@ func unmarhalSearchResult(i int, result *search.Response) (*entity.ElasticMatche
 
 	hit := hits[i]
 
-	document, err := unmarhalSearchResultDocument(hit.Source_)
+	document, err := unmarhalSourceDocument(hit.Source_)
 	if err != nil {
 		return nil, err
 	}
@@ -404,10 +406,10 @@ func unmarhalSearchResultToElasticEntity(i int, result *search.Response) (*entit
 
 	hit := hits[i]
 
-	return unmarhalSearchResultDocument(hit.Source_)
+	return unmarhalSourceDocument(hit.Source_)
 }
 
-func unmarhalSearchResultDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
+func unmarhalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
 
 	var document entity.ElasticImageMetaData
 	err := json.Unmarshal(result, &document)
