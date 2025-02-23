@@ -18,7 +18,9 @@ func main() {
 	fx.New(
 		fx.Provide(commonconfig.NewServerConfig),
 		fx.Provide(conf.NewImageConverterConfig),
+		fx.Provide(conf.NewImageEmbeddingConfig),
 		fx.Provide(api.NewApiHandler),
+		fx.Provide(service.NewImageEmbeddingExtractor),
 		fx.Provide(service.NewVisionImageClient),
 		fx.Provide(service.NewOcrProcessor),
 		fx.Provide(service.NewImageConverter),

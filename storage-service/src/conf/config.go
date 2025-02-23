@@ -6,8 +6,10 @@ import (
 )
 
 type MetadataStorageConfig struct {
-	Elastic *elasticsearch8.Config
-	Index   string
+	Elastic                *elasticsearch8.Config
+	Index                  string
+	EmbeddingV1Dimensions  int
+	EmbeddingMatchTreshold float64
 }
 
 type ImageS3StorageConfig struct {

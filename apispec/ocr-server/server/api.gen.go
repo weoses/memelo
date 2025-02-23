@@ -13,6 +13,12 @@ import (
 	strictecho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 )
 
+// EmbeddingDto defines model for EmbeddingDto.
+type EmbeddingDto struct {
+	ModelName *string    `json:"ModelName,omitempty"`
+	Data      *[]float32 `json:"data,omitempty"`
+}
+
 // ImageDto defines model for ImageDto.
 type ImageDto struct {
 	ImageBase64 *string `json:"ImageBase64,omitempty"`
@@ -27,6 +33,7 @@ type OcrRequestDto struct {
 
 // OcrResponseDto defines model for OcrResponseDto.
 type OcrResponseDto struct {
+	Embedding  *EmbeddingDto      `json:"Embedding,omitempty"`
 	Image      *ImageDto          `json:"Image,omitempty"`
 	ImageText  *[]OcrResponseItem `json:"ImageText,omitempty"`
 	ImageThumb *ThumbnailDto      `json:"ImageThumb,omitempty"`

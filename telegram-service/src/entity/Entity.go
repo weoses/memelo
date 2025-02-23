@@ -11,8 +11,9 @@ type MongoTgUserAccountBinding struct {
 }
 
 type MemeCreateResult struct {
-	Id   uuid.UUID
-	Text string
+	Id              uuid.UUID
+	Text            string
+	DuplicateStatus string
 }
 
 type MemeSearchResult struct {

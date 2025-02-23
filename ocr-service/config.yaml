@@ -3,3 +3,9 @@ server:
 
 image-converter:
   ThumbSize: 250
+
+image-embedding:
+  ApiLocation: "us-central1"
+  ProjectName: "positive-shell-448806-f7"
+  Dimension:   1408
+  Model:       "multimodalembedding@001"

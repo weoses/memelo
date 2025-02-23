@@ -1,8 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -19,6 +21,42 @@ type MinioFileStorageServiceImpl struct {
 	bucketName string
 }
 
+// GetImage implements ImageStorageService.
+func (m *MinioFileStorageServiceImpl) GetImage(ctx context.Context, id uuid.UUID) (*entity.Image, error) {
+	obj, err := m.client.GetObject(
+		ctx,
+		m.bucketName,
+		getObjectNameV1(id, false),
+		minio.GetObjectOptions{},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	buf := bytes.NewBufferString("")
+	base64Encoder := base64.NewEncoder(base64.RawStdEncoding, buf)
+	_, err = io.Copy(base64Encoder, obj)
+	base64Encoder.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := obj.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	dataBase64 := buf.String()
+	contentType := stat.ContentType
+
+	return &entity.Image{
+		ImageBase64: &dataBase64,
+		MimeType:    contentType,
+	}, nil
+}
+
 // GetUrl implements ImageStorageService.
 func (m *MinioFileStorageServiceImpl) GetUrl(ctx context.Context, id uuid.UUID) (string, error) {
 	url, err := m.client.PresignedGetObject(
@@ -32,7 +70,6 @@ func (m *MinioFileStorageServiceImpl) GetUrl(ctx context.Context, id uuid.UUID) 
 	if err != nil {
 		return "", err
 	}
-
 	return url.String(), err
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -22,11 +23,46 @@ import (
 const INDEX_NAME = "image-metadata"
 
 type ElasticMetadataStorageServiceImpl struct {
-	client   *elasticsearch8.TypedClient
-	validate *validator.Validate
+	client                 *elasticsearch8.TypedClient
+	embeddingMatchTreshold float64
+	validate               *validator.Validate
 }
 
-func (e *ElasticMetadataStorageServiceImpl) defaultQuery(
+func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnQuery(
+	img *entity.ElasticEmbeddingV1,
+	count int,
+) *types.KnnSearch {
+
+	query := types.NewKnnSearch()
+	query.Field = "EmbeddingV1.Data"
+	query.QueryVector = *img.Data
+	query.NumCandidates = addr(1000)
+	query.K = addr(count)
+	return query
+}
+
+func (e *ElasticMetadataStorageServiceImpl) accountIdQuery(accountId uuid.UUID) *types.Query {
+	accountIdQuery := types.NewQuery()
+	accountIdQuery.Match = map[string]types.MatchQuery{
+		"AccountId": {
+			Query:     accountId.String(),
+			Fuzziness: 0,
+			Operator:  &operator.And,
+		},
+	}
+	return accountIdQuery
+}
+
+func (e *ElasticMetadataStorageServiceImpl) allQuery(accountId uuid.UUID) *types.Query {
+	query := types.NewQuery()
+	query.Bool = types.NewBoolQuery()
+	query.Bool.Must = []types.Query{
+		*e.accountIdQuery(accountId),
+	}
+	return query
+}
+
+func (e *ElasticMetadataStorageServiceImpl) simpleQuery(
 	accountId uuid.UUID,
 	queryString string,
 ) *types.Query {
@@ -39,24 +75,15 @@ func (e *ElasticMetadataStorageServiceImpl) defaultQuery(
 		},
 	}
 
-	q2 := types.NewQuery()
-	q2.Match = map[string]types.MatchQuery{
-		"AccountId": {
-			Query:     accountId.String(),
-			Fuzziness: 0,
-			Operator:  &operator.And,
-		},
-	}
-
 	query := types.NewQuery()
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
-		*q1, *q2,
+		*q1, *e.accountIdQuery(accountId),
 	}
 	return query
 }
 
-func (e *ElasticMetadataStorageServiceImpl) fuzzyQuery(
+func (e *ElasticMetadataStorageServiceImpl) fuzzySearchQuery(
 	accountId uuid.UUID,
 	queryString string,
 ) *types.Query {
@@ -69,25 +96,47 @@ func (e *ElasticMetadataStorageServiceImpl) fuzzyQuery(
 		},
 	}
 
-	q2 := types.NewQuery()
-	q2.Match = map[string]types.MatchQuery{
-		"AccountId": {
-			Query:     accountId.String(),
-			Fuzziness: 0,
-			Operator:  &operator.And,
-		},
-	}
-
 	query := types.NewQuery()
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
-		*q1, *q2,
+		*q1, *e.accountIdQuery(accountId),
 	}
 	return query
 }
 
+// Delete implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) Delete(ctx context.Context, id uuid.UUID) error {
+	response, err := e.client.
+		Delete(INDEX_NAME, id.String()).
+		Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Delete metadata document: elastic, id=%s response=%s", id, render.Render(response))
+	return err
+}
+
 // Search implements MetadataStorageService.
-func (e *ElasticMetadataStorageServiceImpl) processQuery(
+func (e *ElasticMetadataStorageServiceImpl) processKnn(
+	ctx context.Context,
+	query types.KnnSearch,
+) (*search.Response, error) {
+
+	sortId := types.NewSortOptions()
+	sortId.SortOptions["Created"] = *types.NewFieldSort()
+
+	search := e.client.Search().
+		Index(INDEX_NAME).
+		Sort(sortId).
+		Knn(query).
+		TrackScores(true)
+
+	return search.Do(ctx)
+}
+
+// Search implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	ctx context.Context,
 	query *types.Query,
 	sortIdAfter *int64,
@@ -124,6 +173,43 @@ func (e *ElasticMetadataStorageServiceImpl) processQuery(
 	return search.Do(ctx)
 }
 
+func (e *ElasticMetadataStorageServiceImpl) searchQueryInternal(
+	ctx context.Context,
+	accountId uuid.UUID,
+	queryString string,
+	sortIdAfter *int64,
+	pageSize *int,
+) (*search.Response, error) {
+	if pageSize != nil && *pageSize <= 0 {
+		return nil, errors.New("page size is zero")
+	}
+
+	if queryString == "" {
+		log.Printf("Search using ALL query: query: '%s' account: '%s' after: %v",
+			queryString, accountId, sortIdAfter)
+		q := e.allQuery(accountId)
+		return e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+	}
+
+	log.Printf("Search using simple query: query: '%s' account: '%s' after: %v",
+		queryString, accountId, sortIdAfter)
+	q := e.simpleQuery(accountId, queryString)
+	res, err := e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resultsSize := len(res.Hits.Hits)
+	if resultsSize > 0 || sortIdAfter != nil {
+		return res, nil
+	}
+
+	log.Printf("Search using fuzzy query: query: '%s' account: '%s'", queryString, accountId)
+	q = e.fuzzySearchQuery(accountId, queryString)
+	return e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+
+}
+
 // Search implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) Search(
 	ctx context.Context,
@@ -132,29 +218,17 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 	sortIdAfter *int64,
 	pageSize *int,
 ) ([]*entity.ElasticMatchedContent, error) {
-	log.Printf("Search using default query: query: '%s' account: '%s' after: %v",
-		queryString, accountId, sortIdAfter)
-	query := e.defaultQuery(accountId, queryString)
-	result, err := e.processQuery(ctx, query, sortIdAfter, pageSize)
+
+	result, err := e.searchQueryInternal(ctx, accountId, queryString, sortIdAfter, pageSize)
 	if err != nil {
 		return nil, err
 	}
 
 	resultsSize := len(result.Hits.Hits)
-	if sortIdAfter == nil && (pageSize == nil || *pageSize > 0) && resultsSize == 0 {
-		log.Printf("Search using fuzzy query: query: '%s' account: '%s'", queryString, accountId)
-		query = e.fuzzyQuery(accountId, queryString)
-		result, err = e.processQuery(ctx, query, sortIdAfter, pageSize)
-		if err != nil {
-			return nil, err
-		}
-		resultsSize = len(result.Hits.Hits)
-	}
-
 	results := make([]*entity.ElasticMatchedContent, resultsSize)
 
 	for index := range resultsSize {
-		item, err := unmarhalSearchResult(index, result)
+		item, err := unmarhalSearchResultToMatchedContent(index, result)
 		if err != nil {
 			return nil, err
 		}
@@ -199,10 +273,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	query.QueryString = types.NewQueryStringQuery()
 	query.QueryString.Query = fmt.Sprintf("Hash: \"%s\"", hash)
 
-	result, err := e.client.Search().
-		Index(INDEX_NAME).
-		Query(query).
-		Do(ctx)
+	result, err := e.runSearchQuery(ctx, query, nil, nil)
 
 	if err != nil {
 		return nil, err
@@ -218,6 +289,39 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	}
 
 	return data, e.validate.Struct(data)
+}
+
+// GetByPixels implements MetadataStorageService.
+func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
+	ctx context.Context,
+	img *entity.ElasticEmbeddingV1,
+	count int,
+) ([]*entity.ElasticImageMetaData, error) {
+	query := e.embeddingV1KnnQuery(img, count)
+	result, err := e.processKnn(ctx, *query)
+	if err != nil {
+		return nil, err
+	}
+
+	resultsSize := len(result.Hits.Hits)
+	resultsEntity := make([]*entity.ElasticImageMetaData, 0)
+
+	for index := range resultsSize {
+		if float64(*(result.Hits.Hits[index].Score_)) < e.embeddingMatchTreshold {
+			continue
+		}
+
+		item, err := unmarhalSearchResultToElasticEntity(index, result)
+		if err != nil {
+			return nil, err
+		}
+		err = e.validate.Struct(item)
+		if err != nil {
+			return nil, err
+		}
+		resultsEntity = append(resultsEntity, item)
+	}
+	return resultsEntity, nil
 }
 
 // GetByHashAndAccountId implements MetadataStorageService.
@@ -252,7 +356,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHashAndAccountId(
 // Save implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *entity.ElasticImageMetaData) error {
 
-	file.Created = time.Now().UnixMicro()
+	file.Updated = time.Now().UnixMicro()
 
 	buff := bytes.NewBuffer(nil)
 	jsonEncoder := json.NewEncoder(buff)
@@ -274,7 +378,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 	return err
 }
 
-func unmarhalSearchResult(i int, result *search.Response) (*entity.ElasticMatchedContent, error) {
+func unmarhalSearchResultToMatchedContent(i int, result *search.Response) (*entity.ElasticMatchedContent, error) {
 	hits := result.Hits.Hits
 	if len(hits) == 0 {
 		return nil, nil
@@ -282,7 +386,7 @@ func unmarhalSearchResult(i int, result *search.Response) (*entity.ElasticMatche
 
 	hit := hits[i]
 
-	document, err := unmarhalSearchResultDocument(hit.Source_)
+	document, err := unmarhalSourceDocument(hit.Source_)
 	if err != nil {
 		return nil, err
 	}
@@ -302,15 +406,17 @@ func unmarhalSearchResultToElasticEntity(i int, result *search.Response) (*entit
 
 	hit := hits[i]
 
-	return unmarhalSearchResultDocument(hit.Source_)
+	return unmarhalSourceDocument(hit.Source_)
 }
 
-func unmarhalSearchResultDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
+func unmarhalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
 
 	var document entity.ElasticImageMetaData
 	err := json.Unmarshal(result, &document)
 	return &document, err
 }
+
+func addr[T any](v T) *T { return &v }
 
 func NewElasticMetadataStorage(
 	config *conf.MetadataStorageConfig,
@@ -318,22 +424,32 @@ func NewElasticMetadataStorage(
 ) MetadataStorageService {
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 
-	indexTypeMapping := types.NewTypeMapping()
+	responseCreate, err := es8.Indices.
+		Create(config.Index).
+		Do(context.Background())
+	log.Printf("Elastic create index response: %s error: %v", render.Render(responseCreate), err)
 
+	indexTypeMapping := types.NewTypeMapping()
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
+	indexTypeMapping.Properties["Updated"] = types.NewLongNumberProperty()
 	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["Hash"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()
 
-	response, err := es8.Indices.
-		Create(config.Index).
-		Mappings(indexTypeMapping).
+	denseProp := types.NewDenseVectorProperty()
+	denseProp.Index = addr(true)
+	denseProp.Dims = addr(config.EmbeddingV1Dimensions)
+	indexTypeMapping.Properties["EmbeddingV1.Data"] = denseProp
+
+	responseMapping, err := es8.Indices.PutMapping(config.Index).
+		Properties(indexTypeMapping.Properties).
 		Do(context.Background())
 
-	log.Printf("Elastic create index response: %s error: %v", render.Render(response), err)
+	log.Printf("Elastic mapping index response: %s error: %v", render.Render(responseMapping), err)
 
 	return &ElasticMetadataStorageServiceImpl{
-		client:   es8,
-		validate: validate,
+		client:                 es8,
+		embeddingMatchTreshold: config.EmbeddingMatchTreshold,
+		validate:               validate,
 	}
 }

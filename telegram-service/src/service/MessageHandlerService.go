@@ -51,7 +51,7 @@ func (m MessageHandlerServiceImpl) ProcessMessage(message *tgbotapi.Message) (*M
 	}
 
 	return &MessageHandlerResponse{
-		Message:   fmt.Sprintf("\n```Text\n%s\n```\n ID %s", result.Text, result.Id),
+		Message:   fmt.Sprintf("\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`", result.Text, result.Id, result.DuplicateStatus),
 		ParseMode: "Markdown",
 	}, nil
 }

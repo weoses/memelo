@@ -19,3 +19,5 @@ metadata-storage:
     Username: 
     Password: 
   Index: image-metadata
+  EmbeddingV1Dimensions: 1408
+  EmbeddingMatchTreshold: 0.955

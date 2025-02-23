@@ -26,14 +26,6 @@ paths:
 
 components:
   schemas:
-    ImageDto:
-      type: object
-      properties:
-        MimeType:
-          type: string
-        ImageBase64:
-          type: string
-
     OcrRequestDto:
       type: object
       properties:
@@ -57,11 +49,23 @@ components:
           $ref: "#/components/schemas/ThumbnailDto"
         Image:
           $ref: "#/components/schemas/ImageDto"
+        Embedding:
+          $ref: "#/components/schemas/EmbeddingDto"
         ImageText:
           type: array
           items:
             $ref: "#/components/schemas/OcrResponseItem"
 
+    EmbeddingDto:
+      type: object
+      properties:
+        data: 
+          type: array
+          items:
+            type: number
+        ModelName:
+          type: string
+        
     ThumbnailDto:
       type: object
       properties:
@@ -71,3 +75,11 @@ components:
           type: integer
         Height:
           type: integer
+
+    ImageDto:
+      type: object
+      properties:
+        MimeType:
+          type: string
+        ImageBase64:
+          type: string
