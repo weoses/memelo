@@ -110,7 +110,7 @@ func (e *ElasticMetadataStorageServiceImpl) Delete(ctx context.Context, id uuid.
 		Delete(INDEX_NAME, id.String()).
 		Do(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("elastic failed to delete: %w", err)
 	}
 
 	log.Printf("Delete metadata document: elastic, id=%s response=%s", id, render.Render(response))
@@ -132,7 +132,8 @@ func (e *ElasticMetadataStorageServiceImpl) processKnn(
 		Knn(query).
 		TrackScores(true)
 
-	return search.Do(ctx)
+	knn, err := search.Do(ctx)
+	return errWrap(knn, "elastic failed to knn: %w", err)
 }
 
 // Search implements MetadataStorageService.
@@ -170,7 +171,8 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 		search = search.Size(*pageSize)
 	}
 
-	return search.Do(ctx)
+	resp, err := search.Do(ctx)
+	return errWrap(resp, "elastic failed to search: %w", err)
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchQueryInternal(
@@ -221,7 +223,10 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 
 	result, err := e.searchQueryInternal(ctx, accountId, queryString, sortIdAfter, pageSize)
 	if err != nil {
-		return nil, err
+		return nil,
+			fmt.Errorf(
+				"search failed: accountId: %s queryString: %s sortIdAfter: %v error: %w",
+				accountId.String(), queryString, sortIdAfter, err)
 	}
 
 	resultsSize := len(result.Hits.Hits)
@@ -230,11 +235,17 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 	for index := range resultsSize {
 		item, err := unmarhalSearchResultToMatchedContent(index, result)
 		if err != nil {
-			return nil, err
+			return nil,
+				fmt.Errorf(
+					"search result unmarshall failed: accountId: %s queryString: %s sortIdAfter: %v error: %w",
+					accountId.String(), queryString, sortIdAfter, err)
 		}
 		err = e.validate.Struct(item)
 		if err != nil {
-			return nil, err
+			return nil,
+				fmt.Errorf(
+					"search result vaildation failed: accountId: %s queryString: %s sortIdAfter: %v error: %w",
+					accountId.String(), queryString, sortIdAfter, err)
 		}
 		results[index] = item
 	}
@@ -243,6 +254,8 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 
 // GetById implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, id uuid.UUID) (*entity.ElasticImageMetaData, error) {
+	log.Printf("GetById: call id: %s", id.String())
+
 	query := types.NewQuery()
 	query.Ids = types.NewIdsQuery()
 	query.Ids.Values = []string{id.String()}
@@ -258,7 +271,10 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, id uuid
 
 	data, err := unmarhalSearchResultToElasticEntity(0, result)
 	if err != nil {
-		return nil, err
+		return nil,
+			fmt.Errorf(
+				"GetById result unmarshall failed: id: %s error: %w",
+				id.String(), err)
 	}
 
 	return data, e.validate.Struct(data)
@@ -269,6 +285,8 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	ctx context.Context,
 	hash string,
 ) (*entity.ElasticImageMetaData, error) {
+	log.Printf("GetByHash: call hash: %s", hash)
+
 	query := types.NewQuery()
 	query.QueryString = types.NewQueryStringQuery()
 	query.QueryString.Query = fmt.Sprintf("Hash: \"%s\"", hash)
@@ -281,7 +299,10 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 
 	data, err := unmarhalSearchResultToElasticEntity(0, result)
 	if err != nil {
-		return nil, err
+		return nil,
+			fmt.Errorf(
+				"GetByHash result unmarshall failed: id: %s error: %w",
+				hash, err)
 	}
 
 	if data == nil {
@@ -297,6 +318,8 @@ func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 	img *entity.ElasticEmbeddingV1,
 	count int,
 ) ([]*entity.ElasticImageMetaData, error) {
+	log.Printf("GetByEmbeddingV1: call")
+
 	query := e.embeddingV1KnnQuery(img, count)
 	result, err := e.processKnn(ctx, *query)
 	if err != nil {
@@ -313,12 +336,14 @@ func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 
 		item, err := unmarhalSearchResultToElasticEntity(index, result)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetByEmbeddingV1 result unmarshall failed: error: %w", err)
 		}
+
 		err = e.validate.Struct(item)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetByEmbeddingV1 result vaildation failed: error: %w", err)
 		}
+
 		resultsEntity = append(resultsEntity, item)
 	}
 	return resultsEntity, nil
@@ -372,8 +397,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		return err
 	}
 
-	log.Printf("Save metadata document: elastic, id=%s response=%s",
-		file.ImageId, render.Render(response))
+	log.Printf("Save metadata document: elastic, id=%s response=%s", file.ImageId, render.Render(response))
 
 	return err
 }
@@ -417,6 +441,13 @@ func unmarhalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDat
 }
 
 func addr[T any](v T) *T { return &v }
+
+func errWrap[T any](v *T, msg string, err error, args ...any) (*T, error) {
+	if err != nil {
+		return nil, fmt.Errorf(msg, err, args)
+	}
+	return v, err
+}
 
 func NewElasticMetadataStorage(
 	config *conf.MetadataStorageConfig,

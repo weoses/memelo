@@ -107,6 +107,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1/accounts/{AccountId}/update-ocr)
 	UpdateOcr(ctx echo.Context, accountId AccountId) error
+
+	// (POST /api/v1/accounts/{AccountId}/update-ocr/{MemeId})
+	UpdateOcrOne(ctx echo.Context, accountId AccountId, memeId MemeId) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -249,6 +252,30 @@ func (w *ServerInterfaceWrapper) UpdateOcr(ctx echo.Context) error {
 	return err
 }
 
+// UpdateOcrOne converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateOcrOne(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "AccountId" -------------
+	var accountId AccountId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, ctx.Param("AccountId"), &accountId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter AccountId: %s", err))
+	}
+
+	// ------------- Path parameter "MemeId" -------------
+	var memeId MemeId
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "MemeId", runtime.ParamLocationPath, ctx.Param("MemeId"), &memeId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter MemeId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateOcrOne(ctx, accountId, memeId)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -283,6 +310,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/thumb/url", wrapper.GetMemeImageThumbUrl)
 	router.GET(baseURL+"/api/v1/accounts/:AccountId/meme/:MemeId/image/url", wrapper.GetMemeImageUrl)
 	router.POST(baseURL+"/api/v1/accounts/:AccountId/update-ocr", wrapper.UpdateOcr)
+	router.POST(baseURL+"/api/v1/accounts/:AccountId/update-ocr/:MemeId", wrapper.UpdateOcrOne)
 
 }
 
@@ -390,6 +418,23 @@ func (response UpdateOcr200Response) VisitUpdateOcrResponse(w http.ResponseWrite
 	return nil
 }
 
+type UpdateOcrOneRequestObject struct {
+	AccountId AccountId `json:"AccountId"`
+	MemeId    MemeId    `json:"MemeId"`
+}
+
+type UpdateOcrOneResponseObject interface {
+	VisitUpdateOcrOneResponse(w http.ResponseWriter) error
+}
+
+type UpdateOcrOne200Response struct {
+}
+
+func (response UpdateOcrOne200Response) VisitUpdateOcrOneResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -410,6 +455,9 @@ type StrictServerInterface interface {
 
 	// (POST /api/v1/accounts/{AccountId}/update-ocr)
 	UpdateOcr(ctx context.Context, request UpdateOcrRequestObject) (UpdateOcrResponseObject, error)
+
+	// (POST /api/v1/accounts/{AccountId}/update-ocr/{MemeId})
+	UpdateOcrOne(ctx context.Context, request UpdateOcrOneRequestObject) (UpdateOcrOneResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -577,6 +625,32 @@ func (sh *strictHandler) UpdateOcr(ctx echo.Context, accountId AccountId) error 
 		return err
 	} else if validResponse, ok := response.(UpdateOcrResponseObject); ok {
 		return validResponse.VisitUpdateOcrResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateOcrOne operation middleware
+func (sh *strictHandler) UpdateOcrOne(ctx echo.Context, accountId AccountId, memeId MemeId) error {
+	var request UpdateOcrOneRequestObject
+
+	request.AccountId = accountId
+	request.MemeId = memeId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateOcrOne(ctx.Request().Context(), request.(UpdateOcrOneRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateOcrOne")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateOcrOneResponseObject); ok {
+		return validResponse.VisitUpdateOcrOneResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
