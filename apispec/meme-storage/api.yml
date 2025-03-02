@@ -21,6 +21,16 @@ paths:
       responses:
         200:
           description: ok
+  
+  /api/v1/accounts/{AccountId}/update-ocr/{MemeId}:
+    post:
+      parameters:
+        - $ref: "#/components/parameters/AccountId"
+        - $ref: "#/components/parameters/MemeId"
+      operationId: "UpdateOcrOne"
+      responses:
+        200:
+          description: ok
 
   /api/v1/accounts/{AccountId}/meme:
     get:

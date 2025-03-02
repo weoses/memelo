@@ -181,6 +181,9 @@ type ClientInterface interface {
 
 	// UpdateOcr request
 	UpdateOcr(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOcrOne request
+	UpdateOcrOne(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) CheckDuplicates(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -257,6 +260,18 @@ func (c *Client) GetMemeImageUrl(ctx context.Context, accountId AccountId, memeI
 
 func (c *Client) UpdateOcr(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOcrRequest(c.Server, accountId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateOcrOne(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOcrOneRequest(c.Server, accountId, memeId)
 	if err != nil {
 		return nil, err
 	}
@@ -548,6 +563,47 @@ func NewUpdateOcrRequest(server string, accountId AccountId) (*http.Request, err
 	return req, nil
 }
 
+// NewUpdateOcrOneRequest generates requests for UpdateOcrOne
+func NewUpdateOcrOneRequest(server string, accountId AccountId, memeId MemeId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "AccountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "MemeId", runtime.ParamLocationPath, memeId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/accounts/%s/update-ocr/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -610,6 +666,9 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateOcrWithResponse request
 	UpdateOcrWithResponse(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*UpdateOcrResponse, error)
+
+	// UpdateOcrOneWithResponse request
+	UpdateOcrOneWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*UpdateOcrOneResponse, error)
 }
 
 type CheckDuplicatesResponse struct {
@@ -742,6 +801,27 @@ func (r UpdateOcrResponse) StatusCode() int {
 	return 0
 }
 
+type UpdateOcrOneResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOcrOneResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOcrOneResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // CheckDuplicatesWithResponse request returning *CheckDuplicatesResponse
 func (c *ClientWithResponses) CheckDuplicatesWithResponse(ctx context.Context, accountId AccountId, reqEditors ...RequestEditorFn) (*CheckDuplicatesResponse, error) {
 	rsp, err := c.CheckDuplicates(ctx, accountId, reqEditors...)
@@ -802,6 +882,15 @@ func (c *ClientWithResponses) UpdateOcrWithResponse(ctx context.Context, account
 		return nil, err
 	}
 	return ParseUpdateOcrResponse(rsp)
+}
+
+// UpdateOcrOneWithResponse request returning *UpdateOcrOneResponse
+func (c *ClientWithResponses) UpdateOcrOneWithResponse(ctx context.Context, accountId AccountId, memeId MemeId, reqEditors ...RequestEditorFn) (*UpdateOcrOneResponse, error) {
+	rsp, err := c.UpdateOcrOne(ctx, accountId, memeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOcrOneResponse(rsp)
 }
 
 // ParseCheckDuplicatesResponse parses an HTTP response from a CheckDuplicatesWithResponse call
@@ -933,6 +1022,22 @@ func ParseUpdateOcrResponse(rsp *http.Response) (*UpdateOcrResponse, error) {
 	}
 
 	response := &UpdateOcrResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOcrOneResponse parses an HTTP response from a UpdateOcrOneWithResponse call
+func ParseUpdateOcrOneResponse(rsp *http.Response) (*UpdateOcrOneResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOcrOneResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
