@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -107,7 +107,8 @@ func textVariantsToString(textVariants *[]client.OcrResponseItem) string {
 
 func NewOcrService(conf *conf.OcrConfig, validate *validator.Validate) (OcrSerivce, error) {
 	ocrServiceUrl := conf.Uri
-	log.Printf("Creating ocr service url=%s\n", ocrServiceUrl)
+	slog.Info("Creating ocr service",
+		"url", ocrServiceUrl)
 
 	client, err := client.NewClientWithResponses(ocrServiceUrl)
 	if err != nil {

@@ -3,14 +3,17 @@ package service
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"mine.local/ocr-gallery/apispec/meme-storage/server"
+	"mine.local/ocr-gallery/common/commonconst"
 	"mine.local/ocr-gallery/storage-service/entity"
 	"mine.local/ocr-gallery/storage-service/helper"
 )
@@ -29,6 +32,9 @@ func (a *ApiHandler) CreateMeme(
 ) (server.CreateMemeResponseObject, error) {
 	image := request.Body
 
+	slog.Info("CreateMeme",
+		commonconst.ACCOUNTID_LOG, request.AccountId)
+
 	idUuid, _ := uuid.NewRandom()
 	if len(*image.ImageBase64) == 0 {
 		return nil, errors.New("image is empty")
@@ -37,7 +43,7 @@ func (a *ApiHandler) CreateMeme(
 	hash := helper.CalcHash(request.Body.ImageBase64)
 	hashDuplicate, err := a.findHashDuplicates(ctx, hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find hash duplicates : %w", err)
 	}
 
 	if hashDuplicate != nil {
@@ -47,8 +53,13 @@ func (a *ApiHandler) CreateMeme(
 	reqImage := helper.ImageToEntity2(request.Body)
 	ocrResult, err := a.ocr.DoOcr(ctx, idUuid, reqImage)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to do ocr : %w", err)
 	}
+
+	slog.Info("CreateMeme: ocr result",
+		commonconst.ACCOUNTID_LOG, request.AccountId,
+		"id", idUuid,
+		"ocrText", ocrResult.OcrText)
 
 	contentDuplicate, err := a.findContentDuplicates(ctx, ocrResult)
 	if err != nil {
@@ -65,7 +76,7 @@ func (a *ApiHandler) CreateMeme(
 
 	err = a.imageStorage.Save(ctx, idUuid, ocrResult.Image, ocrResult.Thumbnail.Image)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to save image metadata : %w", err)
 	}
 
 	elasticMetaData := OcrResultToElastic(
@@ -97,7 +108,7 @@ func (a *ApiHandler) CreateMeme(
 func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRequestObject) (server.SearchMemeResponseObject, error) {
 	query := request.Params.MemeQuery
 
-	log.Printf("SearchMeme: query=%s", query)
+	slog.Info("SearchMeme", "query", query)
 
 	matchedMetadata, err := a.metaStorage.Search(
 		ctx,
@@ -106,21 +117,31 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 		request.Params.SearchAfterSortId,
 		request.Params.PageSize,
 	)
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to search memes : %w", err)
 	}
+
+	slog.Info("SearchMeme results",
+		commonconst.ACCOUNTID_LOG, request.AccountId,
+		"query", query,
+		"resultListSize", len(matchedMetadata))
 
 	response := make(server.SearchMeme200JSONResponse, len(matchedMetadata))
 	for index, metadataItem := range matchedMetadata {
+		slog.Debug("Search meme result item",
+			commonconst.ACCOUNTID_LOG, metadataItem.Metadata.AccountId,
+			"id", metadataItem.Metadata.ImageId,
+			"s3id", metadataItem.Metadata.S3Id,
+			"index", index,
+			"matched", render.Render(metadataItem.ResultMatched))
 
 		imageThumbUrl, err := a.imageStorage.GetUrlThumb(ctx, metadataItem.Metadata.S3Id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to obtain thumb url for image id=%s : %w", metadataItem.Metadata.ImageId, err)
 		}
 		imageUrl, err := a.imageStorage.GetUrl(ctx, metadataItem.Metadata.S3Id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to obtain image url for image id=%s : %w", metadataItem.Metadata.ImageId, err)
 		}
 
 		dto := server.SearchMemeDto{}
@@ -143,7 +164,8 @@ func (a *ApiHandler) CheckDuplicates(ctx context.Context, request server.CheckDu
 			ctx,
 			request.AccountId,
 			func(ctx2 context.Context, emc *entity.ElasticMatchedContent) error {
-				return a.internalCheckDuplicate(ctx2, emc.Metadata)
+				a.internalCheckDuplicate(ctx2, emc.Metadata)
+				return nil
 			})
 
 }
@@ -155,7 +177,8 @@ func (a *ApiHandler) UpdateOcr(ctx context.Context, request server.UpdateOcrRequ
 			ctx,
 			request.AccountId,
 			func(ctx context.Context, emc *entity.ElasticMatchedContent) error {
-				return a.internalUpdateOcr(ctx, emc.Metadata)
+				a.internalUpdateOcr(ctx, emc.Metadata)
+				return nil
 			})
 }
 
@@ -212,24 +235,29 @@ func (a *ApiHandler) UpdateOcrOne(ctx context.Context, request server.UpdateOcrO
 		return nil, echo.ErrNotFound
 	}
 
-	err = a.internalUpdateOcr(ctx, memeMetadata)
-	return server.UpdateOcrOne200Response{}, err
+	a.internalUpdateOcr(ctx, memeMetadata)
+	return server.UpdateOcrOne200Response{}, nil
 }
 
-func (a *ApiHandler) internalCheckDuplicate(ctx context.Context, emc *entity.ElasticImageMetaData) error {
+func (a *ApiHandler) internalCheckDuplicate(ctx context.Context, emc *entity.ElasticImageMetaData) {
 	id := emc.ImageId
 	embedding := emc.EmbeddingV1
-	log.Printf("Check-duplicate: imageId: %s", id.String())
+	slog.Info("Check-duplicate",
+		"id", id.String())
 
 	if embedding == nil {
-		log.Printf("Check-duplicate: NO EMBEDDING: imageId: %s", id.String())
-		return nil
+		slog.Info("Check-duplicate: NO EMBEDDING:",
+			"id", id.String())
+		return
 	}
 
 	embeddingFoundImage, err := a.metaStorage.GetByEmbeddingV1(ctx, embedding, 10)
 	if err != nil {
-		log.Printf("Check-duplicate: failed to search image embedding duplicates : id=%s, err=%v", id, err)
-		return nil
+		slog.Error("Check-duplicate: failed to search image embedding duplicates ",
+			"id", id.String(),
+			commonconst.ERR_LOG, err)
+
+		return
 	}
 
 	for i, item := range embeddingFoundImage {
@@ -239,10 +267,9 @@ func (a *ApiHandler) internalCheckDuplicate(ctx context.Context, emc *entity.Ela
 
 		a.metaStorage.Delete(ctx, item.ImageId)
 	}
-	return nil
 }
 
-func (a *ApiHandler) internalUpdateOcr(ctx context.Context, emc *entity.ElasticImageMetaData) error {
+func (a *ApiHandler) internalUpdateOcr(ctx context.Context, emc *entity.ElasticImageMetaData) {
 
 	id := emc.ImageId
 	accountId := emc.AccountId
@@ -250,27 +277,34 @@ func (a *ApiHandler) internalUpdateOcr(ctx context.Context, emc *entity.ElasticI
 	s3id := emc.S3Id
 	created := emc.Created
 
-	log.Printf("UpdateOcr: checking image id=%s", id)
+	slog.Info("UpdateOcr: checking image",
+		"id", id)
 
 	img, err := a.imageStorage.GetImage(ctx, s3id)
 	if err != nil {
-		log.Printf("Failed to read image from storage : id=%s, err=%v", id, err)
-		return nil
+		slog.Info("Failed to read image from storage",
+			"id", id,
+			commonconst.ERR_LOG, err)
+
+		return
 	}
 
 	ocrResult, err := a.ocr.DoOcr(ctx, id, img)
 	if err != nil {
-		log.Printf("Failed to doOcr for image id=%s, err=%v", id, err)
-		return nil
+		slog.Info("Failed to ocr image",
+			"id", id,
+			commonconst.ERR_LOG, err)
+		return
 	}
 
 	elasticObject := OcrResultToElastic(id, accountId, hash, created, ocrResult)
 	err = a.metaStorage.Save(ctx, elasticObject)
 	if err != nil {
-		log.Printf("Failed to save new metadata for image id=%s, err=%v", id, err)
-		return nil
+		slog.Info("Failed to save new image metadata",
+			"id", id,
+			commonconst.ERR_LOG, err)
+		return
 	}
-	return nil
 }
 
 func (a *ApiHandler) iterateDocuments(ctx context.Context, accountId uuid.UUID, callback func(context.Context, *entity.ElasticMatchedContent) error) error {
@@ -325,7 +359,7 @@ func (a *ApiHandler) HandleDuplicate(
 	response := server.CreateMeme200JSONResponse{}
 	if duplicate.AccountId != request.AccountId {
 		copyMetadata := *duplicate
-		log.Printf("Found meme duplicate in another account: id=%s", duplicate.ImageId)
+		slog.Info("Found meme duplicate in another account", "id", duplicate.ImageId)
 		copyMetadata.ImageId, _ = uuid.NewRandom()
 		copyMetadata.AccountId = request.AccountId
 		err := a.metaStorage.Save(ctx, &copyMetadata)
@@ -334,7 +368,7 @@ func (a *ApiHandler) HandleDuplicate(
 		}
 		helper.ElasticToCreateResponse(&copyMetadata, status, &response)
 	} else {
-		log.Printf("Found meme duplicate in this account: id=%s", duplicate.ImageId)
+		slog.Info("Found meme duplicate in this account", "id", duplicate.ImageId)
 		helper.ElasticToCreateResponse(duplicate, status, &response)
 	}
 

@@ -14,6 +14,7 @@ import (
 
 func main() {
 	commonconfig.InitConfig()
+	commonconfig.InitLogs()
 
 	fx.New(
 		fx.Provide(commonconfig.NewServerConfig),
