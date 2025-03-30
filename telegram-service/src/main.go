@@ -1,6 +1,9 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/fx"
 	"mine.local/ocr-gallery/common/commonconfig"
@@ -13,6 +16,11 @@ func Statup(serv service.TelegramBotService) {
 }
 
 func main() {
+	handler := slog.NewTextHandler(os.Stdout, nil)
+	logger := slog.New(handler)
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.SetDefault(logger)
+
 	commonconfig.InitConfig()
 
 	fx.New(

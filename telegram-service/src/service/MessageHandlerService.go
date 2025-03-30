@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"mine.local/ocr-gallery/common/commonconst"
 )
 
 type MessageHandlerService interface {
@@ -31,24 +33,29 @@ func (m MessageHandlerServiceImpl) ProcessMessage(message *tgbotapi.Message) (*M
 	}
 
 	if fileId == "" {
-		return nil, errors.New("message dont contain image")
+		return nil, errors.New("messageHandlerService: message dont contain image")
 	}
 
 	file, err := m.fileResolver.GetFile(fileId)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("messageHandlerService: GetFile failed, fileId: %s : %w", fileId, err)
 	}
 
 	accountId, err := m.userAccountService.MapUserToAccount(context.TODO(), message.Chat.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
 	}
 
 	result, err := m.storage.CreateMeme(file, "image/jpeg", accountId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("messageHandlerService: CreateMeme failed : %w", err)
 	}
+
+	slog.Info("messageHandlerService: meme created",
+		commonconst.ACCOUNTID_LOG, accountId,
+		"imageId", result.Id,
+		"duplicate", result.DuplicateStatus)
 
 	return &MessageHandlerResponse{
 		Message:   fmt.Sprintf("\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`", result.Text, result.Id, result.DuplicateStatus),

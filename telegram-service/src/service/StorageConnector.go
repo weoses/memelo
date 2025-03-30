@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/apispec/meme-storage/client"
@@ -47,11 +48,11 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("storageService: search meme query failed query: %s : %w", query, err)
 	}
 
 	if response.HTTPResponse.StatusCode >= 400 {
-		return nil, errors.New("failed to request storage service")
+		return nil, fmt.Errorf("storageService: failed to request storage service: %s", string(response.Body))
 	}
 
 	entityResult := make([]*entity.MemeSearchResult, len(*response.JSON200))
@@ -87,11 +88,11 @@ func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uu
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("storageService: create meme failed : %w", err)
 	}
 
 	if resp.StatusCode() != 200 {
-		return nil, errors.New("UploadFile() - failed - storage service status code non 2xx ")
+		return nil, errors.New("storageService: create meme failed : storage service status code non 2xx ")
 	}
 
 	creationResult := &entity.MemeCreateResult{

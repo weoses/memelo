@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"mine.local/ocr-gallery/common/commonconst"
 	"mine.local/ocr-gallery/telegram-service/conf"
 )
 
@@ -19,7 +20,7 @@ type TelegramBotServiceImpl struct {
 }
 
 func (srv *TelegramBotServiceImpl) StartBot() {
-	log.Printf("Authorized on account %s", srv.bot.Self.UserName)
+	slog.Info("Authorized", "account", srv.bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -37,13 +38,13 @@ func (srv *TelegramBotServiceImpl) StartBot() {
 }
 
 func (srv *TelegramBotServiceImpl) HandleMessage(update *tgbotapi.Update) {
-	log.Printf("Bot message request: %+v", update.Message)
+	slog.Info("Bot message request", "request", update.Message)
 	answer, err := srv.message.ProcessMessage(update.Message)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Failed to process message", commonconst.ERR_LOG, err)
 		message := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
 		message.ReplyToMessageID = update.Message.MessageID
-		_, err = srv.bot.Send(message)
+		srv.bot.Send(message)
 		return
 	}
 
@@ -52,22 +53,22 @@ func (srv *TelegramBotServiceImpl) HandleMessage(update *tgbotapi.Update) {
 	message.ParseMode = answer.ParseMode
 	_, err = srv.bot.Send(message)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Failed to send message to bot", commonconst.ERR_LOG, err)
 		return
 	}
 }
 func (srv *TelegramBotServiceImpl) HandleInlineRequest(update *tgbotapi.Update) {
-	log.Printf("Bot inline request: %+v", update.InlineQuery)
+	slog.Debug("Bot inline request:", commonconst.DATA_LOG, update.InlineQuery)
 	inlineResponse, err := srv.inline.ProcessQuery(context.Background(), update.InlineQuery)
 	if err != nil {
-		log.Println(err)
+		slog.Error("failed to process inline query:", commonconst.ERR_LOG, err)
 		return
 	}
-	log.Printf("Bot inline response: %+v", inlineResponse)
+	slog.Debug("Bot inline response:", commonconst.DATA_LOG, inlineResponse)
 
 	_, err = srv.bot.Request(inlineResponse)
 	if err != nil {
-		log.Println(err)
+		slog.Error("Failed to send message to bot", commonconst.ERR_LOG, err)
 		return
 	}
 }
@@ -75,7 +76,8 @@ func (srv *TelegramBotServiceImpl) HandleInlineRequest(update *tgbotapi.Update) 
 func NewTelegramBot(config *conf.TelegramConfig) *tgbotapi.BotAPI {
 	bot, err := tgbotapi.NewBotAPI(config.Token)
 	if err != nil {
-		log.Panic(err)
+		slog.Error("Bot api creation failed", commonconst.ERR_LOG, err)
+		panic("bot api creation failed")
 	}
 	bot.Debug = config.Debug
 	return bot
