@@ -69,7 +69,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	if results == nil {
 		retval := tgbotapi.InlineConfig{
 			InlineQueryID: request.ID,
-			CacheTime:     5,
+			CacheTime:     120,
 			IsPersonal:    true,
 		}
 		return &retval, nil
@@ -77,7 +77,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	photos := make([]interface{}, len(results))
 	for index, item := range results {
-		slog.Info("SearchResultItem ",
+		slog.Debug("SearchResultItem ",
 			"userId", userId,
 			"requestId", request.ID,
 			"index", index,
@@ -85,6 +85,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 			"sortId", item.SortId,
 			"url", item.ImageUrl,
 		)
+
 		inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
 			item.Id.String(),
 			item.ImageUrl,

@@ -38,7 +38,10 @@ func (srv *TelegramBotServiceImpl) StartBot() {
 }
 
 func (srv *TelegramBotServiceImpl) HandleMessage(update *tgbotapi.Update) {
-	slog.Info("Bot message request", "request", update.Message)
+	slog.Info("Bot message request")
+	slog.Debug("Bot message request details",
+		"request", update.Message)
+
 	answer, err := srv.message.ProcessMessage(update.Message)
 	if err != nil {
 		slog.Error("Failed to process message", commonconst.ERR_LOG, err)
@@ -58,13 +61,18 @@ func (srv *TelegramBotServiceImpl) HandleMessage(update *tgbotapi.Update) {
 	}
 }
 func (srv *TelegramBotServiceImpl) HandleInlineRequest(update *tgbotapi.Update) {
-	slog.Debug("Bot inline request:", commonconst.DATA_LOG, update.InlineQuery)
+	slog.Info("Bot inline request:",
+		"query", update.InlineQuery.Query)
+
+	slog.Debug("Bot inline request details:",
+		commonconst.DATA_LOG, update.InlineQuery)
 	inlineResponse, err := srv.inline.ProcessQuery(context.Background(), update.InlineQuery)
 	if err != nil {
 		slog.Error("failed to process inline query:", commonconst.ERR_LOG, err)
 		return
 	}
-	slog.Debug("Bot inline response:", commonconst.DATA_LOG, inlineResponse)
+	slog.Debug("Bot inline response details:",
+		commonconst.DATA_LOG, inlineResponse)
 
 	_, err = srv.bot.Request(inlineResponse)
 	if err != nil {

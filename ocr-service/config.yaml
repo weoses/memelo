@@ -1,3 +1,7 @@
+log:
+  Level: info
+
+  
 server:
   ListenAddress: :7002
 

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
@@ -16,11 +16,13 @@ import (
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"mine.local/ocr-gallery/common/commonconst"
 	"mine.local/ocr-gallery/storage-service/conf"
 	"mine.local/ocr-gallery/storage-service/entity"
 )
 
 const INDEX_NAME = "image-metadata"
+const MAX_FUZZY = 10
 
 type ElasticMetadataStorageServiceImpl struct {
 	client                 *elasticsearch8.TypedClient
@@ -113,7 +115,10 @@ func (e *ElasticMetadataStorageServiceImpl) Delete(ctx context.Context, id uuid.
 		return fmt.Errorf("elastic failed to delete: %w", err)
 	}
 
-	log.Printf("Delete metadata document: elastic, id=%s response=%s", id, render.Render(response))
+	slog.Info("Delete metadata document ",
+		"id", id,
+		"response", render.Render(response))
+
 	return err
 }
 
@@ -133,7 +138,11 @@ func (e *ElasticMetadataStorageServiceImpl) processKnn(
 		TrackScores(true)
 
 	knn, err := search.Do(ctx)
-	return errWrap(knn, "elastic failed to knn: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("elastic: failed to knn-search: response=%s : %w", render.Render(knn), err)
+	}
+
+	return knn, nil
 }
 
 // Search implements MetadataStorageService.
@@ -172,7 +181,11 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	}
 
 	resp, err := search.Do(ctx)
-	return errWrap(resp, "elastic failed to search: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("elastic: failed to search: response=%s : %w", render.Render(resp), err)
+	}
+
+	return resp, nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchQueryInternal(
@@ -187,29 +200,55 @@ func (e *ElasticMetadataStorageServiceImpl) searchQueryInternal(
 	}
 
 	if queryString == "" {
-		log.Printf("Search using ALL query: query: '%s' account: '%s' after: %v",
-			queryString, accountId, sortIdAfter)
+		slog.Info("Search ALL (no query string)",
+			commonconst.ACCOUNTID_LOG, accountId,
+			commonconst.OFFSET_LOG, sortIdAfter,
+			"pageSize", pageSize,
+		)
+
 		q := e.allQuery(accountId)
-		return e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+		result, err := e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search all query : %w", err)
+		}
+
+		slog.Info("Search ALL result", "count", len(result.Hits.Hits))
+		return result, nil
 	}
 
-	log.Printf("Search using simple query: query: '%s' account: '%s' after: %v",
-		queryString, accountId, sortIdAfter)
+	slog.Info("Search SIMPLE",
+		commonconst.ACCOUNTID_LOG, accountId,
+		commonconst.OFFSET_LOG, sortIdAfter,
+		commonconst.QUERY_LOG, queryString,
+		"pageSize", pageSize,
+	)
 	q := e.simpleQuery(accountId, queryString)
-	res, err := e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+	result, err := e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to search SIMPLE query : %w", err)
 	}
 
-	resultsSize := len(res.Hits.Hits)
+	slog.Info("Search SIMPLE result", "count", len(result.Hits.Hits))
+
+	resultsSize := len(result.Hits.Hits)
 	if resultsSize > 0 || sortIdAfter != nil {
-		return res, nil
+		return result, nil
 	}
 
-	log.Printf("Search using fuzzy query: query: '%s' account: '%s'", queryString, accountId)
-	q = e.fuzzySearchQuery(accountId, queryString)
-	return e.runSearchQuery(ctx, q, sortIdAfter, pageSize)
+	slog.Info("Search FUZZY",
+		commonconst.ACCOUNTID_LOG, accountId,
+		commonconst.OFFSET_LOG, sortIdAfter,
+		commonconst.QUERY_LOG, queryString,
+		"maxCount", MAX_FUZZY,
+	)
 
+	q = e.fuzzySearchQuery(accountId, queryString)
+	result, err = e.runSearchQuery(ctx, q, sortIdAfter, addr(MAX_FUZZY))
+	if err != nil {
+		return nil, fmt.Errorf("failed to search FUZZY query : %w", err)
+	}
+
+	return result, nil
 }
 
 // Search implements MetadataStorageService.
@@ -254,7 +293,8 @@ func (e *ElasticMetadataStorageServiceImpl) Search(
 
 // GetById implements MetadataStorageService.
 func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, id uuid.UUID) (*entity.ElasticImageMetaData, error) {
-	log.Printf("GetById: call id: %s", id.String())
+	slog.Info("GetById: call",
+		"id", id.String())
 
 	query := types.NewQuery()
 	query.Ids = types.NewIdsQuery()
@@ -285,7 +325,8 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	ctx context.Context,
 	hash string,
 ) (*entity.ElasticImageMetaData, error) {
-	log.Printf("GetByHash: call hash: %s", hash)
+	slog.Info("GetByHash: call",
+		"hash", hash)
 
 	query := types.NewQuery()
 	query.QueryString = types.NewQueryStringQuery()
@@ -318,7 +359,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 	img *entity.ElasticEmbeddingV1,
 	count int,
 ) ([]*entity.ElasticImageMetaData, error) {
-	log.Printf("GetByEmbeddingV1: call")
+	slog.Info("GetByEmbeddingV1: call")
 
 	query := e.embeddingV1KnnQuery(img, count)
 	result, err := e.processKnn(ctx, *query)
@@ -393,11 +434,15 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		Do(ctx)
 
 	if err != nil {
-		log.Printf("Save metadata document error: id=%s error=%s", file.ImageId, err.Error())
-		return err
+		return fmt.Errorf("Save metadata document error: id=%s : %w", file.ImageId, err)
 	}
 
-	log.Printf("Save metadata document: elastic, id=%s response=%s", file.ImageId, render.Render(response))
+	slog.Info("Save metadata document",
+		"id", file.ImageId)
+
+	slog.Debug("Save metadata document details",
+		"id", file.ImageId,
+		"response", render.Render(response))
 
 	return err
 }
@@ -442,13 +487,6 @@ func unmarhalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDat
 
 func addr[T any](v T) *T { return &v }
 
-func errWrap[T any](v *T, msg string, err error, args ...any) (*T, error) {
-	if err != nil {
-		return nil, fmt.Errorf(msg, err, args)
-	}
-	return v, err
-}
-
 func NewElasticMetadataStorage(
 	config *conf.MetadataStorageConfig,
 	validate *validator.Validate,
@@ -458,7 +496,11 @@ func NewElasticMetadataStorage(
 	responseCreate, err := es8.Indices.
 		Create(config.Index).
 		Do(context.Background())
-	log.Printf("Elastic create index response: %s error: %v", render.Render(responseCreate), err)
+
+	slog.Info("Elastic create index",
+		"index", config.Index,
+		"response", render.Render(responseCreate),
+		commonconst.ERR_LOG, err)
 
 	indexTypeMapping := types.NewTypeMapping()
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
@@ -476,7 +518,9 @@ func NewElasticMetadataStorage(
 		Properties(indexTypeMapping.Properties).
 		Do(context.Background())
 
-	log.Printf("Elastic mapping index response: %s error: %v", render.Render(responseMapping), err)
+	slog.Info("Elastic create mapping index",
+		"response", render.Render(responseMapping),
+		commonconst.ERR_LOG, err)
 
 	return &ElasticMetadataStorageServiceImpl{
 		client:                 es8,

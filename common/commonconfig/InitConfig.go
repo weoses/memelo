@@ -35,6 +35,16 @@ func NewServerConfig() *ServerConfig {
 	return conf
 }
 
+func NewLoggingConfig() *LoggingConfig {
+	conf := new(LoggingConfig)
+	viper.UnmarshalKey("log", conf)
+	return conf
+}
+
 type ServerConfig struct {
 	ListenAddress string
+}
+
+type LoggingConfig struct {
+	Level string
 }
