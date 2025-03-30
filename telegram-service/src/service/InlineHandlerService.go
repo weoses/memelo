@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/labstack/gommon/log"
 	"mine.local/ocr-gallery/telegram-service/conf"
 )
 
@@ -30,8 +31,11 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	userId := request.From.ID
 	query := request.Query
 
-	log.Printf("Inline query: userid: '%d' id: '%s' text: '%s' offset: '%s'",
-		userId, request.ID, request.Query, request.Offset)
+	slog.Info("Inline query:",
+		"userId", userId,
+		"requestId", request.ID,
+		"query", request.Query,
+		"offset", request.Offset)
 
 	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
 	if err != nil {
@@ -58,6 +62,11 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		return nil, err
 	}
 
+	slog.Info("Search query result",
+		"userId", userId,
+		"requestId", request.ID,
+		"resultListSize", len(results))
+
 	if results == nil {
 		retval := tgbotapi.InlineConfig{
 			InlineQueryID: request.ID,
@@ -69,6 +78,14 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	photos := make([]interface{}, len(results))
 	for index, item := range results {
+		log.Info("SearchResultItem ",
+			"userId", userId,
+			"requestId", request.ID,
+			"index", index,
+			"id", item.Id,
+			"sortId", item.SortId,
+			"url", item.ImageUrl,
+		)
 		inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
 			item.Id.String(),
 			item.ImageUrl,
@@ -81,13 +98,15 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		photos[index] = inlineChoice
 	}
 
-	log.Printf("Result count is %d", len(results))
-
 	nextOffset := ""
 	if len(results) == i.config.PageSize && i.config.PageSize > 0 {
 		nextOffset = strconv.FormatInt(results[i.config.PageSize-1].SortId, 10)
-		log.Printf("Next offset is %s", nextOffset)
 	}
+
+	log.Info("Search next offset ",
+		"userId", userId,
+		"requestId", request.ID,
+		"nextOffset", nextOffset)
 
 	retval := tgbotapi.InlineConfig{
 		InlineQueryID: request.ID,
@@ -98,20 +117,6 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	retval.Results = photos
 
 	return &retval, nil
-}
-
-func substr(s string, start, end int) string {
-	counter, startIdx := 0, 0
-	for i := range s {
-		if counter == start {
-			startIdx = i
-		}
-		if counter == end {
-			return s[startIdx:i]
-		}
-		counter++
-	}
-	return s[startIdx:]
 }
 
 func NewInlineService(
