@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/labstack/gommon/log"
 	"mine.local/ocr-gallery/telegram-service/conf"
 )
 
@@ -78,7 +77,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	photos := make([]interface{}, len(results))
 	for index, item := range results {
-		log.Info("SearchResultItem ",
+		slog.Info("SearchResultItem ",
 			"userId", userId,
 			"requestId", request.ID,
 			"index", index,
@@ -103,7 +102,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		nextOffset = strconv.FormatInt(results[i.config.PageSize-1].SortId, 10)
 	}
 
-	log.Info("Search next offset ",
+	slog.Info("Search next offset ",
 		"userId", userId,
 		"requestId", request.ID,
 		"nextOffset", nextOffset)
