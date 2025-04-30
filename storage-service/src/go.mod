@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/adrg/strutil v0.3.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
