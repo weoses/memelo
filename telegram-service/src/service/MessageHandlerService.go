@@ -47,7 +47,7 @@ func (m MessageHandlerServiceImpl) ProcessMessage(message *tgbotapi.Message) (*M
 		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
 	}
 
-	result, err := m.storage.CreateMeme(file, "image/jpeg", accountId)
+	result, err := m.storage.CreateMeme(context.TODO(), file, "image/jpeg", accountId)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: CreateMeme failed : %w", err)
 	}

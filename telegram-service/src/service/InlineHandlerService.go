@@ -2,24 +2,63 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"github.com/google/uuid"
 	"log/slog"
+	"mine.local/ocr-gallery/common/commonconst"
 	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"mine.local/ocr-gallery/telegram-service/conf"
 )
+
+const inlineDeletePrefix = "!del"
 
 type InlineHandlerService interface {
 	ProcessQuery(
 		ctx context.Context,
 		request *tgbotapi.InlineQuery,
 	) (*tgbotapi.InlineConfig, error)
+
+	ProcessChosenInlineQuery(
+		ctx context.Context,
+		request *tgbotapi.ChosenInlineResult,
+	) error
 }
 
 type InineHandlerServiceImpl struct {
 	userAccount UserAccountService
 	storage     StorageConnector
 	config      *conf.InlineConfig
+}
+
+func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, request *tgbotapi.ChosenInlineResult) error {
+	if !strings.HasPrefix(request.Query, inlineDeletePrefix) {
+		return nil
+	}
+
+	imageId := request.ResultID
+	userId := request.From.ID
+	slog.Info("Inline result : del query:",
+		"userId", userId,
+		commonconst.QUERY_LOG, request.Query,
+		"messageId", request.InlineMessageID)
+
+	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("ProcessChosenInlineQuery: MapUserToAccount failed, userId=%d, err=%w", userId, err)
+	}
+
+	imageIdUuid, err := uuid.Parse(imageId)
+
+	err = i.storage.DeleteMeme(ctx, accountId, imageIdUuid)
+	if err != nil {
+		return fmt.Errorf("ProcessChosenInlineQuery: DeleteMeme failed, accountId=%s, memeId=%s err=%w",
+			accountId, imageIdUuid, err)
+	}
+
+	return nil
 }
 
 // ProcessQuery implements InlineService.
@@ -29,12 +68,20 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 ) (*tgbotapi.InlineConfig, error) {
 	userId := request.From.ID
 	query := request.Query
+	delQuery := false
 
 	slog.Info("Inline query:",
 		"userId", userId,
 		"requestId", request.ID,
 		"query", request.Query,
 		"offset", request.Offset)
+
+	if strings.HasPrefix(query, inlineDeletePrefix) {
+		query = strings.TrimPrefix(query, inlineDeletePrefix)
+		delQuery = true
+	}
+
+	query = strings.TrimSpace(query)
 
 	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
 	if err != nil {
@@ -94,6 +141,10 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		inlineChoice.MimeType = "image/jpeg"
 		inlineChoice.Height = item.ThumbHeight
 		inlineChoice.Width = item.ThumbWidth
+
+		if delQuery {
+			inlineChoice.Caption = "Deleted"
+		}
 
 		photos[index] = inlineChoice
 	}
