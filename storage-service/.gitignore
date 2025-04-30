@@ -1,4 +1,4 @@
 temp
 __debug_bin*
-
+config.yaml
 *.gen.go

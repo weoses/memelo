@@ -10,11 +10,11 @@ import (
 )
 
 type MetadataStorageService interface {
+	GetByHashAll(ctx context.Context, hash string) (*entity.ElasticImageMetaData, error)
+	GetByEmbeddingV1All(ctx context.Context, img *entity.ElasticEmbeddingV1, count int) ([]*entity.ElasticImageMetaData, error)
+
 	Save(ctx context.Context, file *entity.ElasticImageMetaData) error
-	GetByHash(ctx context.Context, hash string) (*entity.ElasticImageMetaData, error)
-	GetByEmbeddingV1(ctx context.Context, img *entity.ElasticEmbeddingV1, count int) ([]*entity.ElasticImageMetaData, error)
-	GetByHashAndAccountId(ctx context.Context, accountId uuid.UUID, hash string) (*entity.ElasticImageMetaData, error)
-	GetById(ctx context.Context, id uuid.UUID) (*entity.ElasticImageMetaData, error)
+
 	Search(ctx context.Context,
 		accountId uuid.UUID,
 		query string,
@@ -22,7 +22,10 @@ type MetadataStorageService interface {
 		pageSize *int,
 	) ([]*entity.ElasticMatchedContent, error)
 
-	Delete(ctx context.Context, id uuid.UUID) error
+	GetByHash(ctx context.Context, accountId uuid.UUID, hash string) (*entity.ElasticImageMetaData, error)
+	GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
+
+	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 }
 
 func NewMetadataStorageService(config *conf.MetadataStorageConfig, validate *validator.Validate) MetadataStorageService {

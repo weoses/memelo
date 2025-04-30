@@ -11,10 +11,6 @@ import (
 	"mine.local/ocr-gallery/telegram-service/entity"
 )
 
-const COLLECTION_NAME = "telegram-user-account"
-
-const INDEX_NAME = "telegram-id-uniq"
-
 type UserAccountService interface {
 	MapUserToAccount(ctx context.Context, userId int64) (uuid.UUID, error)
 }
@@ -59,6 +55,10 @@ func (u *UserAccountServiceStaticImpl) MapUserToAccount(ctx context.Context, use
 }
 
 func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.UserAccountConfig) (UserAccountService, error) {
+
+	const COLLECTION_NAME = "telegram-user-account"
+	const INDEX_NAME = "telegram-id-uniq"
+
 	if userAccountConfig.StaticUuid != "" {
 		return &UserAccountServiceStaticImpl{
 			staticUuid: uuid.MustParse(userAccountConfig.StaticUuid),

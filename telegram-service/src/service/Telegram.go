@@ -33,6 +33,8 @@ func (srv *TelegramBotServiceImpl) StartBot() {
 			srv.HandleInlineRequest(&update)
 		} else if update.Message != nil {
 			srv.HandleMessage(&update)
+		} else if update.ChosenInlineResult != nil {
+			srv.HandleChosenResult(&update)
 		}
 	}
 }
@@ -79,6 +81,21 @@ func (srv *TelegramBotServiceImpl) HandleInlineRequest(update *tgbotapi.Update) 
 		slog.Error("Failed to send message to bot", commonconst.ERR_LOG, err)
 		return
 	}
+}
+
+func (srv *TelegramBotServiceImpl) HandleChosenResult(u *tgbotapi.Update) {
+	slog.Info("Bot choose result:",
+		commonconst.QUERY_LOG, u.ChosenInlineResult.Query,
+		"resultId", u.ChosenInlineResult.ResultID)
+
+	slog.Debug("Bot chosen result details:",
+		commonconst.DATA_LOG, u.ChosenInlineResult)
+
+	err := srv.inline.ProcessChosenInlineQuery(context.Background(), u.ChosenInlineResult)
+	if err != nil {
+		slog.Error("Failed to process chosen result", commonconst.ERR_LOG, err)
+	}
+
 }
 
 func NewTelegramBot(config *conf.TelegramConfig) *tgbotapi.BotAPI {
