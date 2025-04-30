@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/adrg/strutil/metrics"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/adrg/strutil"
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -74,22 +76,36 @@ func (a *ApiHandler) CreateMeme(
 		return nil, fmt.Errorf("failed to do ocr : %w", err)
 	}
 
+	ocrTextResult := ocrResult.OcrText
 	slog.Info("CreateMeme: ocr result",
 		commonconst.ACCOUNTID_LOG, request.AccountId,
 		"id", idUuid,
-		"ocrText", ocrResult.OcrText)
+		"ocrText", ocrTextResult)
 
 	contentDuplicate, err := a.findContentDuplicates(ctx, ocrResult)
 	if err != nil {
 		return nil, err
 	}
 
-	if contentDuplicate != nil {
-		return a.HandleDuplicate(ctx, server.DuplicateImage, contentDuplicate, request)
+	if strings.TrimSpace(ocrTextResult) == "" {
+		return nil, errors.New("no text on image")
 	}
 
-	if strings.TrimSpace(ocrResult.OcrText) == "" {
-		return nil, errors.New("no text on image")
+	if contentDuplicate != nil {
+		contentDuplicateTextResult := contentDuplicate.Result
+		similarity := strutil.Similarity(ocrTextResult, contentDuplicateTextResult, metrics.NewLevenshtein())
+
+		slog.Info("CreateMeme: found content-duplicate by embedding search",
+			commonconst.ACCOUNTID_LOG, request.AccountId,
+			"id", idUuid,
+			"dupId", contentDuplicate.ImageId,
+			"ocrText", ocrTextResult,
+			"dupOcrText", contentDuplicate.Result,
+			"similarity", similarity)
+
+		if similarity > 0.5 {
+			return a.HandleDuplicate(ctx, server.DuplicateImage, contentDuplicate, request)
+		}
 	}
 
 	err = a.imageStorage.Save(ctx, idUuid, ocrResult.Image, ocrResult.Thumbnail.Image)
