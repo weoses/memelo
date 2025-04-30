@@ -14,6 +14,7 @@ type ImageStorageService interface {
 
 	GetUrl(ctx context.Context, id uuid.UUID) (string, error)
 	GetUrlThumb(ctx context.Context, id uuid.UUID) (string, error)
+	DeleteImage(ctx context.Context, id uuid.UUID) error
 }
 
 func NewImageStorageService(config *conf.ImageStorageConfig) (ImageStorageService, error) {

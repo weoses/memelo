@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
 	"net/url"
 	"strings"
@@ -19,6 +20,13 @@ import (
 type MinioFileStorageServiceImpl struct {
 	client     minio.Client
 	bucketName string
+}
+
+func (m *MinioFileStorageServiceImpl) DeleteImage(ctx context.Context, id uuid.UUID) error {
+	err1 := m.client.RemoveObject(ctx, m.bucketName, getObjectNameV1(id, false), minio.RemoveObjectOptions{})
+	err2 := m.client.RemoveObject(ctx, m.bucketName, getObjectNameV1(id, true), minio.RemoveObjectOptions{})
+
+	return errors.Join(err1, err2)
 }
 
 // GetImage implements ImageStorageService.

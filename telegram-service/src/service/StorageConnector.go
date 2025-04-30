@@ -22,11 +22,25 @@ type StorageConnector interface {
 		searchAfterSortId *int64,
 	) ([]*entity.MemeSearchResult, error)
 
-	CreateMeme(file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
+	CreateMeme(ctx context.Context, file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
+
+	DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
 }
 
 type StorageConnectorImpl struct {
 	cl client.ClientWithResponsesInterface
+}
+
+func (s *StorageConnectorImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error {
+	response, err := s.cl.DeleteMemeWithResponse(ctx, accountId, memeId)
+	if err != nil {
+		return fmt.Errorf("DeleteMeme failed: accountId=%s memeId=%s %w", accountId, memeId, err)
+	}
+
+	if response.StatusCode() >= 400 {
+		return fmt.Errorf("DeleteMeme failed: accountId=%s memeId=%s storage_status=%d", accountId, memeId, response.StatusCode())
+	}
+	return nil
 }
 
 // ProcessSearchQuery implements StorageConnector.
@@ -70,7 +84,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 }
 
 // CreateMeme implements UploadService.
-func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
+func (u *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
 	strbuf := bytes.NewBufferString("")
 	encoder := base64.NewEncoder(base64.RawStdEncoding, strbuf)
 	encoder.Write(file)
@@ -82,7 +96,7 @@ func (u *StorageConnectorImpl) CreateMeme(file []byte, mime string, accountId uu
 	reqBody.MimeType = &mime
 
 	resp, err := u.cl.CreateMemeWithResponse(
-		context.TODO(),
+		ctx,
 		accountId,
 		reqBody,
 	)
