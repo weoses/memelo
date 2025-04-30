@@ -25,6 +25,24 @@ type ApiHandler struct {
 	validate     *validator.Validate
 }
 
+func (a *ApiHandler) DeleteMeme(ctx context.Context, request server.DeleteMemeRequestObject) (server.DeleteMemeResponseObject, error) {
+	item, err := a.metaStorage.GetById(ctx, request.AccountId, request.MemeId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = a.metaStorage.DeleteById(ctx, item.AccountId, item.ImageId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = a.imageStorage.DeleteImage(ctx, item.S3Id)
+	if err != nil {
+		return nil, err
+	}
+	return server.DeleteMeme200Response{}, nil
+}
+
 // CreateMeme implements server.StrictServerInterface.
 func (a *ApiHandler) CreateMeme(
 	ctx context.Context,
@@ -184,9 +202,13 @@ func (a *ApiHandler) UpdateOcr(ctx context.Context, request server.UpdateOcrRequ
 
 // GetMemeImageThumbUrl implements server.StrictServerInterface.
 func (a *ApiHandler) GetMemeImageThumbUrl(ctx context.Context, request server.GetMemeImageThumbUrlRequestObject) (server.GetMemeImageThumbUrlResponseObject, error) {
-	memeMetadata, err := a.metaStorage.GetById(ctx, request.MemeId)
+	memeMetadata, err := a.metaStorage.GetById(ctx, request.AccountId, request.MemeId)
 	if err != nil {
 		return nil, err
+	}
+
+	if memeMetadata == nil {
+		return nil, echo.ErrNotFound
 	}
 
 	if memeMetadata.AccountId != request.AccountId {
@@ -205,12 +227,12 @@ func (a *ApiHandler) GetMemeImageThumbUrl(ctx context.Context, request server.Ge
 
 // GetMemeImageUrl implements server.StrictServerInterface.
 func (a *ApiHandler) GetMemeImageUrl(ctx context.Context, request server.GetMemeImageUrlRequestObject) (server.GetMemeImageUrlResponseObject, error) {
-	memeMetadata, err := a.metaStorage.GetById(ctx, request.MemeId)
+	memeMetadata, err := a.metaStorage.GetById(ctx, request.AccountId, request.MemeId)
 	if err != nil {
 		return nil, err
 	}
 
-	if memeMetadata.AccountId != request.AccountId {
+	if memeMetadata == nil {
 		return nil, echo.ErrNotFound
 	}
 
@@ -226,12 +248,12 @@ func (a *ApiHandler) GetMemeImageUrl(ctx context.Context, request server.GetMeme
 
 // UpdateOcrOne implements server.StrictServerInterface.
 func (a *ApiHandler) UpdateOcrOne(ctx context.Context, request server.UpdateOcrOneRequestObject) (server.UpdateOcrOneResponseObject, error) {
-	memeMetadata, err := a.metaStorage.GetById(ctx, request.MemeId)
+	memeMetadata, err := a.metaStorage.GetById(ctx, request.AccountId, request.MemeId)
 	if err != nil {
 		return nil, err
 	}
 
-	if memeMetadata.AccountId != request.AccountId {
+	if memeMetadata == nil {
 		return nil, echo.ErrNotFound
 	}
 
@@ -251,7 +273,7 @@ func (a *ApiHandler) internalCheckDuplicate(ctx context.Context, emc *entity.Ela
 		return
 	}
 
-	embeddingFoundImage, err := a.metaStorage.GetByEmbeddingV1(ctx, embedding, 10)
+	embeddingFoundImage, err := a.metaStorage.GetByEmbeddingV1All(ctx, embedding, 10)
 	if err != nil {
 		slog.Error("Check-duplicate: failed to search image embedding duplicates ",
 			"id", id.String(),
@@ -265,7 +287,12 @@ func (a *ApiHandler) internalCheckDuplicate(ctx context.Context, emc *entity.Ela
 			continue
 		}
 
-		a.metaStorage.Delete(ctx, item.ImageId)
+		err := a.metaStorage.DeleteById(ctx, item.AccountId, item.ImageId)
+		if err != nil {
+			slog.Warn("Check-duplicate: failed to delete duplicate image",
+				"error", err,
+				"id", item.ImageId)
+		}
 	}
 }
 
@@ -328,7 +355,7 @@ func (a *ApiHandler) findHashDuplicates(
 	ctx context.Context,
 	hash string,
 ) (*entity.ElasticImageMetaData, error) {
-	return a.metaStorage.GetByHash(ctx, hash)
+	return a.metaStorage.GetByHashAll(ctx, hash)
 }
 
 func (a *ApiHandler) findContentDuplicates(
@@ -339,7 +366,7 @@ func (a *ApiHandler) findContentDuplicates(
 		Data:  &ocrResult.Embedding.Data,
 		Model: ocrResult.Embedding.Model,
 	}
-	results, err := a.metaStorage.GetByEmbeddingV1(ctx, embedding, 1)
+	results, err := a.metaStorage.GetByEmbeddingV1All(ctx, embedding, 1)
 	if err != nil {
 		return nil, err
 	}
