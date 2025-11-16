@@ -7,3 +7,5 @@ use (
 	./storage-service/src
 	./telegram-service/src
 )
+
+replace github.com/weoses/memelo => ./
