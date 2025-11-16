@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	"mine.local/ocr-gallery/apispec/ocr-server/server"
-	"mine.local/ocr-gallery/ocr-server/service"
+	"github.com/weoses/memelo/apispec/ocr-server/server"
+	"github.com/weoses/memelo/ocr-server/service"
 )
 
 type Handler struct {

@@ -1,4 +1,4 @@
-module mine.local/ocr-gallery/ocr-server/tools
+module github.com/weoses/memelo/ocr-server/tools
 
 go 1.22
 

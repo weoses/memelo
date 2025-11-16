@@ -4,12 +4,12 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
+	"github.com/weoses/memelo/apispec/meme-storage/server"
+	"github.com/weoses/memelo/common/commonconfig"
+	"github.com/weoses/memelo/common/commonmiddleware"
+	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/service"
 	"go.uber.org/fx"
-	"mine.local/ocr-gallery/apispec/meme-storage/server"
-	"mine.local/ocr-gallery/common/commonconfig"
-	"mine.local/ocr-gallery/common/commonmiddleware"
-	"mine.local/ocr-gallery/storage-service/conf"
-	"mine.local/ocr-gallery/storage-service/service"
 )
 
 func main() {
@@ -22,6 +22,7 @@ func main() {
 		fx.Provide(conf.NewOcrConfig),
 		fx.Provide(conf.NewMetadataStorageConfig),
 		fx.Provide(conf.NewImageStorageConfig),
+		fx.Provide(commonmiddleware.NewLoggingMiddleware),
 		fx.Provide(service.NewMetadataStorageService),
 		fx.Provide(service.NewImageStorageService),
 		fx.Provide(service.NewOcrService),
@@ -33,14 +34,16 @@ func main() {
 func Startup(
 	storage server.StrictServerInterface,
 	conf *commonconfig.ServerConfig,
+	middleware commonmiddleware.LoggingMiddlewareFunc,
 ) {
 	srv := echo.New()
+	srv.Debug = true
 
 	server.RegisterHandlers(srv,
 		server.NewStrictHandler(
 			storage,
 			[]oapiEcho.StrictEchoMiddlewareFunc{
-				commonmiddleware.NewLoggingMiddleware(),
+				oapiEcho.StrictEchoMiddlewareFunc(middleware),
 			}),
 	)
 

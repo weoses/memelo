@@ -7,8 +7,8 @@ server:
 image-storage:
   S3:
     Endpoint: localhost:9000
-    AccessKey: 
-    SecretKey: 
+    AccessKey: minio123
+    SecretKey: minio123
     Bucket: images
 
 

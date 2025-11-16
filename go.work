@@ -1,4 +1,4 @@
-go 1.23.2
+go 1.24.10
 
 use (
 	./apispec
@@ -7,3 +7,5 @@ use (
 	./storage-service/src
 	./telegram-service/src
 )
+
+replace github.com/weoses/memelo => ./

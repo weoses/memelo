@@ -9,11 +9,11 @@ import (
 
 	aiplatform "cloud.google.com/go/aiplatform/apiv1beta1"
 	aiplatformpb "cloud.google.com/go/aiplatform/apiv1beta1/aiplatformpb"
+	"github.com/weoses/memelo/ocr-server/conf"
+	"github.com/weoses/memelo/ocr-server/entity"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
-	"mine.local/ocr-gallery/ocr-server/conf"
-	"mine.local/ocr-gallery/ocr-server/entity"
 )
 
 type ImageEmbeddingExtractor interface {

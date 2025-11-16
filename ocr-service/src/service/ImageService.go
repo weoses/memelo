@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
+	"net/http"
 	"strings"
 
-	"mine.local/ocr-gallery/apispec/ocr-server/server"
-	"mine.local/ocr-gallery/ocr-server/entity"
+	"github.com/pkg/errors"
+	"github.com/weoses/memelo/apispec/ocr-server/server"
+	"github.com/weoses/memelo/common/commonerror"
+	"github.com/weoses/memelo/ocr-server/entity"
 )
 
 type ImageService interface {
@@ -21,46 +24,72 @@ type ImageServiceImpl struct {
 	comarer ImageEmbeddingExtractor
 }
 
+func (i *ImageServiceImpl) validateProcessImage(ctx context.Context, image server.PostApiV1OcrProcessRequestObject) error {
+	if image.Body == nil || image.Body.Image == nil || image.Body.Image.ImageBase64 == "" {
+		return commonerror.ApiError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "No request body or image",
+		}
+	}
+	return nil
+}
+
 // ProcessImage implements ImageService.
 func (i *ImageServiceImpl) ProcessImage(ctx context.Context, image server.PostApiV1OcrProcessRequestObject) (server.PostApiV1OcrProcessResponseObject, error) {
-	imageEnt := imageDtoToEntity(image.Body.Image)
-	imageEnt, err := i.conv.ConvertImage(ctx, imageEnt)
+	err := i.validateProcessImage(ctx, image)
 	if err != nil {
 		return nil, err
 	}
 
-	imageThumbEnt, imgThumbSizes, err := i.conv.MakeThumb(ctx, imageEnt)
+	imageEntIncoming, err := i.convertImageDto(ctx, image.Body.Image)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "convertImageDto failed")
+	}
+
+	imageEnt, err := i.conv.ConvertImageJPEG(ctx, imageEntIncoming)
+	if err != nil {
+		return nil, errors.Wrap(err, "ConvertImageJPEG failed: ")
+	}
+
+	imageThumbEnt, err := i.conv.MakeThumb(ctx, imageEnt)
+	if err != nil {
+		return nil, errors.Wrap(err, "MakeThumb failed")
 	}
 
 	processorName := i.ocr.GetName()
 	stringData, err := i.ocr.DoOcr(ctx, imageEnt)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "DoOcr failed")
 	}
 
 	embedding, err := i.comarer.GetImageEmbeddingV1(ctx, imageEnt)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "GetImageEmbeddingV1 failed")
 	}
 
-	response := new(server.PostApiV1OcrProcess200JSONResponse)
+	resultImgSource, err := i.imageEntityToDto(imageEnt)
+	if err != nil {
+		return nil, errors.Wrap(err, "imageEntityToDto for source image failed")
+	}
 
-	response.Image = imageEntityToDto(imageEnt)
-	response.ImageThumb = new(server.ThumbnailDto)
-	response.ImageThumb.Image = imageEntityToDto(imageThumbEnt)
-	response.ImageThumb.Height = &imgThumbSizes.Height
-	response.ImageThumb.Width = &imgThumbSizes.Width
-	response.ImageText = &[]server.OcrResponseItem{
-		{
-			ProcessorKey: &processorName,
-			Text:         &stringData,
+	resultImgThumb, err := i.imageEntityToDto(imageThumbEnt)
+	if err != nil {
+		return nil, errors.Wrap(err, "imageEntityToDto for thumb image failed")
+	}
+
+	response := &server.PostApiV1OcrProcess200JSONResponse{
+		ImageSource: resultImgSource,
+		ImageThumb:  resultImgThumb,
+		ImageText: &[]server.OcrResponseItem{
+			{
+				ProcessorKey: &processorName,
+				Text:         &stringData,
+			},
 		},
-	}
-	response.Embedding = &server.EmbeddingDto{
-		ModelName: &embedding.Model,
-		Data:      &embedding.Data,
+		Embedding: &server.EmbeddingDto{
+			ModelName: &embedding.Model,
+			Data:      &embedding.Data,
+		},
 	}
 	return response, nil
 }
@@ -73,29 +102,40 @@ func pixels(uintArr []uint16) []int {
 	return intArr
 }
 
-func imageDtoToEntity(dto *server.ImageDto) *entity.Image {
-	decoder := base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(*dto.ImageBase64))
-	data, _ := io.ReadAll(decoder)
+func (i *ImageServiceImpl) convertImageDto(ctx context.Context, dto *server.ImageDto) (*entity.Image, error) {
+	decoder := base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(dto.ImageBase64))
+	data, err := io.ReadAll(decoder)
+	if err != nil {
+		return nil, errors.Wrap(err, "image base64 decoding failed")
+	}
 
-	retval := new(entity.Image)
-	retval.Data = &data
-	retval.MimeType = *dto.MimeType
-	return retval
+	img, err := i.conv.MakeEntity(ctx, &data)
+	if err != nil {
+		return nil, errors.Wrap(err, "MakeEntity failed")
+	}
+
+	return img, nil
 }
 
-func imageEntityToDto(entity *entity.Image) *server.ImageDto {
+func (i *ImageServiceImpl) imageEntityToDto(entity *entity.Image) (*server.ImageWithSizeDto, error) {
 	buff := bytes.NewBufferString("")
 
 	encoder := base64.NewEncoder(base64.RawStdEncoding, buff)
 	defer encoder.Close()
-	encoder.Write(*entity.Data)
+	_, err := encoder.Write(*entity.Data)
+	if err != nil {
+		return nil, errors.Wrap(err, "image base64 encoding failed")
+	}
 	encoder.Close()
 	data := buff.String()
 
-	retval := new(server.ImageDto)
-	retval.ImageBase64 = &data
-	retval.MimeType = &entity.MimeType
-	return retval
+	return &server.ImageWithSizeDto{
+		Image: server.ImageDto{
+			ImageBase64: data,
+		},
+		Width:  entity.Width,
+		Height: entity.Height,
+	}, nil
 }
 
 func NewImageService(ocr OcrProcessor, conv ImageConveter, comp ImageEmbeddingExtractor) (ImageService, error) {

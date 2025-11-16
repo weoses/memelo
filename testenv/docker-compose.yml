@@ -2,7 +2,16 @@ version: '3'
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.16.2
-    environment: ['ES_JAVA_OPTS=-Xms2g -Xmx2g','bootstrap.memory_lock=true','discovery.type=single-node','xpack.security.enabled=false', 'xpack.security.enrollment.enabled=false']
+    environment: [
+      'ES_JAVA_OPTS=-Xms2g -Xmx2g',
+      'bootstrap.memory_lock=true',
+      'discovery.type=single-node',
+      'xpack.security.enabled=false',
+      'xpack.security.enrollment.enabled=false',
+      'cluster.routing.allocation.disk.watermark.low=600mb',
+      'cluster.routing.allocation.disk.watermark.high=500mb',
+      'cluster.routing.allocation.disk.watermark.flood_stage=400mb'
+    ]
     ports:
       - 9200:9200
     networks:
@@ -30,7 +39,7 @@ services:
     image: minio/minio:latest
     environment:
       MINIO_ACCESS_KEY: minio123
-      MINIO_SECRET_KEY: 9f97d6bcfe2d2130
+      MINIO_SECRET_KEY: minio123
     ports:
       - 9000:9000
     command: server /data
@@ -42,7 +51,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 3;
-      /usr/bin/mc alias set myminio http://minio:9000 minio123 9f97d6bcfe2d2130;
+      /usr/bin/mc alias set myminio http://minio:9000 minio123 minio123;
       /usr/bin/mc mb myminio/images;
       exit 0;
       "

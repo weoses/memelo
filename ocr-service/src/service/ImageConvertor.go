@@ -4,56 +4,72 @@ import (
 	"context"
 
 	"github.com/h2non/bimg"
-	"mine.local/ocr-gallery/ocr-server/conf"
-	"mine.local/ocr-gallery/ocr-server/entity"
+	"github.com/pkg/errors"
+	"github.com/weoses/memelo/ocr-server/conf"
+	"github.com/weoses/memelo/ocr-server/entity"
 )
 
 type ImageConveter interface {
-	ConvertImage(ctx context.Context, image *entity.Image) (*entity.Image, error)
-	MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, *entity.ImageSizes, error)
+	MakeEntity(ctx context.Context, data *[]byte) (*entity.Image, error)
+	ConvertImageJPEG(ctx context.Context, image *entity.Image) (*entity.Image, error)
+	MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, error)
 }
 
 type ImageConveterImpl struct {
 	config *conf.ImageConverterConfig
 }
 
-// ConvertImage implements ImageConveter.
-func (i *ImageConveterImpl) ConvertImage(ctx context.Context, image *entity.Image) (*entity.Image, error) {
+// ConvertImageJPEG implements ImageConveter.
+func (i *ImageConveterImpl) ConvertImageJPEG(ctx context.Context, image *entity.Image) (*entity.Image, error) {
 	img := bimg.NewImage(*image.Data)
-	bytesData, err := img.Convert(bimg.JPEG)
+	size, err := img.Size()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Image Size() failed")
 	}
 
-	retval := new(entity.Image)
-	retval.MimeType = "image/jpeg"
-	retval.Data = &bytesData
-	return retval, nil
+	bytesData, err := img.Convert(bimg.JPEG)
+	if err != nil {
+		return nil, errors.Wrap(err, "Image Convert() to JPEG failed")
+	}
+
+	retImage := new(entity.Image)
+	retImage.Data = &bytesData
+	retImage.Width = size.Width
+	retImage.Height = size.Height
+
+	return retImage, nil
 }
 
 // MakeThumb implements ImageConveter.
-func (i *ImageConveterImpl) MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, *entity.ImageSizes, error) {
+func (i *ImageConveterImpl) MakeThumb(ctx context.Context, image *entity.Image) (*entity.Image, error) {
 	img := bimg.NewImage(*image.Data)
+	newWidth := i.config.ThumbSize
+	newHeight := int(float64(i.config.ThumbSize) / float64(image.Width) * float64(image.Height))
 
+	bytesData, err := img.Resize(newWidth, newHeight)
+	if err != nil {
+		return nil, errors.Wrap(err, "Image Resize() failed")
+	}
+
+	return &entity.Image{
+		Data:   &bytesData,
+		Width:  newWidth,
+		Height: newHeight,
+	}, nil
+}
+
+func (i *ImageConveterImpl) MakeEntity(ctx context.Context, data *[]byte) (*entity.Image, error) {
+	img := bimg.NewImage(*data)
 	size, err := img.Size()
 	if err != nil {
-		return nil, nil, err
+		return nil, errors.Wrap(err, "Image Size() failed")
 	}
 
-	sizes := new(entity.ImageSizes)
-
-	sizes.Width = i.config.ThumbSize
-	sizes.Height = int(float64(i.config.ThumbSize) / float64(size.Width) * float64(size.Height))
-
-	bytesData, err := img.Resize(size.Width, size.Height)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	retval := new(entity.Image)
-	retval.MimeType = image.MimeType
-	retval.Data = &bytesData
-	return retval, sizes, nil
+	return &entity.Image{
+		Data:   data,
+		Width:  size.Width,
+		Height: size.Height,
+	}, nil
 }
 
 func NewImageConverter(config *conf.ImageConverterConfig) (ImageConveter, error) {

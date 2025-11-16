@@ -3,7 +3,7 @@ info:
   description: ''
   version: "1.0.0"
   title: 'Meme-server'
- 
+
 paths:
   /api/v1/accounts/{AccountId}/check-duplicates:
     post:
@@ -13,6 +13,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
   /api/v1/accounts/{AccountId}/update-ocr:
     post:
       parameters:
@@ -21,6 +27,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
   
   /api/v1/accounts/{AccountId}/update-ocr/{MemeId}:
     post:
@@ -31,12 +43,18 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
   /api/v1/accounts/{AccountId}/meme:
     get:
       parameters:
         - $ref: "#/components/parameters/AccountId"
-        - $ref: "#/components/parameters/MemeQuery"
+        - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/SearchAfterId"
         - $ref: "#/components/parameters/PageSize"
       operationId: "SearchMeme"
@@ -48,7 +66,13 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SearchMemeDto"
+                  $ref: "#/components/schemas/SearchMemeResponseItemDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
     post:
       operationId: "CreateMeme"
       parameters:
@@ -57,7 +81,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ImageDto"
+              $ref: "#/components/schemas/CreateImageRequestDto"
       responses:
         200:
           description: ok
@@ -65,6 +89,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateMemeResponseDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url:
@@ -80,9 +110,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImageUrlDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}:
-    get:
+    delete:
       parameters:
         - $ref: "#/components/parameters/AccountId"
         - $ref: "#/components/parameters/MemeId"
@@ -90,6 +126,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/url:
     get:
@@ -104,12 +146,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImageUrlDto"
-components: 
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+components:
   parameters:
-    MemeQuery:
+    Query:
       in: query
       required: true
-      name: MemeQuery
+      name: Query
       schema:
         type: string
     SearchAfterId:
@@ -125,7 +173,6 @@ components:
       name: PageSize
       schema:
         type: integer
-      
     MemeId:
       in: path
       required: true
@@ -142,24 +189,8 @@ components:
         type: string
         format: uuid
 
-  schemas:    
-    ImageUrlDto:
-      type: object
-      properties:
-        Url:
-          type: string
-
-    SearchMemeThumb:
-      type: object
-      properties:
-        ThumbUrl:
-          type: string
-        ThumbWidth:
-          type: integer
-        ThumbHeight:
-          type: integer
-        
-    SearchMemeDto:
+  schemas:
+    SearchMemeResponseItemDto:
       type: object
       properties:
         Id:
@@ -170,19 +201,20 @@ components:
           format: int64
         OcrResult:
           type: string
-        OcrResultHighlight:
-          type: array
-          items:
-            type: string
-        ImageUrl:
-          type: string
+        Image:
+          $ref: "#/components/schemas/ImageUrlDto"
         Thumbnail:
-          $ref: "#/components/schemas/SearchMemeThumb"
+          $ref: "#/components/schemas/ImageUrlDto"
         Hash:
           type: string
 
     CreateMemeResponseDto:
       type: object
+      required:
+        - Id
+        - OcrResult
+        - Hash
+        - DuplicateStatus
       properties:
         Id:
           type: string
@@ -193,14 +225,28 @@ components:
           type: string
         DuplicateStatus:
           $ref: "#/components/schemas/DuplicateStatus"
-        
-    ImageDto:
+
+    CreateImageRequestDto:
       type: object
+      required:
+        - ImageBase64
       properties:
-        MimeType:
-          type: string
         ImageBase64:
           type: string
+
+    ImageUrlDto:
+      type: object
+      required:
+        - Url
+        - Width
+        - Height
+      properties:
+        Url:
+          type: string
+        Width:
+          type: integer
+        Height:
+          type: integer
 
     DuplicateStatus:
       type: string
@@ -209,3 +255,10 @@ components:
         - duplicate_hash
         - new
 
+    ErrorResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string

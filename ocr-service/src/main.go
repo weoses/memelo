@@ -3,13 +3,13 @@ package main
 import (
 	"github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
+	"github.com/weoses/memelo/apispec/ocr-server/server"
+	"github.com/weoses/memelo/common/commonconfig"
+	"github.com/weoses/memelo/common/commonmiddleware"
+	"github.com/weoses/memelo/ocr-server/api"
+	"github.com/weoses/memelo/ocr-server/conf"
+	"github.com/weoses/memelo/ocr-server/service"
 	"go.uber.org/fx"
-	"mine.local/ocr-gallery/apispec/ocr-server/server"
-	"mine.local/ocr-gallery/common/commonconfig"
-	"mine.local/ocr-gallery/common/commonmiddleware"
-	"mine.local/ocr-gallery/ocr-server/api"
-	"mine.local/ocr-gallery/ocr-server/conf"
-	"mine.local/ocr-gallery/ocr-server/service"
 )
 
 func main() {
@@ -21,6 +21,7 @@ func main() {
 		fx.Provide(conf.NewImageConverterConfig),
 		fx.Provide(conf.NewImageEmbeddingConfig),
 		fx.Provide(api.NewApiHandler),
+		fx.Provide(commonmiddleware.NewLoggingMiddleware),
 		fx.Provide(service.NewImageEmbeddingExtractor),
 		fx.Provide(service.NewVisionImageClient),
 		fx.Provide(service.NewOcrProcessor),
@@ -30,17 +31,22 @@ func main() {
 	).Run()
 }
 
-func Startup(handler server.StrictServerInterface, config *commonconfig.ServerConfig) {
+func Startup(handler server.StrictServerInterface,
+	config *commonconfig.ServerConfig,
+	loggingMiddleware commonmiddleware.LoggingMiddlewareFunc) {
 	srv := echo.New()
+	srv.Debug = true
 
 	server.RegisterHandlers(
 		srv,
 		server.NewStrictHandler(
 			handler,
 			[]oapiEcho.StrictEchoMiddlewareFunc{
-				commonmiddleware.NewLoggingMiddleware(),
+				oapiEcho.StrictEchoMiddlewareFunc(loggingMiddleware),
 			}),
 	)
-
-	srv.Start(config.ListenAddress)
+	err := srv.Start(config.ListenAddress)
+	if err != nil {
+		panic(err)
+	}
 }

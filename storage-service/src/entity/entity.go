@@ -14,7 +14,8 @@ type ElasticImageMetaData struct {
 	Hash        string
 	Result      string
 	ThumbSize   *ElasticSizes `validator:required`
-	Created     int64         `validator:required`
+	ImageSize   *ElasticSizes
+	Created     int64 `validator:required`
 	Updated     int64
 	EmbeddingV1 *ElasticEmbeddingV1 `validator:required`
 }
@@ -24,12 +25,8 @@ type ElasticEmbeddingV1 struct {
 	Model string     `validator:required`
 }
 
-type ElasticMatchedContent struct {
-	Metadata      *ElasticImageMetaData `validator:required`
-	ResultMatched *[]string             `validator:required`
-}
-
 type Image struct {
-	ImageBase64 *string `validator:required`
-	MimeType    string
+	ImageBase64 string `validator:required`
+	Width       int
+	Height      int
 }

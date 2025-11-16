@@ -23,14 +23,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OcrResponseDto"
+        500:
+          description: failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
 components:
   schemas:
     OcrRequestDto:
       type: object
       properties:
-        ImageId: 
-          type: string
         Image:
           $ref: "#/components/schemas/ImageDto"
 
@@ -46,9 +50,9 @@ components:
       type: object
       properties:
         ImageThumb:
-          $ref: "#/components/schemas/ThumbnailDto"
-        Image:
-          $ref: "#/components/schemas/ImageDto"
+          $ref: "#/components/schemas/ImageWithSizeDto"
+        ImageSource:
+          $ref: "#/components/schemas/ImageWithSizeDto"
         Embedding:
           $ref: "#/components/schemas/EmbeddingDto"
         ImageText:
@@ -66,8 +70,12 @@ components:
         ModelName:
           type: string
         
-    ThumbnailDto:
+    ImageWithSizeDto:
       type: object
+      required:
+        - Image
+        - Width
+        - Height
       properties:
         Image:
             $ref: "#/components/schemas/ImageDto"
@@ -78,8 +86,16 @@ components:
 
     ImageDto:
       type: object
+      required:
+        - ImageBase64
       properties:
-        MimeType:
-          type: string
         ImageBase64:
+          type: string
+
+    ErrorResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
           type: string
