@@ -29,10 +29,10 @@ type CreateImageRequestDto struct {
 
 // CreateMemeResponseDto defines model for CreateMemeResponseDto.
 type CreateMemeResponseDto struct {
-	DuplicateStatus *DuplicateStatus    `json:"DuplicateStatus,omitempty"`
-	Hash            *string             `json:"Hash,omitempty"`
-	Id              *openapi_types.UUID `json:"Id,omitempty"`
-	OcrResult       *string             `json:"OcrResult,omitempty"`
+	DuplicateStatus DuplicateStatus    `json:"DuplicateStatus"`
+	Hash            string             `json:"Hash"`
+	Id              openapi_types.UUID `json:"Id"`
+	OcrResult       string             `json:"OcrResult"`
 }
 
 // DuplicateStatus defines model for DuplicateStatus.

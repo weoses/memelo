@@ -21,10 +21,10 @@ func ElasticToCreateResponse(
 	duplicate server.DuplicateStatus,
 	dto *server.CreateMeme200JSONResponse,
 ) {
-	dto.Hash = &elasticEntity.Hash
-	dto.Id = &elasticEntity.ImageId
-	dto.OcrResult = &elasticEntity.Result
-	dto.DuplicateStatus = &duplicate
+	dto.Hash = elasticEntity.Hash
+	dto.Id = elasticEntity.ImageId
+	dto.OcrResult = elasticEntity.Result
+	dto.DuplicateStatus = duplicate
 }
 
 func OcrImageToEntity(image *client.ImageWithSizeDto) *entity.Image {
