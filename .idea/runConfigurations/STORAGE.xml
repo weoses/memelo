@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="STORAGE" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="kal" />
+    <working_directory value="$PROJECT_DIR$/storage-service" />
+    <kind value="PACKAGE" />
+    <package value="github.com/weoses/memelo/storage-service" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/storage-service/src/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
