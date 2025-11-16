@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/adrg/strutil/metrics"
@@ -92,9 +91,9 @@ func (a *ApiHandler) CreateMeme(
 		return nil, err
 	}
 
-	if strings.TrimSpace(ocrTextResult) == "" {
-		return nil, errors.New("no text on image")
-	}
+	//if strings.TrimSpace(ocrTextResult) == "" {
+	//	return nil, errors.New("no text on image")
+	//}
 
 	if contentDuplicate != nil {
 		contentDuplicateTextResult := contentDuplicate.Result
@@ -183,13 +182,13 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 			Id:   &metadataItem.ImageId,
 			Image: &server.ImageUrlDto{
 				Url:    imageUrl,
-				Height: &metadataItem.ImageSize.Height,
-				Width:  &metadataItem.ImageSize.Width,
+				Height: metadataItem.ImageSize.Height,
+				Width:  metadataItem.ImageSize.Width,
 			},
 			Thumbnail: &server.ImageUrlDto{
 				Url:    imageThumbUrl,
-				Height: &metadataItem.ThumbSize.Height,
-				Width:  &metadataItem.ThumbSize.Width,
+				Height: metadataItem.ThumbSize.Height,
+				Width:  metadataItem.ThumbSize.Width,
 			},
 			OcrResult: &metadataItem.Result,
 			SortId:    &metadataItem.Created,
@@ -325,8 +324,8 @@ func (a *ApiHandler) GetMemeImageThumbUrl(ctx context.Context, request server.Ge
 
 	resp := &server.GetMemeImageThumbUrl200JSONResponse{
 		Url:    url,
-		Height: &memeMetadata.ThumbSize.Height,
-		Width:  &memeMetadata.ThumbSize.Width,
+		Height: memeMetadata.ThumbSize.Height,
+		Width:  memeMetadata.ThumbSize.Width,
 	}
 	return resp, nil
 }
@@ -353,8 +352,8 @@ func (a *ApiHandler) GetMemeImageUrl(ctx context.Context, request server.GetMeme
 
 	resp := &server.GetMemeImageUrl200JSONResponse{
 		Url:    url,
-		Height: &memeMetadata.ImageSize.Height,
-		Width:  &memeMetadata.ImageSize.Width,
+		Height: memeMetadata.ImageSize.Height,
+		Width:  memeMetadata.ImageSize.Width,
 	}
 	return resp, nil
 }

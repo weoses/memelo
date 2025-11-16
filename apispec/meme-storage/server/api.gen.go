@@ -38,11 +38,17 @@ type CreateMemeResponseDto struct {
 // DuplicateStatus defines model for DuplicateStatus.
 type DuplicateStatus string
 
+// ErrorResponseDto defines model for ErrorResponseDto.
+type ErrorResponseDto struct {
+	Error   *string `json:"error,omitempty"`
+	Message *string `json:"message,omitempty"`
+}
+
 // ImageUrlDto defines model for ImageUrlDto.
 type ImageUrlDto struct {
-	Height *int   `json:"Height,omitempty"`
+	Height int    `json:"Height"`
 	Url    string `json:"Url"`
-	Width  *int   `json:"Width,omitempty"`
+	Width  int    `json:"Width"`
 }
 
 // SearchMemeResponseItemDto defines model for SearchMemeResponseItemDto.
@@ -351,6 +357,15 @@ func (response CheckDuplicates200Response) VisitCheckDuplicatesResponse(w http.R
 	return nil
 }
 
+type CheckDuplicates500JSONResponse ErrorResponseDto
+
+func (response CheckDuplicates500JSONResponse) VisitCheckDuplicatesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type SearchMemeRequestObject struct {
 	AccountId AccountId `json:"AccountId"`
 	Params    SearchMemeParams
@@ -365,6 +380,15 @@ type SearchMeme200JSONResponse []SearchMemeResponseItemDto
 func (response SearchMeme200JSONResponse) VisitSearchMemeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchMeme500JSONResponse ErrorResponseDto
+
+func (response SearchMeme500JSONResponse) VisitSearchMemeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -387,6 +411,15 @@ func (response CreateMeme200JSONResponse) VisitCreateMemeResponse(w http.Respons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreateMeme500JSONResponse ErrorResponseDto
+
+func (response CreateMeme500JSONResponse) VisitCreateMemeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteMemeRequestObject struct {
 	AccountId AccountId `json:"AccountId"`
 	MemeId    MemeId    `json:"MemeId"`
@@ -404,6 +437,15 @@ func (response DeleteMeme200Response) VisitDeleteMemeResponse(w http.ResponseWri
 	return nil
 }
 
+type DeleteMeme500JSONResponse ErrorResponseDto
+
+func (response DeleteMeme500JSONResponse) VisitDeleteMemeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetMemeImageThumbUrlRequestObject struct {
 	AccountId AccountId `json:"AccountId"`
 	MemeId    MemeId    `json:"MemeId"`
@@ -418,6 +460,15 @@ type GetMemeImageThumbUrl200JSONResponse ImageUrlDto
 func (response GetMemeImageThumbUrl200JSONResponse) VisitGetMemeImageThumbUrlResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetMemeImageThumbUrl500JSONResponse ErrorResponseDto
+
+func (response GetMemeImageThumbUrl500JSONResponse) VisitGetMemeImageThumbUrlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -440,6 +491,15 @@ func (response GetMemeImageUrl200JSONResponse) VisitGetMemeImageUrlResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetMemeImageUrl500JSONResponse ErrorResponseDto
+
+func (response GetMemeImageUrl500JSONResponse) VisitGetMemeImageUrlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateOcrRequestObject struct {
 	AccountId AccountId `json:"AccountId"`
 }
@@ -454,6 +514,15 @@ type UpdateOcr200Response struct {
 func (response UpdateOcr200Response) VisitUpdateOcrResponse(w http.ResponseWriter) error {
 	w.WriteHeader(200)
 	return nil
+}
+
+type UpdateOcr500JSONResponse ErrorResponseDto
+
+func (response UpdateOcr500JSONResponse) VisitUpdateOcrResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type UpdateOcrOneRequestObject struct {
@@ -471,6 +540,15 @@ type UpdateOcrOne200Response struct {
 func (response UpdateOcrOne200Response) VisitUpdateOcrOneResponse(w http.ResponseWriter) error {
 	w.WriteHeader(200)
 	return nil
+}
+
+type UpdateOcrOne500JSONResponse ErrorResponseDto
+
+func (response UpdateOcrOne500JSONResponse) VisitUpdateOcrOneResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 // StrictServerInterface represents all server handlers.

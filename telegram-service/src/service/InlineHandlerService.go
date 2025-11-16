@@ -3,11 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"log/slog"
-	"mine.local/ocr-gallery/common/commonconst"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
+	"mine.local/ocr-gallery/common/commonconst"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"mine.local/ocr-gallery/telegram-service/conf"
@@ -105,7 +106,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		searchAfter,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ProcessSearchQuery failed: %w", err)
 	}
 
 	slog.Info("Search query result",

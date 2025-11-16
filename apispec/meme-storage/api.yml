@@ -13,6 +13,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
   /api/v1/accounts/{AccountId}/update-ocr:
     post:
       parameters:
@@ -21,6 +27,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
   
   /api/v1/accounts/{AccountId}/update-ocr/{MemeId}:
     post:
@@ -31,6 +43,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
   /api/v1/accounts/{AccountId}/meme:
     get:
@@ -49,6 +67,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SearchMemeResponseItemDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
     post:
       operationId: "CreateMeme"
       parameters:
@@ -65,6 +89,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateMemeResponseDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/url:
@@ -80,6 +110,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImageUrlDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}:
     delete:
@@ -90,6 +126,12 @@ paths:
       responses:
         200:
           description: ok
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}/image/thumb/url:
     get:
@@ -104,6 +146,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImageUrlDto"
+        500:
+          description: error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
 components:
   parameters:
     Query:
@@ -162,6 +210,11 @@ components:
 
     CreateMemeResponseDto:
       type: object
+      required:
+        - Id
+        - OcrResult
+        - Hash
+        - DuplicateStatus
       properties:
         Id:
           type: string
@@ -185,6 +238,8 @@ components:
       type: object
       required:
         - Url
+        - Width
+        - Height
       properties:
         Url:
           type: string
@@ -200,3 +255,10 @@ components:
         - duplicate_hash
         - new
 
+    ErrorResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string

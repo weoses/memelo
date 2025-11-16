@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"mine.local/ocr-gallery/apispec/meme-storage/client"
+	"mine.local/ocr-gallery/common/commonhelper"
 	"mine.local/ocr-gallery/telegram-service/conf"
 	"mine.local/ocr-gallery/telegram-service/entity"
 )
@@ -56,7 +56,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		ctx,
 		accountId,
 		&client.SearchMemeParams{
-			MemeQuery:         query,
+			Query:             query,
 			PageSize:          &pageSize,
 			SearchAfterSortId: searchAfterSortId,
 		})
@@ -65,18 +65,23 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		return nil, fmt.Errorf("storageService: search meme query failed query: %s : %w", query, err)
 	}
 
+	if response.HTTPResponse.StatusCode == 500 {
+		errorMessage := response.JSON500.Error
+		return nil, fmt.Errorf("storageService: failed to request storage service: %v", errorMessage)
+	}
+
 	if response.HTTPResponse.StatusCode >= 400 {
-		return nil, fmt.Errorf("storageService: failed to request storage service: %s", string(response.Body))
+		return nil, fmt.Errorf("storageService: failed to request storage service")
 	}
 
 	entityResult := make([]*entity.MemeSearchResult, len(*response.JSON200))
 	for i, dto := range *response.JSON200 {
 		entityResult[i] = &entity.MemeSearchResult{
 			Id:          *dto.Id,
-			ImageUrl:    *dto.ImageUrl,
-			ThumbUrl:    *dto.Thumbnail.ThumbUrl,
-			ThumbWidth:  *dto.Thumbnail.ThumbWidth,
-			ThumbHeight: *dto.Thumbnail.ThumbHeight,
+			ImageUrl:    dto.Image.Url,
+			ThumbUrl:    dto.Thumbnail.Url,
+			ThumbWidth:  dto.Thumbnail.Width,
+			ThumbHeight: dto.Thumbnail.Height,
 			SortId:      *dto.SortId,
 		}
 	}
@@ -92,31 +97,31 @@ func (u *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime
 	data := strbuf.String()
 
 	reqBody := client.CreateMemeJSONRequestBody{}
-	reqBody.ImageBase64 = &data
-	reqBody.MimeType = &mime
+	reqBody.ImageBase64 = data
 
-	resp, err := u.cl.CreateMemeWithResponse(
+	response, err := u.cl.CreateMemeWithResponse(
 		ctx,
 		accountId,
 		reqBody,
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("storageService: create meme failed : %w", err)
+		return nil, fmt.Errorf("storageService: create meme failed: %w", err)
 	}
 
-	if resp.StatusCode() != 200 {
-		return nil, errors.New("storageService: create meme failed : storage service status code non 2xx ")
+	if response.HTTPResponse.StatusCode == 500 {
+		errorMessage := response.JSON500.Error
+		return nil, fmt.Errorf("storageService: failed to request storage service: %s", commonhelper.DefaultString(errorMessage))
 	}
 
+	if response.HTTPResponse.StatusCode >= 400 {
+		return nil, fmt.Errorf("storageService: failed to request storage service")
+	}
 	creationResult := &entity.MemeCreateResult{
-		Id:   *resp.JSON200.Id,
-		Text: *resp.JSON200.OcrResult,
+		Id:   response.JSON200.Id,
+		Text: response.JSON200.OcrResult,
 	}
-
-	if resp.JSON200.DuplicateStatus != nil {
-		creationResult.DuplicateStatus = string(*resp.JSON200.DuplicateStatus)
-	}
+	creationResult.DuplicateStatus = string(response.JSON200.DuplicateStatus)
 
 	return creationResult, nil
 }
