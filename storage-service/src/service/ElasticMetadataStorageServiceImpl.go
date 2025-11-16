@@ -499,8 +499,6 @@ func unmarhalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDat
 	return &document, err
 }
 
-func addr[T any](v T) *T { return &v }
-
 func NewElasticMetadataStorage(
 	config *conf.MetadataStorageConfig,
 	validate *validator.Validate,

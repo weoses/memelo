@@ -1,11 +1,7 @@
 package entity
 
 type Image struct {
-	MimeType string
-	Data     *[]byte
-}
-
-type ImageSizes struct {
+	Data   *[]byte
 	Width  int
 	Height int
 }

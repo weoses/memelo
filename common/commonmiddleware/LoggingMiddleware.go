@@ -3,12 +3,13 @@ package commonmiddleware
 import (
 	"log"
 
-	"github.com/gdexlab/go-render/render"
 	echoServer "github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 )
 
-func NewLoggingMiddleware() oapiEcho.StrictEchoMiddlewareFunc {
+type LoggingMiddlewareFunc oapiEcho.StrictEchoMiddlewareFunc
+
+func NewLoggingMiddleware() LoggingMiddlewareFunc {
 	return func(nextChain oapiEcho.StrictEchoHandlerFunc, operationID string) oapiEcho.StrictEchoHandlerFunc {
 		return func(ctx echoServer.Context, request interface{}) (interface{}, error) {
 			method := ctx.Request().Method
@@ -19,7 +20,7 @@ func NewLoggingMiddleware() oapiEcho.StrictEchoMiddlewareFunc {
 
 			response, err := nextChain(ctx, request)
 			if err != nil {
-				log.Printf("Error    [%s] ! %s", operationID, render.Render(err))
+				log.Printf("Error    [%s] ! %s", operationID, err)
 
 			} else {
 				status := ctx.Response().Status

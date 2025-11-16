@@ -21,6 +21,7 @@ func main() {
 		fx.Provide(conf.NewImageConverterConfig),
 		fx.Provide(conf.NewImageEmbeddingConfig),
 		fx.Provide(api.NewApiHandler),
+		fx.Provide(commonmiddleware.NewLoggingMiddleware),
 		fx.Provide(service.NewImageEmbeddingExtractor),
 		fx.Provide(service.NewVisionImageClient),
 		fx.Provide(service.NewOcrProcessor),
@@ -30,17 +31,22 @@ func main() {
 	).Run()
 }
 
-func Startup(handler server.StrictServerInterface, config *commonconfig.ServerConfig) {
+func Startup(handler server.StrictServerInterface,
+	config *commonconfig.ServerConfig,
+	loggingMiddleware commonmiddleware.LoggingMiddlewareFunc) {
 	srv := echo.New()
+	srv.Debug = true
 
 	server.RegisterHandlers(
 		srv,
 		server.NewStrictHandler(
 			handler,
 			[]oapiEcho.StrictEchoMiddlewareFunc{
-				commonmiddleware.NewLoggingMiddleware(),
+				oapiEcho.StrictEchoMiddlewareFunc(loggingMiddleware),
 			}),
 	)
-
-	srv.Start(config.ListenAddress)
+	err := srv.Start(config.ListenAddress)
+	if err != nil {
+		panic(err)
+	}
 }
