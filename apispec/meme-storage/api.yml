@@ -3,7 +3,7 @@ info:
   description: ''
   version: "1.0.0"
   title: 'Meme-server'
- 
+
 paths:
   /api/v1/accounts/{AccountId}/check-duplicates:
     post:
@@ -36,7 +36,7 @@ paths:
     get:
       parameters:
         - $ref: "#/components/parameters/AccountId"
-        - $ref: "#/components/parameters/MemeQuery"
+        - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/SearchAfterId"
         - $ref: "#/components/parameters/PageSize"
       operationId: "SearchMeme"
@@ -48,7 +48,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SearchMemeDto"
+                  $ref: "#/components/schemas/SearchMemeResponseItemDto"
     post:
       operationId: "CreateMeme"
       parameters:
@@ -57,7 +57,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ImageDto"
+              $ref: "#/components/schemas/CreateImageRequestDto"
       responses:
         200:
           description: ok
@@ -82,7 +82,7 @@ paths:
                 $ref: "#/components/schemas/ImageUrlDto"
 
   /api/v1/accounts/{AccountId}/meme/{MemeId}:
-    get:
+    delete:
       parameters:
         - $ref: "#/components/parameters/AccountId"
         - $ref: "#/components/parameters/MemeId"
@@ -104,12 +104,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImageUrlDto"
-components: 
+components:
   parameters:
-    MemeQuery:
+    Query:
       in: query
       required: true
-      name: MemeQuery
+      name: Query
       schema:
         type: string
     SearchAfterId:
@@ -125,7 +125,6 @@ components:
       name: PageSize
       schema:
         type: integer
-      
     MemeId:
       in: path
       required: true
@@ -142,24 +141,8 @@ components:
         type: string
         format: uuid
 
-  schemas:    
-    ImageUrlDto:
-      type: object
-      properties:
-        Url:
-          type: string
-
-    SearchMemeThumb:
-      type: object
-      properties:
-        ThumbUrl:
-          type: string
-        ThumbWidth:
-          type: integer
-        ThumbHeight:
-          type: integer
-        
-    SearchMemeDto:
+  schemas:
+    SearchMemeResponseItemDto:
       type: object
       properties:
         Id:
@@ -170,14 +153,10 @@ components:
           format: int64
         OcrResult:
           type: string
-        OcrResultHighlight:
-          type: array
-          items:
-            type: string
-        ImageUrl:
-          type: string
+        Image:
+          $ref: "#/components/schemas/ImageUrlDto"
         Thumbnail:
-          $ref: "#/components/schemas/SearchMemeThumb"
+          $ref: "#/components/schemas/ImageUrlDto"
         Hash:
           type: string
 
@@ -193,14 +172,26 @@ components:
           type: string
         DuplicateStatus:
           $ref: "#/components/schemas/DuplicateStatus"
-        
-    ImageDto:
+
+    CreateImageRequestDto:
       type: object
+      required:
+        - ImageBase64
       properties:
-        MimeType:
-          type: string
         ImageBase64:
           type: string
+
+    ImageUrlDto:
+      type: object
+      required:
+        - Url
+      properties:
+        Url:
+          type: string
+        Width:
+          type: integer
+        Height:
+          type: integer
 
     DuplicateStatus:
       type: string

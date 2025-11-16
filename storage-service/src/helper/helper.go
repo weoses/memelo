@@ -9,9 +9,9 @@ import (
 	"mine.local/ocr-gallery/storage-service/entity"
 )
 
-func CalcHash(base64Image *string) string {
+func CalcHash(base64Image string) string {
 	hasher := md5.New()
-	hasher.Write([]byte(*base64Image))
+	hasher.Write([]byte(base64Image))
 	byteHash := hasher.Sum(nil)
 	return hex.EncodeToString(byteHash)
 }
@@ -27,26 +27,16 @@ func ElasticToCreateResponse(
 	dto.DuplicateStatus = &duplicate
 }
 
-func ElasticToSearchMemeDto(elasticEntity *entity.ElasticMatchedContent, dto *server.SearchMemeDto) {
-	dto.OcrResult = &elasticEntity.Metadata.Result
-	dto.Hash = &elasticEntity.Metadata.Hash
-	dto.Id = &elasticEntity.Metadata.ImageId
-	dto.SortId = &elasticEntity.Metadata.Created
-
-	highlightText := *elasticEntity.ResultMatched
-	dto.OcrResultHighlight = &highlightText
-}
-
-func ImageToEntity(image *client.ImageDto) *entity.Image {
+func OcrImageToEntity(image *client.ImageWithSizeDto) *entity.Image {
 	return &entity.Image{
-		ImageBase64: image.ImageBase64,
-		MimeType:    *image.MimeType,
+		ImageBase64: image.Image.ImageBase64,
+		Width:       image.Width,
+		Height:      image.Height,
 	}
 }
 
-func ImageToEntity2(image *server.ImageDto) *entity.Image {
+func ApiImageToEntity(image *server.CreateImageRequestDto) *entity.Image {
 	return &entity.Image{
 		ImageBase64: image.ImageBase64,
-		MimeType:    *image.MimeType,
 	}
 }

@@ -22,6 +22,7 @@ func main() {
 		fx.Provide(conf.NewOcrConfig),
 		fx.Provide(conf.NewMetadataStorageConfig),
 		fx.Provide(conf.NewImageStorageConfig),
+		fx.Provide(commonmiddleware.NewLoggingMiddleware),
 		fx.Provide(service.NewMetadataStorageService),
 		fx.Provide(service.NewImageStorageService),
 		fx.Provide(service.NewOcrService),
@@ -33,14 +34,16 @@ func main() {
 func Startup(
 	storage server.StrictServerInterface,
 	conf *commonconfig.ServerConfig,
+	middleware commonmiddleware.LoggingMiddlewareFunc,
 ) {
 	srv := echo.New()
+	srv.Debug = true
 
 	server.RegisterHandlers(srv,
 		server.NewStrictHandler(
 			storage,
 			[]oapiEcho.StrictEchoMiddlewareFunc{
-				commonmiddleware.NewLoggingMiddleware(),
+				oapiEcho.StrictEchoMiddlewareFunc(middleware),
 			}),
 	)
 

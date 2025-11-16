@@ -1,6 +1,6 @@
 module mine.local/ocr-gallery/common
 
-go 1.23.2
+go 1.24.10
 
 require (
 	github.com/labstack/echo/v4 v4.13.3

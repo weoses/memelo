@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -14,8 +15,16 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"mine.local/ocr-gallery/storage-service/conf"
-	"mine.local/ocr-gallery/storage-service/entity"
 )
+
+type ImageStorageService interface {
+	Save(ctx context.Context, id uuid.UUID, imageBase64 string, thumbBase64 string) error
+	GetImage(ctx context.Context, id uuid.UUID) (*string, error)
+
+	GetUrl(ctx context.Context, id uuid.UUID) (string, error)
+	GetUrlThumb(ctx context.Context, id uuid.UUID) (string, error)
+	DeleteImage(ctx context.Context, id uuid.UUID) error
+}
 
 type MinioFileStorageServiceImpl struct {
 	client     minio.Client
@@ -30,7 +39,7 @@ func (m *MinioFileStorageServiceImpl) DeleteImage(ctx context.Context, id uuid.U
 }
 
 // GetImage implements ImageStorageService.
-func (m *MinioFileStorageServiceImpl) GetImage(ctx context.Context, id uuid.UUID) (*entity.Image, error) {
+func (m *MinioFileStorageServiceImpl) GetImage(ctx context.Context, id uuid.UUID) (*string, error) {
 	obj, err := m.client.GetObject(
 		ctx,
 		m.bucketName,
@@ -51,18 +60,9 @@ func (m *MinioFileStorageServiceImpl) GetImage(ctx context.Context, id uuid.UUID
 		return nil, err
 	}
 
-	stat, err := obj.Stat()
-	if err != nil {
-		return nil, err
-	}
-
 	dataBase64 := buf.String()
-	contentType := stat.ContentType
 
-	return &entity.Image{
-		ImageBase64: &dataBase64,
-		MimeType:    contentType,
-	}, nil
+	return &dataBase64, nil
 }
 
 // GetUrl implements ImageStorageService.
@@ -99,32 +99,37 @@ func (m *MinioFileStorageServiceImpl) GetUrlThumb(ctx context.Context, id uuid.U
 }
 
 // Save implements ImageStorageService.
-func (m *MinioFileStorageServiceImpl) Save(ctx context.Context, id uuid.UUID, image *entity.Image, thumb *entity.Image) error {
+func (m *MinioFileStorageServiceImpl) Save(ctx context.Context, id uuid.UUID, image string, thumb string) error {
 	_, err := m.client.PutObject(
 		ctx,
 		m.bucketName,
 		getObjectNameV1(id, false),
-		base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(*image.ImageBase64)),
+		base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(image)),
 		-1,
 		minio.PutObjectOptions{
-			ContentType: image.MimeType,
+			ContentType: "image/jpeg",
 		},
 	)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("PutObject failed for source doc: %w", err)
 	}
 
 	_, err = m.client.PutObject(
 		ctx,
 		m.bucketName,
 		getObjectNameV1(id, true),
-		base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(*thumb.ImageBase64)),
+		base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(thumb)),
 		-1,
 		minio.PutObjectOptions{
-			ContentType: thumb.MimeType,
+			ContentType: "image/jpeg",
 		},
 	)
+
+	if err != nil {
+		return fmt.Errorf("PutObject failed for thumb doc: %w", err)
+	}
+
 	return err
 }
 
@@ -158,4 +163,8 @@ func getObjectNameV1(id uuid.UUID, thumb bool) string {
 	}
 
 	return id.String() + "/" + imgName
+}
+
+func NewImageStorageService(config *conf.ImageStorageConfig) (ImageStorageService, error) {
+	return NewMinioFileStorageServiceImpl(config)
 }
