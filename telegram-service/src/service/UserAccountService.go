@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/telegram-service/conf"
+	"github.com/weoses/memelo/telegram-service/entity"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"mine.local/ocr-gallery/telegram-service/conf"
-	"mine.local/ocr-gallery/telegram-service/entity"
 )
 
 type UserAccountService interface {

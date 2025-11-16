@@ -1,4 +1,4 @@
-module mine.local/ocr-gallery/storage-service
+module github.com/weoses/memelo/storage-service
 
 go 1.23.2
 

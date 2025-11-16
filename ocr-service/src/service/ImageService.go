@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"mine.local/ocr-gallery/apispec/ocr-server/server"
-	"mine.local/ocr-gallery/common/commonerror"
-	"mine.local/ocr-gallery/ocr-server/entity"
+	"github.com/weoses/memelo/apispec/ocr-server/server"
+	"github.com/weoses/memelo/common/commonerror"
+	"github.com/weoses/memelo/ocr-server/entity"
 )
 
 type ImageService interface {

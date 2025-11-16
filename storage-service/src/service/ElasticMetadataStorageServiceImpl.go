@@ -15,10 +15,10 @@ import (
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"mine.local/ocr-gallery/common/commonconst"
-	"mine.local/ocr-gallery/common/commonhelper"
-	"mine.local/ocr-gallery/storage-service/conf"
-	"mine.local/ocr-gallery/storage-service/entity"
+	"github.com/weoses/memelo/common/commonconst"
+	"github.com/weoses/memelo/common/commonhelper"
+	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/entity"
 )
 
 const IndexName = "image-metadata"

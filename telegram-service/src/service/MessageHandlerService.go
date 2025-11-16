@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"mine.local/ocr-gallery/common/commonconst"
+	"github.com/weoses/memelo/common/commonconst"
 )
 
 type MessageHandlerService interface {

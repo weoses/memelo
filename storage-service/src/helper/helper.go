@@ -4,9 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 
-	"mine.local/ocr-gallery/apispec/meme-storage/server"
-	"mine.local/ocr-gallery/apispec/ocr-server/client"
-	"mine.local/ocr-gallery/storage-service/entity"
+	"github.com/weoses/memelo/apispec/meme-storage/server"
+	"github.com/weoses/memelo/apispec/ocr-server/client"
+	"github.com/weoses/memelo/storage-service/entity"
 )
 
 func CalcHash(base64Image string) string {

@@ -2,10 +2,10 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/weoses/memelo/common/commonconfig"
+	"github.com/weoses/memelo/telegram-service/conf"
+	"github.com/weoses/memelo/telegram-service/service"
 	"go.uber.org/fx"
-	"mine.local/ocr-gallery/common/commonconfig"
-	"mine.local/ocr-gallery/telegram-service/conf"
-	"mine.local/ocr-gallery/telegram-service/service"
 )
 
 func Statup(serv service.TelegramBotService) {

@@ -1,4 +1,4 @@
-module mine.local/ocr-gallery/telegram-service
+module github.com/weoses/memelo/telegram-service
 
 go 1.23.2
 

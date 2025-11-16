@@ -5,8 +5,8 @@ import (
 
 	"github.com/h2non/bimg"
 	"github.com/pkg/errors"
-	"mine.local/ocr-gallery/ocr-server/conf"
-	"mine.local/ocr-gallery/ocr-server/entity"
+	"github.com/weoses/memelo/ocr-server/conf"
+	"github.com/weoses/memelo/ocr-server/entity"
 )
 
 type ImageConveter interface {

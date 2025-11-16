@@ -1,4 +1,4 @@
-module mine.local/ocr-gallery/common
+module github.com/weoses/memelo/common
 
 go 1.24.10
 

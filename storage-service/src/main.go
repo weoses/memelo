@@ -4,12 +4,12 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
+	"github.com/weoses/memelo/apispec/meme-storage/server"
+	"github.com/weoses/memelo/common/commonconfig"
+	"github.com/weoses/memelo/common/commonmiddleware"
+	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/service"
 	"go.uber.org/fx"
-	"mine.local/ocr-gallery/apispec/meme-storage/server"
-	"mine.local/ocr-gallery/common/commonconfig"
-	"mine.local/ocr-gallery/common/commonmiddleware"
-	"mine.local/ocr-gallery/storage-service/conf"
-	"mine.local/ocr-gallery/storage-service/service"
 )
 
 func main() {

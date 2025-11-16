@@ -5,7 +5,7 @@ import (
 	"context"
 
 	vision "cloud.google.com/go/vision/apiv1"
-	"mine.local/ocr-gallery/ocr-server/entity"
+	"github.com/weoses/memelo/ocr-server/entity"
 )
 
 type OcrProcessor interface {

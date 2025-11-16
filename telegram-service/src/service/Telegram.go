@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"mine.local/ocr-gallery/common/commonconst"
-	"mine.local/ocr-gallery/telegram-service/conf"
+	"github.com/weoses/memelo/common/commonconst"
+	"github.com/weoses/memelo/telegram-service/conf"
 )
 
 type TelegramBotService interface {

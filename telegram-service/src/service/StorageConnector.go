@@ -7,10 +7,10 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"mine.local/ocr-gallery/apispec/meme-storage/client"
-	"mine.local/ocr-gallery/common/commonhelper"
-	"mine.local/ocr-gallery/telegram-service/conf"
-	"mine.local/ocr-gallery/telegram-service/entity"
+	"github.com/weoses/memelo/apispec/meme-storage/client"
+	"github.com/weoses/memelo/common/commonhelper"
+	"github.com/weoses/memelo/telegram-service/conf"
+	"github.com/weoses/memelo/telegram-service/entity"
 )
 
 type StorageConnector interface {

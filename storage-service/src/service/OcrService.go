@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"mine.local/ocr-gallery/apispec/ocr-server/client"
-	"mine.local/ocr-gallery/storage-service/conf"
-	"mine.local/ocr-gallery/storage-service/entity"
-	"mine.local/ocr-gallery/storage-service/helper"
+	"github.com/weoses/memelo/apispec/ocr-server/client"
+	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/entity"
+	"github.com/weoses/memelo/storage-service/helper"
 )
 
 type OcrSerivce interface {

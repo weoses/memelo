@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"mine.local/ocr-gallery/common/commonconst"
+	"github.com/weoses/memelo/common/commonconst"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"mine.local/ocr-gallery/telegram-service/conf"
+	"github.com/weoses/memelo/telegram-service/conf"
 )
 
 const inlineDeletePrefix = "!del"

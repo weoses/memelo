@@ -8,15 +8,15 @@ import (
 	"time"
 
 	"github.com/adrg/strutil/metrics"
-	"mine.local/ocr-gallery/common/commonhelper"
+	"github.com/weoses/memelo/common/commonhelper"
 
 	"github.com/adrg/strutil"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"mine.local/ocr-gallery/apispec/meme-storage/server"
-	"mine.local/ocr-gallery/common/commonconst"
-	"mine.local/ocr-gallery/storage-service/entity"
-	"mine.local/ocr-gallery/storage-service/helper"
+	"github.com/weoses/memelo/apispec/meme-storage/server"
+	"github.com/weoses/memelo/common/commonconst"
+	"github.com/weoses/memelo/storage-service/entity"
+	"github.com/weoses/memelo/storage-service/helper"
 )
 
 type ApiHandler struct {

@@ -1,4 +1,4 @@
-module mine.local/ocr-gallery/apispec
+module github.com/weoses/memelo/apispec
 
 go 1.24.10
 

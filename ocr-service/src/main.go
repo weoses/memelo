@@ -3,13 +3,13 @@ package main
 import (
 	"github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
+	"github.com/weoses/memelo/apispec/ocr-server/server"
+	"github.com/weoses/memelo/common/commonconfig"
+	"github.com/weoses/memelo/common/commonmiddleware"
+	"github.com/weoses/memelo/ocr-server/api"
+	"github.com/weoses/memelo/ocr-server/conf"
+	"github.com/weoses/memelo/ocr-server/service"
 	"go.uber.org/fx"
-	"mine.local/ocr-gallery/apispec/ocr-server/server"
-	"mine.local/ocr-gallery/common/commonconfig"
-	"mine.local/ocr-gallery/common/commonmiddleware"
-	"mine.local/ocr-gallery/ocr-server/api"
-	"mine.local/ocr-gallery/ocr-server/conf"
-	"mine.local/ocr-gallery/ocr-server/service"
 )
 
 func main() {
