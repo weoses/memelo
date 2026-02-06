@@ -19,24 +19,32 @@ jobs:
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
+      - name: Set current date as release version
+        id: set_version
+        run: |
+          # Format the date as YYYY-MM-DD-HH-MM-SS
+          VERSION_DATE=$(date +'%Y%m%d%H%M%S')
+          echo "RELEASE_VERSION=$VERSION_DATE" >> $GITHUB_ENV
+        shell: bash
+
       - name: "OCR: Build and push" 
         uses: docker/build-push-action@v6
         with:
           push: ${{github.ref == 'refs/heads/master'}}
           file: Dockerfile-ocr-service
-          tags: ghcr.io/weoses/ocr-service:latest
+          tags: ghcr.io/weoses/ocr-service:${{ env.RELEASE_VERSION }}
 
       - name: "STORAGE: Build and push" 
         uses: docker/build-push-action@v6
         with:
           push: ${{github.ref == 'refs/heads/master'}}
           file: Dockerfile-storage-service
-          tags: ghcr.io/weoses/storage-service:latest
+          tags: ghcr.io/weoses/storage-service:${{ env.RELEASE_VERSION }}
 
       - name: "TELEGRAM: Build and push" 
         uses: docker/build-push-action@v6
         with:
           push: ${{github.ref == 'refs/heads/master'}}
           file: Dockerfile-telegram-service
-          tags: ghcr.io/weoses/telegram-service:latest
+          tags: ghcr.io/weoses/telegram-service:${{ env.RELEASE_VERSION }}

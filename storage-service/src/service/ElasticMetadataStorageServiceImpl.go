@@ -525,10 +525,10 @@ func unmarshalSearchResultToElasticEntity(i int, result *search.Response) (*enti
 
 	hit := hits[i]
 
-	return unmarhalSourceDocument(hit.Source_)
+	return unmarshalSourceDocument(hit.Source_)
 }
 
-func unmarhalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
+func unmarshalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaData, error) {
 
 	var document entity.ElasticImageMetaData
 	err := json.Unmarshal(result, &document)
