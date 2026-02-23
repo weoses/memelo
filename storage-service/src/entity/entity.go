@@ -24,9 +24,3 @@ type ElasticEmbeddingV1 struct {
 	Data  *[]float32 `validator:required`
 	Model string     `validator:required`
 }
-
-type Image struct {
-	ImageBase64 string `validator:required`
-	Width       int
-	Height      int
-}

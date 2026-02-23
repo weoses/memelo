@@ -9,7 +9,7 @@ RUN go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.3.0
 COPY ./apispec apispec/
 COPY ./common common/
 COPY ./ocr-service ./ocr-service
-COPY ./storage-service ./storage-service
+COPY storage-service ./storage-service
 COPY ./telegram-service ./telegram-service
 COPY ./go.work ./go.work
 COPY ./go.work.sum ./go.work.sum
@@ -19,7 +19,7 @@ RUN go generate apispec/meme-storage/server/api.go
 RUN go generate apispec/ocr-server/client/api.go
 RUN go generate apispec/ocr-server/server/api.go
 
-RUN go build -a -installsuffix cgo -o storage-service.bin ./storage-service/src 
+RUN go build -a -installsuffix cgo -o storage-service.bin ./storage-service/src
 
 FROM alpine:latest 
 

@@ -156,6 +156,7 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 	}
 
 	slog.Info("SearchMeme results",
+
 		commonconst.ACCOUNTID_LOG, request.AccountId,
 		"query", query,
 		"resultListSize", len(matchedMetadata))

@@ -1,0 +1,41 @@
+syntax = "proto3";
+import "proto/memelo/v1/common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/memelo/v1";
+package proto.memelo.v1;
+
+message SearchMemeRequest {
+  string account_id = 1;
+  string query = 2;
+  optional string page_after_id = 3;
+  optional int32 page_size = 4;
+}
+
+message SearchMemeResponse {
+  repeated MemeDto results = 1;
+}
+
+message CreateMemeRequest {
+  string account_id = 1;
+  bytes raw_image = 2;
+}
+
+message CreateMemeResponse {
+  MemeDto result = 1;
+  int32 status = 2;
+}
+
+message GetMemeRequest{
+  string id = 1;
+}
+
+message GetMemeResponse {
+  MemeDto result = 1;
+}
+
+
+service SearchService {
+  rpc SearchMeme(SearchMemeRequest) returns (SearchMemeResponse);
+  rpc CreateMeme(CreateMemeRequest) returns (CreateMemeResponse);
+  rpc GetMeme(GetMemeRequest) returns (GetMemeResponse);
+}

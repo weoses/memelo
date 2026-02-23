@@ -8,3 +8,10 @@ func DefaultString(item *string) string {
 	}
 	return *item
 }
+
+func TransformSlice[F any, T any](from []F, to []T, transformer func(F) T) []T {
+	for _, f := range from {
+		to = append(to, transformer(f))
+	}
+	return to
+}

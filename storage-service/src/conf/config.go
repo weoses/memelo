@@ -24,8 +24,28 @@ type ImageStorageConfig struct {
 	S3 *ImageS3StorageConfig
 }
 
-type OcrConfig struct {
-	Uri string
+type ImageConverterConfig struct {
+	OriginalMaxSize int
+	ThumbSize       int
+}
+
+type ImageEmbeddingConfig struct {
+	ApiLocation string
+	ProjectName string
+	Dimension   int
+	Model       string
+}
+
+func NewImageConverterConfig() (*ImageConverterConfig, error) {
+	conf := new(ImageConverterConfig)
+	err := viper.UnmarshalKey("image-converter", conf)
+	return conf, err
+}
+
+func NewImageEmbeddingConfig() (*ImageEmbeddingConfig, error) {
+	conf := new(ImageEmbeddingConfig)
+	err := viper.UnmarshalKey("image-embedding", conf)
+	return conf, err
 }
 
 func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {

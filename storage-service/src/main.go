@@ -4,9 +4,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
-	"github.com/weoses/memelo/apispec/meme-storage/server"
 	"github.com/weoses/memelo/common/commonconfig"
 	"github.com/weoses/memelo/common/commonmiddleware"
+	"github.com/weoses/memelo/gen/proto/memelo/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/service"
 	"go.uber.org/fx"
@@ -38,7 +38,7 @@ func Startup(
 ) {
 	srv := echo.New()
 	srv.Debug = true
-
+	v1connect.NewSearchServiceHandler()
 	server.RegisterHandlers(srv,
 		server.NewStrictHandler(
 			storage,

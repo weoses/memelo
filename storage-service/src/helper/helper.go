@@ -34,9 +34,3 @@ func OcrImageToEntity(image *client.ImageWithSizeDto) *entity.Image {
 		Height:      image.Height,
 	}
 }
-
-func ApiImageToEntity(image *server.CreateImageRequestDto) *entity.Image {
-	return &entity.Image{
-		ImageBase64: image.ImageBase64,
-	}
-}

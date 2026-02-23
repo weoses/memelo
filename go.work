@@ -1,9 +1,8 @@
 go 1.24.10
 
 use (
-	./apispec
+	./gen
 	./common
-	./ocr-service/src
 	./storage-service/src
 	./telegram-service/src
 )

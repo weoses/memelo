@@ -1,0 +1,142 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/weoses/memelo/storage-service/entity"
+)
+
+const (
+	NEW = iota
+	DUPLICATED
+)
+
+type MetadataWithUrls struct {
+	Metadata    *entity.ElasticImageMetaData
+	UrlThumb    string
+	UrlOriginal string
+}
+
+type CreateResult struct {
+	Metadata *MetadataWithUrls
+	Status   int
+}
+
+type MemeCrudService interface {
+	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error)
+	CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error)
+}
+
+type MemeCrudServiceImpl struct {
+	imageStore           ImageStorageService
+	metadataStore        MetadataStorageService
+	imageMetadataExtract ImageMetadataExtractService
+	searchers            []Searcher
+}
+
+func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error) {
+	pipelineResult, err := m.imageMetadataExtract.ProcessCreate(ctx, accountId, imgRaw)
+	if err != nil {
+		return nil, fmt.Errorf("metadata extract pipeline failed: %w", err)
+	}
+
+	if pipelineResult.Duplicate != nil {
+		results, err := m.addUrlsToElasticEntities(ctx, []*entity.ElasticImageMetaData{pipelineResult.Duplicate})
+		if err != nil {
+			return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
+		}
+
+		return &CreateResult{
+			Metadata: results[0],
+			Status:   DUPLICATED,
+		}, nil
+	}
+
+	s3id := uuid.New()
+	imgId := uuid.New()
+
+	err = m.imageStore.Save(ctx, s3id, pipelineResult.ImageRaw, pipelineResult.ImageThumbnail)
+	if err != nil {
+		return nil, fmt.Errorf("save image files failed: %w", err)
+	}
+
+	err = m.metadataStore.Save(ctx, &entity.ElasticImageMetaData{
+		ImageId:     imgId,
+		S3Id:        s3id,
+		AccountId:   accountId,
+		Result:      pipelineResult.ImageOcrResult,
+		Hash:        pipelineResult.ImageHash,
+		EmbeddingV1: pipelineResult.ImageEmbedding,
+		ImageSize:   pipelineResult.ImageRawSize,
+		ThumbSize:   pipelineResult.ImageThumbnailSize,
+		Created:     time.Now().UnixMicro(),
+		Updated:     time.Now().UnixMicro(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("save metadata failed: %w", err)
+	}
+
+	entities, err := m.addUrlsToElasticEntities(ctx, []*entity.ElasticImageMetaData{pipelineResult.Duplicate})
+	if err != nil {
+		return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
+	}
+
+	return &CreateResult{
+		Metadata: entities[0],
+		Status:   NEW,
+	}, nil
+}
+
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error) {
+	elasticData := make([]*entity.ElasticImageMetaData, 10)
+	for _, searcher := range m.searchers {
+		searcherName := searcher.GetName()
+		data, err := searcher.Search(ctx, accountId, query, afterId, size)
+
+		if err != nil {
+			return nil, fmt.Errorf("searcher %s failed: %w", searcherName, err)
+		}
+
+		if len(data) > 0 {
+			elasticData = append(elasticData, data...)
+		}
+	}
+
+	results, err := m.addUrlsToElasticEntities(ctx, elasticData)
+	if err != nil {
+		return results, err
+	}
+
+	return results, nil
+}
+
+func (m *MemeCrudServiceImpl) addUrlsToElasticEntities(ctx context.Context, elasticData []*entity.ElasticImageMetaData) ([]*MetadataWithUrls, error) {
+	results := make([]*MetadataWithUrls, len(elasticData))
+
+	for i, elasticDataObject := range elasticData {
+
+		urlOriginal, err := m.imageStore.GetUrl(ctx, elasticDataObject.ImageId)
+		if err != nil {
+			return nil, fmt.Errorf("get original url by %s failed: %w", elasticDataObject.ImageId, err)
+		}
+
+		urlThumb, err := m.imageStore.GetUrlThumb(ctx, elasticDataObject.ImageId)
+		if err != nil {
+			return nil, fmt.Errorf("get thumbnail url by %s failed: %w", elasticDataObject.ImageId, err)
+		}
+
+		results[i] = &MetadataWithUrls{
+			Metadata:    elasticDataObject,
+			UrlThumb:    urlThumb,
+			UrlOriginal: urlOriginal,
+		}
+	}
+	return results, nil
+}
+
+func NewMemeCrudService() MemeCrudService {
+	return &MemeCrudServiceImpl{}
+}
