@@ -56,6 +56,7 @@ type ElasticMetadataStorageServiceImpl struct {
 	client                 *elasticsearch8.TypedClient
 	embeddingMatchTreshold float64
 	validate               *validator.Validate
+	slogger                *slog.Logger
 }
 
 func (e *ElasticMetadataStorageServiceImpl) SearchAll(
@@ -106,7 +107,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchFuzzy(ctx context.Context, acc
 }
 
 func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
-	slog.InfoContext(ctx, "DeleteById: delete request",
+	e.slogger.InfoContext(ctx, "DeleteById: delete request",
 		"id", id)
 
 	query := types.NewQuery()
@@ -124,13 +125,13 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 		return fmt.Errorf("DeleteById query falied: %w", err)
 	}
 
-	slog.InfoContext(ctx, "DeleteById: delete response", "id", id)
-	slog.DebugContext(ctx, "DeleteById: delete response details", "id", id, "result", result)
+	e.slogger.InfoContext(ctx, "DeleteById: delete response", "id", id)
+	e.slogger.DebugContext(ctx, "DeleteById: delete response details", "id", id, "result", result)
 	return nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error) {
-	slog.InfoContext(ctx, "GetById: call",
+	e.slogger.InfoContext(ctx, "GetById: call",
 		"id", id.String())
 
 	query := types.NewQuery()
@@ -168,7 +169,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	hash string,
 	count *int,
 ) ([]*entity.ElasticImageMetaData, error) {
-	slog.InfoContext(ctx, "GetByHash: call",
+	e.slogger.InfoContext(ctx, "GetByHash: call",
 		"hash", hash)
 
 	query := types.NewQuery()
@@ -208,7 +209,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 	img *entity.ElasticEmbeddingV1,
 	count int,
 ) ([]*entity.ElasticImageMetaData, error) {
-	slog.InfoContext(ctx, "GetByEmbeddingV1: call")
+	e.slogger.InfoContext(ctx, "GetByEmbeddingV1: call")
 
 	accountIdQuery := e.accountIdQuery(accountId)
 	knnQuery := e.embeddingV1KnnAllQuery(img, count)
@@ -264,10 +265,10 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		return fmt.Errorf("save metadata document error: id=%s : %w", file.ImageId, err)
 	}
 
-	slog.InfoContext(ctx, "Save metadata document",
+	e.slogger.InfoContext(ctx, "Save metadata document",
 		"id", file.ImageId)
 
-	slog.DebugContext(ctx, "Save metadata document details",
+	e.slogger.DebugContext(ctx, "Save metadata document details",
 		"id", file.ImageId,
 		"response", render.Render(response))
 
@@ -436,7 +437,7 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(ctx context.Context, accountId uuid.UUID, queryString string, pageSize *int) (*search.Response, error) {
-	slog.InfoContext(ctx, "Search FUZZY",
+	e.slogger.InfoContext(ctx, "Search FUZZY start",
 		"query", queryString,
 		"pageSize", pageSize,
 	)
@@ -447,13 +448,13 @@ func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(ctx context.Context, acc
 		return nil, fmt.Errorf("failed to search FUZZY query : %w", err)
 	}
 
-	slog.InfoContext(ctx, "Search FUZZY result", "count", len(resultFuzzy.Hits.Hits))
+	e.slogger.InfoContext(ctx, "Search FUZZY result", "count", len(resultFuzzy.Hits.Hits))
 
 	return resultFuzzy, nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, accountId uuid.UUID, queryString string, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
-	slog.InfoContext(ctx, "Search SIMPLE",
+	e.slogger.InfoContext(ctx, "Search SIMPLE start",
 		"idAfter", idAfter,
 		"query", queryString,
 		"pageSize", pageSize,
@@ -465,13 +466,13 @@ func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, ac
 		return nil, fmt.Errorf("failed to search SIMPLE query : %w", err)
 	}
 
-	slog.InfoContext(ctx, "Search SIMPLE result", "count", len(resultSimple.Hits.Hits))
+	e.slogger.InfoContext(ctx, "Search SIMPLE result", "count", len(resultSimple.Hits.Hits))
 
 	return resultSimple, nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchAll(ctx context.Context, accountId uuid.UUID, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
-	slog.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll start",
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll start",
 		"idAfter", idAfter,
 		"pageSize", pageSize,
 	)
@@ -482,7 +483,7 @@ func (e *ElasticMetadataStorageServiceImpl) searchAll(ctx context.Context, accou
 		return nil, fmt.Errorf("failed to search all query : %w", err)
 	}
 
-	slog.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll end", "count", len(result.Hits.Hits))
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll end", "count", len(result.Hits.Hits))
 	return result, nil
 }
 
@@ -527,7 +528,7 @@ func NewElasticMetadataStorage(
 	validate *validator.Validate,
 ) (MetadataStorageService, error) {
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
-
+	logger := slog.With("service", "ElasticMetadataStorage")
 	indexExists, err := es8.Indices.
 		Exists(config.Index).
 		Do(context.Background())
@@ -541,7 +542,7 @@ func NewElasticMetadataStorage(
 			Create(config.Index).
 			Do(context.Background())
 
-		slog.InfoContext(context.Background(), "Elastic create index",
+		logger.InfoContext(context.Background(), "Elastic create index",
 			"index", config.Index,
 			"response", render.Render(responseCreate),
 			"error", err)
@@ -563,7 +564,7 @@ func NewElasticMetadataStorage(
 		Properties(indexTypeMapping.Properties).
 		Do(context.Background())
 
-	slog.InfoContext(context.Background(), "Elastic create mapping index",
+	logger.InfoContext(context.Background(), "Elastic create mapping index",
 		"response", render.Render(responseMapping),
 		"error", err)
 
@@ -571,6 +572,7 @@ func NewElasticMetadataStorage(
 		client:                 es8,
 		embeddingMatchTreshold: config.EmbeddingMatchTreshold,
 		validate:               validate,
+		slogger:                logger,
 	}, nil
 }
 

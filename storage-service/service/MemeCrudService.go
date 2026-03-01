@@ -47,7 +47,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}
 
 	if pipelineResult.Duplicate != nil {
-		results, err := m.addUrlsToElasticEntities(ctx, []*entity.ElasticImageMetaData{pipelineResult.Duplicate})
+		results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{pipelineResult.Duplicate})
 		if err != nil {
 			return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
 		}
@@ -83,7 +83,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		return nil, fmt.Errorf("save metadata failed: %w", err)
 	}
 
-	entities, err := m.addUrlsToElasticEntities(ctx, []*entity.ElasticImageMetaData{metadataEntity})
+	entities, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{metadataEntity})
 	if err != nil {
 		return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
 	}
@@ -117,7 +117,7 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 		}
 	}
 
-	results, err := m.addUrlsToElasticEntities(ctx, elasticData)
+	results, err := m.constructMetadataWithUrls(ctx, elasticData)
 	if err != nil {
 		return results, err
 	}
@@ -125,7 +125,7 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 	return results, nil
 }
 
-func (m *MemeCrudServiceImpl) addUrlsToElasticEntities(ctx context.Context, elasticData []*entity.ElasticImageMetaData) ([]*MetadataWithUrls, error) {
+func (m *MemeCrudServiceImpl) constructMetadataWithUrls(ctx context.Context, elasticData []*entity.ElasticImageMetaData) ([]*MetadataWithUrls, error) {
 	results := make([]*MetadataWithUrls, len(elasticData))
 
 	for i, elasticDataObject := range elasticData {

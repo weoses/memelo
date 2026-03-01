@@ -15,11 +15,18 @@ type Searcher interface {
 
 // ===========================
 
-type AllSearcher struct {
-	metadata MetadataStorageService
+type SearcherBase struct {
+	name string
 }
 
-func (a AllSearcher) GetName() string { return "all_searcher" }
+func (b SearcherBase) GetName() string { return b.name }
+
+// ===========================
+
+type AllSearcher struct {
+	SearcherBase
+	metadata MetadataStorageService
+}
 
 func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query != "" {
@@ -41,17 +48,17 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 
 func NewAllSearcher(m MetadataStorageService) Searcher {
 	return &AllSearcher{
-		metadata: m,
+		SearcherBase: SearcherBase{name: "all_searcher"},
+		metadata:     m,
 	}
 }
 
 // ===========================
 
 type SimpleSearcher struct {
+	SearcherBase
 	metadata MetadataStorageService
 }
-
-func (s SimpleSearcher) GetName() string { return "simple_searcher" }
 
 func (s SimpleSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query == "" {
@@ -75,17 +82,17 @@ func (s SimpleSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 
 func NewSimpleSearcher(m MetadataStorageService) Searcher {
 	return &SimpleSearcher{
-		metadata: m,
+		SearcherBase: SearcherBase{name: "simple_searcher"},
+		metadata:     m,
 	}
 }
 
 // ===========================
 
 type IdSearcher struct {
+	SearcherBase
 	metadata MetadataStorageService
 }
-
-func (s IdSearcher) GetName() string { return "id_searcher" }
 
 func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query == "" {
@@ -116,6 +123,44 @@ func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query strin
 
 func NewIdSearcher(m MetadataStorageService) Searcher {
 	return &IdSearcher{
-		metadata: m,
+		SearcherBase: SearcherBase{name: "id_searcher"},
+		metadata:     m,
+	}
+}
+
+// ===========================
+
+type FuzzySearcher struct {
+	SearcherBase
+	metadata MetadataStorageService
+}
+
+func (s FuzzySearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
+	if query == "" {
+		return make([]*entity.ElasticImageMetaData, 0), nil
+	}
+
+	matchedMetadataAll, err := s.metadata.SearchFuzzy(
+		ctx,
+		accountId,
+		query,
+		size,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("searcher %s failed: %w", s.GetName(), err)
+	}
+
+	if matchedMetadataAll == nil {
+		return make([]*entity.ElasticImageMetaData, 0), nil
+	}
+
+	return matchedMetadataAll, nil
+}
+
+func NewFuzzySearcher(m MetadataStorageService) Searcher {
+	return &FuzzySearcher{
+		SearcherBase: SearcherBase{name: "fuzzy_searcher"},
+		metadata:     m,
 	}
 }

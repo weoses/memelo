@@ -58,6 +58,12 @@ func main() {
 		),
 		fx.Provide(
 			fx.Annotate(
+				service.NewFuzzySearcher,
+				fx.ResultTags(`group:"searchers"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
 				service.NewAllSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),

@@ -15,8 +15,8 @@ func DefaultString(item *string) string {
 }
 
 func TransformSlice[F any, T any](from []F, to []T, transformer func(F) T) []T {
-	for _, f := range from {
-		to = append(to, transformer(f))
+	for i, f := range from {
+		to[i] = transformer(f)
 	}
 	return to
 }

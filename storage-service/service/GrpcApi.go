@@ -62,6 +62,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 
 	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, afterIdUuid, pageSize)
 	if err != nil {
+		api.slogger.ErrorContext(ctx, "SearchMeme error", "query", req.Query)
 		return nil, err
 	}
 
@@ -87,6 +88,7 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 
 	meme, err := api.crud.CreateMeme(ctx, accountIdUuid, req.RawImage)
 	if err != nil {
+		api.slogger.ErrorContext(ctx, "CreateMeme error", "err", err)
 		return nil, err
 	}
 
