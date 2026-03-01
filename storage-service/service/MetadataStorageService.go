@@ -15,7 +15,7 @@ import (
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/weoses/memelo/common/commonhelper"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 )
@@ -282,8 +282,8 @@ func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(
 	query := types.NewKnnSearch()
 	query.Field = "EmbeddingV1.Data"
 	query.QueryVector = *img.Data
-	query.NumCandidates = commonhelper.Addr(1000)
-	query.K = commonhelper.Addr(count)
+	query.NumCandidates = helper.Addr(1000)
+	query.K = helper.Addr(count)
 	return query
 }
 
@@ -555,8 +555,8 @@ func NewElasticMetadataStorage(
 	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()
 
 	denseProp := types.NewDenseVectorProperty()
-	denseProp.Index = commonhelper.Addr(true)
-	denseProp.Dims = commonhelper.Addr(config.EmbeddingV1Dimensions)
+	denseProp.Index = helper.Addr(true)
+	denseProp.Dims = helper.Addr(config.EmbeddingV1Dimensions)
 	indexTypeMapping.Properties["EmbeddingV1.Data"] = denseProp
 
 	responseMapping, err := es8.Indices.PutMapping(config.Index).

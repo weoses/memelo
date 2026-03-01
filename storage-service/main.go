@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/weoses/memelo/common/commonconfig"
-	"github.com/weoses/memelo/gen/proto/memelo/v1/v1connect"
+	"github.com/weoses/memelo/common/config"
+	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/service"
@@ -17,13 +17,13 @@ import (
 )
 
 func main() {
-	commonconfig.InitConfig()
+	config.InitConfig()
 
 	fx.New(
 		fx.Provide(NewValidator),
-		fx.Provide(commonconfig.NewServerConfig),
-		fx.Provide(commonconfig.NewLoggingConfig),
-		fx.Invoke(commonconfig.InitLogs),
+		fx.Provide(config.NewServerConfig),
+		fx.Provide(config.NewLoggingConfig),
+		fx.Invoke(config.InitLogs),
 
 		fx.Provide(conf.NewImageEmbeddingConfig),
 		fx.Provide(conf.NewImageConverterConfig),
@@ -72,7 +72,7 @@ func main() {
 func Startup(
 	lc fx.Lifecycle,
 	searchApi *service.SearchServiceApi,
-	cfg *commonconfig.ServerConfig,
+	cfg *config.ServerConfig,
 ) {
 	mux := http.NewServeMux()
 	path, handler := v1connect.NewSearchServiceHandler(searchApi)

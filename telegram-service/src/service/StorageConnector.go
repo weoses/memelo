@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/apispec/meme-storage/client"
-	"github.com/weoses/memelo/common/commonhelper"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/telegram-service/conf"
 	"github.com/weoses/memelo/telegram-service/entity"
 )
@@ -111,7 +111,7 @@ func (u *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime
 
 	if response.HTTPResponse.StatusCode == 500 {
 		errorMessage := response.JSON500.Error
-		return nil, fmt.Errorf("storageService: failed to request storage service: %s", commonhelper.DefaultString(errorMessage))
+		return nil, fmt.Errorf("storageService: failed to request storage service: %s", helper.DefaultString(errorMessage))
 	}
 
 	if response.HTTPResponse.StatusCode >= 400 {

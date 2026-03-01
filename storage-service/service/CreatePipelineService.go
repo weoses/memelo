@@ -7,9 +7,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/weoses/memelo/common/commonhelper"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/entity"
-	"github.com/weoses/memelo/storage-service/helper"
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
@@ -130,7 +129,7 @@ func (c *CreateImageServiceImpl) calcEmbedding(ctx context.Context, pipelineCtx 
 }
 
 func (c *CreateImageServiceImpl) checkDuplicateByHash(ctx context.Context, pipelineCtx *PipelineContext) error {
-	items, err := c.metadata.GetByHash(ctx, pipelineCtx.AccountId, pipelineCtx.ImageHash, commonhelper.Addr(1))
+	items, err := c.metadata.GetByHash(ctx, pipelineCtx.AccountId, pipelineCtx.ImageHash, helper.Addr(1))
 	if err != nil {
 		return fmt.Errorf("error getting items by hash: %w", err)
 	}

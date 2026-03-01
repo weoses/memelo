@@ -2,7 +2,7 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/weoses/memelo/common/commonconfig"
+	"github.com/weoses/memelo/common/config"
 	"github.com/weoses/memelo/telegram-service/conf"
 	"github.com/weoses/memelo/telegram-service/service"
 	"go.uber.org/fx"
@@ -13,8 +13,8 @@ func Statup(serv service.TelegramBotService) {
 }
 
 func main() {
-	commonconfig.InitConfig()
-	commonconfig.InitLogs()
+	config.InitConfig()
+	config.InitLogs()
 
 	fx.New(
 		fx.Provide(conf.NewTelegramConfig),

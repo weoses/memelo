@@ -1,7 +1,7 @@
 syntax = "proto3";
-import "proto/memelo/v1/common.proto";
+import "proto/v1/common.proto";
 
-option go_package = "github.com/weoses/memelo/gen/proto/memelo/v1";
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
 package proto.memelo.v1;
 
 message SearchMemeRequest {

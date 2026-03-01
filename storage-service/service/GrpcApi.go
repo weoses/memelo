@@ -8,8 +8,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	"github.com/weoses/memelo/common/commonhelper"
-	v1 "github.com/weoses/memelo/gen/proto/memelo/v1"
+	"github.com/weoses/memelo/common/helper"
+	v1 "github.com/weoses/memelo/gen/proto/v1"
 )
 
 type SearchServiceApi struct {
@@ -65,7 +65,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 	}
 
 	return &v1.SearchMemeResponse{
-		Results: commonhelper.TransformSlice(
+		Results: helper.TransformSlice(
 			data,
 			make([]*v1.MemeDto, len(data)),
 			api.metadataToMemeDto),
