@@ -105,7 +105,7 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 }
 
 func NewImageEmbeddingExtractor(cnf *conf.ImageEmbeddingConfig) (ImageEmbeddingExtractor, error) {
-	apiEndpoint := fmt.Sprintf("%s-aiplatform.googleapis.com:443", cnf.ApiLocation)
+	apiEndpoint := cnf.ApiEndpoint
 	client, err := aiplatform.NewPredictionClient(context.Background(), option.WithEndpoint(apiEndpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct API client: %w", err)

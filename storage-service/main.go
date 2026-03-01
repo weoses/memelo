@@ -34,8 +34,8 @@ func main() {
 		fx.Provide(conf.NewImageConverterConfig),
 		fx.Provide(conf.NewImageStorageConfig),
 		fx.Provide(conf.NewMetadataStorageConfig),
+		fx.Provide(conf.NewImageOcrConfig),
 
-		fx.Provide(ocr.NewVisionImageClient),
 		fx.Provide(ocr.NewOcrProcessor),
 		fx.Provide(ocr.NewImageConverter),
 		fx.Provide(ocr.NewImageEmbeddingExtractor),
@@ -82,7 +82,7 @@ func main() {
 
 func Startup(
 	lc fx.Lifecycle,
-	searchApi *service.SearchServiceApi,
+	searchApi v1connect.SearchServiceHandler,
 	cfg *config.ServerConfig,
 ) {
 	mux := http.NewServeMux()

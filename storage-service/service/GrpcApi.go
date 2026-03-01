@@ -10,11 +10,37 @@ import (
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
+	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 )
 
 type SearchServiceApi struct {
 	crud    MemeCrudService
 	slogger *slog.Logger
+}
+
+func (api *SearchServiceApi) DeleteMeme(ctx context.Context, request *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error) {
+	ctx = context.WithValue(ctx, "accountId", request.AccountId)
+
+	api.slogger.InfoContext(ctx, "DeleteMeme request", "id", request.Id)
+
+	accountIdUuid, err := uuid.Parse(request.AccountId)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+	}
+
+	idUuid, err := uuid.Parse(request.Id)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Id: %w", err)
+	}
+
+	if err = api.crud.DeleteMeme(ctx, accountIdUuid, idUuid); err != nil {
+		api.slogger.ErrorContext(ctx, "DeleteMeme error", "id", request.Id, "err", err)
+		return nil, err
+	}
+
+	api.slogger.InfoContext(ctx, "DeleteMeme success", "id", request.Id)
+
+	return &v1.DeleteMemeResponse{Id: request.Id}, nil
 }
 
 func (api *SearchServiceApi) metadataToMemeDto(urls *MetadataWithUrls) *v1.MemeDto {
@@ -106,7 +132,7 @@ func (api *SearchServiceApi) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.G
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetMeme is not implemented"))
 }
 
-func NewSearchServiceApi(crud MemeCrudService) *SearchServiceApi {
+func NewSearchServiceApi(crud MemeCrudService) v1connect.SearchServiceHandler {
 	return &SearchServiceApi{
 		crud:    crud,
 		slogger: slog.With("service", "SearchServiceApi"),

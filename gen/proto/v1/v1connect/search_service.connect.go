@@ -41,6 +41,9 @@ const (
 	SearchServiceCreateMemeProcedure = "/proto.memelo.v1.SearchService/CreateMeme"
 	// SearchServiceGetMemeProcedure is the fully-qualified name of the SearchService's GetMeme RPC.
 	SearchServiceGetMemeProcedure = "/proto.memelo.v1.SearchService/GetMeme"
+	// SearchServiceDeleteMemeProcedure is the fully-qualified name of the SearchService's DeleteMeme
+	// RPC.
+	SearchServiceDeleteMemeProcedure = "/proto.memelo.v1.SearchService/DeleteMeme"
 )
 
 // SearchServiceClient is a client for the proto.memelo.v1.SearchService service.
@@ -48,6 +51,7 @@ type SearchServiceClient interface {
 	SearchMeme(context.Context, *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error)
 	CreateMeme(context.Context, *v1.CreateMemeRequest) (*v1.CreateMemeResponse, error)
 	GetMeme(context.Context, *v1.GetMemeRequest) (*v1.GetMemeResponse, error)
+	DeleteMeme(context.Context, *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error)
 }
 
 // NewSearchServiceClient constructs a client for the proto.memelo.v1.SearchService service. By
@@ -79,6 +83,12 @@ func NewSearchServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(searchServiceMethods.ByName("GetMeme")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteMeme: connect.NewClient[v1.DeleteMemeRequest, v1.DeleteMemeResponse](
+			httpClient,
+			baseURL+SearchServiceDeleteMemeProcedure,
+			connect.WithSchema(searchServiceMethods.ByName("DeleteMeme")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -87,6 +97,7 @@ type searchServiceClient struct {
 	searchMeme *connect.Client[v1.SearchMemeRequest, v1.SearchMemeResponse]
 	createMeme *connect.Client[v1.CreateMemeRequest, v1.CreateMemeResponse]
 	getMeme    *connect.Client[v1.GetMemeRequest, v1.GetMemeResponse]
+	deleteMeme *connect.Client[v1.DeleteMemeRequest, v1.DeleteMemeResponse]
 }
 
 // SearchMeme calls proto.memelo.v1.SearchService.SearchMeme.
@@ -116,11 +127,21 @@ func (c *searchServiceClient) GetMeme(ctx context.Context, req *v1.GetMemeReques
 	return nil, err
 }
 
+// DeleteMeme calls proto.memelo.v1.SearchService.DeleteMeme.
+func (c *searchServiceClient) DeleteMeme(ctx context.Context, req *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error) {
+	response, err := c.deleteMeme.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // SearchServiceHandler is an implementation of the proto.memelo.v1.SearchService service.
 type SearchServiceHandler interface {
 	SearchMeme(context.Context, *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error)
 	CreateMeme(context.Context, *v1.CreateMemeRequest) (*v1.CreateMemeResponse, error)
 	GetMeme(context.Context, *v1.GetMemeRequest) (*v1.GetMemeResponse, error)
+	DeleteMeme(context.Context, *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error)
 }
 
 // NewSearchServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -148,6 +169,12 @@ func NewSearchServiceHandler(svc SearchServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(searchServiceMethods.ByName("GetMeme")),
 		connect.WithHandlerOptions(opts...),
 	)
+	searchServiceDeleteMemeHandler := connect.NewUnaryHandlerSimple(
+		SearchServiceDeleteMemeProcedure,
+		svc.DeleteMeme,
+		connect.WithSchema(searchServiceMethods.ByName("DeleteMeme")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/proto.memelo.v1.SearchService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SearchServiceSearchMemeProcedure:
@@ -156,6 +183,8 @@ func NewSearchServiceHandler(svc SearchServiceHandler, opts ...connect.HandlerOp
 			searchServiceCreateMemeHandler.ServeHTTP(w, r)
 		case SearchServiceGetMemeProcedure:
 			searchServiceGetMemeHandler.ServeHTTP(w, r)
+		case SearchServiceDeleteMemeProcedure:
+			searchServiceDeleteMemeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -175,4 +204,8 @@ func (UnimplementedSearchServiceHandler) CreateMeme(context.Context, *v1.CreateM
 
 func (UnimplementedSearchServiceHandler) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.GetMemeResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetMeme is not implemented"))
+}
+
+func (UnimplementedSearchServiceHandler) DeleteMeme(context.Context, *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.DeleteMeme is not implemented"))
 }

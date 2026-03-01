@@ -26,6 +26,7 @@ metadata-storage:
   EmbeddingMatchTreshold: 0.955
 
 image-embedding:
+  ApiEndpoint: us-central1-aiplatform.googleapis.com:443
   ApiLocation: us-central1
   ProjectName: positive-shell-448806-f7
   Model: multimodalembedding@001
@@ -33,3 +34,6 @@ image-embedding:
 
 image-converter:
   ThumbSize: 360
+
+image-ocr:
+  ApiEndpoint: vision.googleapis.com:443

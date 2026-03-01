@@ -30,10 +30,15 @@ type ImageConverterConfig struct {
 }
 
 type ImageEmbeddingConfig struct {
+	ApiEndpoint string
 	ApiLocation string
 	ProjectName string
 	Dimension   int
 	Model       string
+}
+
+type ImageOcrConfig struct {
+	ApiEndpoint string
 }
 
 func NewImageConverterConfig() (*ImageConverterConfig, error) {
@@ -57,5 +62,11 @@ func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {
 func NewImageStorageConfig() (*ImageStorageConfig, error) {
 	conf := &ImageStorageConfig{}
 	err := viper.UnmarshalKey("image-storage", conf)
+	return conf, err
+}
+
+func NewImageOcrConfig() (*ImageOcrConfig, error) {
+	conf := &ImageOcrConfig{}
+	err := viper.UnmarshalKey("image-ocr", conf)
 	return conf, err
 }

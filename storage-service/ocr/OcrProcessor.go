@@ -5,6 +5,8 @@ import (
 	"context"
 
 	vision "cloud.google.com/go/vision/apiv1"
+	"github.com/weoses/memelo/storage-service/conf"
+	"google.golang.org/api/option"
 )
 
 type Img2TextService interface {
@@ -38,11 +40,15 @@ func (m *Img2TextGcloudServiceImpl) DoOcr(ctx context.Context, image []byte) (st
 	return "", nil
 }
 
-func NewVisionImageClient() (*vision.ImageAnnotatorClient, error) {
-	return vision.NewImageAnnotatorClient(context.Background())
-}
+func NewOcrProcessor(ocrConf *conf.ImageOcrConfig) (Img2TextService, error) {
+	visionClient, err := vision.NewImageAnnotatorClient(
+		context.Background(),
+		option.WithEndpoint(ocrConf.ApiEndpoint),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-func NewOcrProcessor(visionClient *vision.ImageAnnotatorClient) (Img2TextService, error) {
 	return &Img2TextGcloudServiceImpl{
 		client: visionClient,
 	}, nil

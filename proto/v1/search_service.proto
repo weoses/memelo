@@ -40,9 +40,20 @@ message GetMemeResponse {
   MemeDto result = 1;
 }
 
+message DeleteMemeRequest {
+  string account_id = 1;
+  string id = 2;
+}
+
+message DeleteMemeResponse {
+  string id = 1;
+}
+
+
 
 service SearchService {
   rpc SearchMeme(SearchMemeRequest) returns (SearchMemeResponse);
   rpc CreateMeme(CreateMemeRequest) returns (CreateMemeResponse);
   rpc GetMeme(GetMemeRequest) returns (GetMemeResponse);
+  rpc DeleteMeme(DeleteMemeRequest) returns (DeleteMemeResponse);
 }

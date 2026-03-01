@@ -30,6 +30,7 @@ type CreateResult struct {
 type MemeCrudService interface {
 	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error)
+	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 }
 
 type MemeCrudServiceImpl struct {
@@ -123,6 +124,26 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 	}
 
 	return results, nil
+}
+
+func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
+	metadata, err := m.metadataStore.GetById(ctx, accountId, id)
+	if err != nil {
+		return fmt.Errorf("get metadata failed: %w", err)
+	}
+	if metadata == nil {
+		return fmt.Errorf("meme not found: %s", id)
+	}
+
+	if err = m.imageStore.DeleteImage(ctx, metadata.S3Id); err != nil {
+		return fmt.Errorf("delete image failed: %w", err)
+	}
+
+	if err = m.metadataStore.DeleteById(ctx, accountId, id); err != nil {
+		return fmt.Errorf("delete metadata failed: %w", err)
+	}
+
+	return nil
 }
 
 func (m *MemeCrudServiceImpl) constructMetadataWithUrls(ctx context.Context, elasticData []*entity.ElasticImageMetaData) ([]*MetadataWithUrls, error) {
