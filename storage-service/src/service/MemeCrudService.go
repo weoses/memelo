@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,7 @@ type MemeCrudServiceImpl struct {
 	metadataStore        MetadataStorageService
 	imageMetadataExtract ImageMetadataExtractService
 	searchers            []Searcher
+	slogger              *slog.Logger
 }
 
 func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error) {
@@ -91,10 +93,18 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 }
 
 func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error) {
-	elasticData := make([]*entity.ElasticImageMetaData, 10)
+	elasticData := make([]*entity.ElasticImageMetaData, 0)
 	for _, searcher := range m.searchers {
 		searcherName := searcher.GetName()
+
+		m.slogger.DebugContext(ctx, "Start searcher",
+			"searcher", searcherName)
+
 		data, err := searcher.Search(ctx, accountId, query, afterId, size)
+
+		m.slogger.DebugContext(ctx, "End searcher",
+			"searcher", searcherName,
+			"results", len(data))
 
 		if err != nil {
 			return nil, fmt.Errorf("searcher %s failed: %w", searcherName, err)
@@ -137,6 +147,17 @@ func (m *MemeCrudServiceImpl) addUrlsToElasticEntities(ctx context.Context, elas
 	return results, nil
 }
 
-func NewMemeCrudService() MemeCrudService {
-	return &MemeCrudServiceImpl{}
+func NewMemeCrudService(
+	imageStore ImageStorageService,
+	metadataStore MetadataStorageService,
+	imageMetadataExtract ImageMetadataExtractService,
+	searchers []Searcher,
+) MemeCrudService {
+	return &MemeCrudServiceImpl{
+		imageStore:           imageStore,
+		metadataStore:        metadataStore,
+		imageMetadataExtract: imageMetadataExtract,
+		searchers:            searchers,
+		slogger:              slog.With("service", "MemeCrudService"),
+	}
 }

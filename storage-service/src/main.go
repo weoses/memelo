@@ -1,53 +1,101 @@
 package main
 
 import (
+	"context"
+	"net"
+	"net/http"
+
 	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo/v4"
-	oapiEcho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 	"github.com/weoses/memelo/common/commonconfig"
-	"github.com/weoses/memelo/common/commonmiddleware"
 	"github.com/weoses/memelo/gen/proto/memelo/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/service"
 	"go.uber.org/fx"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func main() {
 	commonconfig.InitConfig()
-	commonconfig.InitLogs()
 
 	fx.New(
 		fx.Provide(NewValidator),
 		fx.Provide(commonconfig.NewServerConfig),
-		fx.Provide(conf.NewOcrConfig),
-		fx.Provide(conf.NewMetadataStorageConfig),
+		fx.Provide(commonconfig.NewLoggingConfig),
+		fx.Invoke(commonconfig.InitLogs),
+
+		fx.Provide(conf.NewImageEmbeddingConfig),
+		fx.Provide(conf.NewImageConverterConfig),
 		fx.Provide(conf.NewImageStorageConfig),
-		fx.Provide(commonmiddleware.NewLoggingMiddleware),
+		fx.Provide(conf.NewMetadataStorageConfig),
+
+		fx.Provide(ocr.NewVisionImageClient),
+		fx.Provide(ocr.NewOcrProcessor),
+		fx.Provide(ocr.NewImageConverter),
+		fx.Provide(ocr.NewImageEmbeddingExtractor),
+
 		fx.Provide(service.NewMetadataStorageService),
 		fx.Provide(service.NewImageStorageService),
-		fx.Provide(service.NewOcrService),
-		fx.Provide(service.NewApiHandler),
+		fx.Provide(service.NewCreateImageServiceImpl),
+
+		fx.Provide(
+			fx.Annotate(
+				service.NewSimpleSearcher,
+				fx.ResultTags(`group:"searchers"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewIdSearcher,
+				fx.ResultTags(`group:"searchers"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewAllSearcher,
+				fx.ResultTags(`group:"searchers"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewMemeCrudService,
+				fx.ParamTags(``, ``, ``, `group:"searchers"`),
+			),
+		),
+
+		fx.Provide(service.NewSearchServiceApi),
 		fx.Invoke(Startup),
 	).Run()
 }
 
 func Startup(
-	storage server.StrictServerInterface,
-	conf *commonconfig.ServerConfig,
-	middleware commonmiddleware.LoggingMiddlewareFunc,
+	lc fx.Lifecycle,
+	searchApi *service.SearchServiceApi,
+	cfg *commonconfig.ServerConfig,
 ) {
-	srv := echo.New()
-	srv.Debug = true
-	v1connect.NewSearchServiceHandler()
-	server.RegisterHandlers(srv,
-		server.NewStrictHandler(
-			storage,
-			[]oapiEcho.StrictEchoMiddlewareFunc{
-				oapiEcho.StrictEchoMiddlewareFunc(middleware),
-			}),
-	)
+	mux := http.NewServeMux()
+	path, handler := v1connect.NewSearchServiceHandler(searchApi)
+	mux.Handle(path, handler)
 
-	srv.Start(conf.ListenAddress)
+	srv := &http.Server{
+		Addr:    cfg.ListenAddress,
+		Handler: h2c.NewHandler(mux, &http2.Server{}),
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			ln, err := net.Listen("tcp", srv.Addr)
+			if err != nil {
+				return err
+			}
+			go func() { _ = srv.Serve(ln) }()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			return srv.Shutdown(ctx)
+		},
+	})
 }
 
 func NewValidator() *validator.Validate {

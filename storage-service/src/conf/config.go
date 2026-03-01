@@ -54,12 +54,6 @@ func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {
 	return conf, err
 }
 
-func NewOcrConfig() (*OcrConfig, error) {
-	conf := &OcrConfig{}
-	err := viper.UnmarshalKey("ocr-service", conf)
-	return conf, err
-}
-
 func NewImageStorageConfig() (*ImageStorageConfig, error) {
 	conf := &ImageStorageConfig{}
 	err := viper.UnmarshalKey("image-storage", conf)

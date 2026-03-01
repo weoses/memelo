@@ -5,8 +5,7 @@ import (
 	"os"
 )
 
-func InitLogs() {
-	conf := NewLoggingConfig()
+func InitLogs(conf *LoggingConfig) {
 
 	handler := slog.NewTextHandler(os.Stdout, nil)
 	logger := slog.New(handler)

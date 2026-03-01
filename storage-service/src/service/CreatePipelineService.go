@@ -51,6 +51,7 @@ func (c *CreateImageServiceImpl) ProcessCreate(ctx context.Context, accountId uu
 	if err != nil {
 		return nil, fmt.Errorf("create pipeline: error checking duplicate by hash: %w", err)
 	}
+
 	if pipelineCtx.Duplicate != nil {
 		return pipelineCtx, nil
 	}
@@ -200,6 +201,16 @@ func calcRawImageHash(raw []byte) (string, error) {
 	return hash, nil
 }
 
-func NewCreateImageServiceImpl() ImageMetadataExtractService {
-	return &CreateImageServiceImpl{}
+func NewCreateImageServiceImpl(
+	metadata MetadataStorageService,
+	imageConverter ocr.ImageConveter,
+	imageEmbedder ocr.ImageEmbeddingExtractor,
+	image2text ocr.Img2TextService,
+) ImageMetadataExtractService {
+	return &CreateImageServiceImpl{
+		metadata:       metadata,
+		imageConverter: imageConverter,
+		imageEmbedder:  imageEmbedder,
+		image2text:     image2text,
+	}
 }

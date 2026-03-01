@@ -15,7 +15,6 @@ import (
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/weoses/memelo/common/commonconst"
 	"github.com/weoses/memelo/common/commonhelper"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
@@ -107,8 +106,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchFuzzy(ctx context.Context, acc
 }
 
 func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
-	slog.Info("DeleteById: delete request",
-		commonconst.ACCOUNTID_LOG, accountId,
+	slog.InfoContext(ctx, "DeleteById: delete request",
 		"id", id)
 
 	query := types.NewQuery()
@@ -126,17 +124,27 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 		return fmt.Errorf("DeleteById query falied: %w", err)
 	}
 
-	slog.Info("DeleteById: delete response", "accountId", accountId, "id", id)
-	slog.Debug("DeleteById: delete response details", "accountId", accountId, "id", id, "result", result)
+	slog.InfoContext(ctx, "DeleteById: delete response", "id", id)
+	slog.DebugContext(ctx, "DeleteById: delete response details", "id", id, "result", result)
 	return nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error) {
-	slog.Info("GetById: call",
-		"id", id.String(),
-		"accountId", accountId)
+	slog.InfoContext(ctx, "GetById: call",
+		"id", id.String())
 
-	result, err := e.getByIdInternal(ctx, accountId, id)
+	query := types.NewQuery()
+
+	query.Bool = types.NewBoolQuery()
+	query.Bool.Must = []types.Query{
+		*e.accountIdQuery(accountId),
+		*e.idQuery(id),
+	}
+
+	result, err := e.client.Search().
+		Index(IndexName).
+		Query(query).
+		Do(ctx)
 
 	if err != nil {
 		return nil, err
@@ -160,8 +168,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	hash string,
 	count *int,
 ) ([]*entity.ElasticImageMetaData, error) {
-	slog.Info("GetByHash: call",
-		commonconst.ACCOUNTID_LOG, accountId,
+	slog.InfoContext(ctx, "GetByHash: call",
 		"hash", hash)
 
 	query := types.NewQuery()
@@ -201,8 +208,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 	img *entity.ElasticEmbeddingV1,
 	count int,
 ) ([]*entity.ElasticImageMetaData, error) {
-	slog.Info("GetByEmbeddingV1: call",
-		commonconst.ACCOUNTID_LOG, accountId)
+	slog.InfoContext(ctx, "GetByEmbeddingV1: call")
 
 	accountIdQuery := e.accountIdQuery(accountId)
 	knnQuery := e.embeddingV1KnnAllQuery(img, count)
@@ -258,10 +264,10 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		return fmt.Errorf("save metadata document error: id=%s : %w", file.ImageId, err)
 	}
 
-	slog.Info("Save metadata document",
+	slog.InfoContext(ctx, "Save metadata document",
 		"id", file.ImageId)
 
-	slog.Debug("Save metadata document details",
+	slog.DebugContext(ctx, "Save metadata document details",
 		"id", file.ImageId,
 		"response", render.Render(response))
 
@@ -430,9 +436,8 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(ctx context.Context, accountId uuid.UUID, queryString string, pageSize *int) (*search.Response, error) {
-	slog.Info("Search FUZZY",
-		commonconst.ACCOUNTID_LOG, accountId,
-		commonconst.QUERY_LOG, queryString,
+	slog.InfoContext(ctx, "Search FUZZY",
+		"query", queryString,
 		"pageSize", pageSize,
 	)
 
@@ -442,16 +447,15 @@ func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(ctx context.Context, acc
 		return nil, fmt.Errorf("failed to search FUZZY query : %w", err)
 	}
 
-	slog.Info("Search FUZZY result", "count", len(resultFuzzy.Hits.Hits))
+	slog.InfoContext(ctx, "Search FUZZY result", "count", len(resultFuzzy.Hits.Hits))
 
 	return resultFuzzy, nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, accountId uuid.UUID, queryString string, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
-	slog.Info("Search SIMPLE",
-		commonconst.ACCOUNTID_LOG, accountId,
-		commonconst.OFFSET_LOG, idAfter,
-		commonconst.QUERY_LOG, queryString,
+	slog.InfoContext(ctx, "Search SIMPLE",
+		"idAfter", idAfter,
+		"query", queryString,
 		"pageSize", pageSize,
 	)
 
@@ -461,15 +465,14 @@ func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, ac
 		return nil, fmt.Errorf("failed to search SIMPLE query : %w", err)
 	}
 
-	slog.Info("Search SIMPLE result", "count", len(resultSimple.Hits.Hits))
+	slog.InfoContext(ctx, "Search SIMPLE result", "count", len(resultSimple.Hits.Hits))
 
 	return resultSimple, nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) searchAll(ctx context.Context, accountId uuid.UUID, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
-	slog.Info("Search ALL (no query string)",
-		commonconst.ACCOUNTID_LOG, accountId,
-		commonconst.OFFSET_LOG, idAfter,
+	slog.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll start",
+		"idAfter", idAfter,
 		"pageSize", pageSize,
 	)
 
@@ -479,24 +482,8 @@ func (e *ElasticMetadataStorageServiceImpl) searchAll(ctx context.Context, accou
 		return nil, fmt.Errorf("failed to search all query : %w", err)
 	}
 
-	slog.Info("Search ALL result", "count", len(result.Hits.Hits))
+	slog.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll end", "count", len(result.Hits.Hits))
 	return result, nil
-}
-
-func (e *ElasticMetadataStorageServiceImpl) getByIdInternal(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*search.Response, error) {
-	query := types.NewQuery()
-
-	query.Bool = types.NewBoolQuery()
-	query.Bool.Must = []types.Query{
-		*e.accountIdQuery(accountId),
-		*e.idQuery(id),
-	}
-
-	result, err := e.client.Search().
-		Index(IndexName).
-		Query(query).
-		Do(ctx)
-	return result, err
 }
 
 func (e *ElasticMetadataStorageServiceImpl) unmarshalResults(result *search.Response) ([]*entity.ElasticImageMetaData, error) {
@@ -538,17 +525,27 @@ func unmarshalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDa
 func NewElasticMetadataStorage(
 	config *conf.MetadataStorageConfig,
 	validate *validator.Validate,
-) MetadataStorageService {
+) (MetadataStorageService, error) {
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 
-	responseCreate, err := es8.Indices.
-		Create(config.Index).
+	indexExists, err := es8.Indices.
+		Exists(config.Index).
 		Do(context.Background())
 
-	slog.Info("Elastic create index",
-		"index", config.Index,
-		"response", render.Render(responseCreate),
-		commonconst.ERR_LOG, err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if elastic index exists: %w", err)
+	}
+
+	if !indexExists {
+		responseCreate, err := es8.Indices.
+			Create(config.Index).
+			Do(context.Background())
+
+		slog.InfoContext(context.Background(), "Elastic create index",
+			"index", config.Index,
+			"response", render.Render(responseCreate),
+			"error", err)
+	}
 
 	indexTypeMapping := types.NewTypeMapping()
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
@@ -566,17 +563,17 @@ func NewElasticMetadataStorage(
 		Properties(indexTypeMapping.Properties).
 		Do(context.Background())
 
-	slog.Info("Elastic create mapping index",
+	slog.InfoContext(context.Background(), "Elastic create mapping index",
 		"response", render.Render(responseMapping),
-		commonconst.ERR_LOG, err)
+		"error", err)
 
 	return &ElasticMetadataStorageServiceImpl{
 		client:                 es8,
 		embeddingMatchTreshold: config.EmbeddingMatchTreshold,
 		validate:               validate,
-	}
+	}, nil
 }
 
-func NewMetadataStorageService(config *conf.MetadataStorageConfig, validate *validator.Validate) MetadataStorageService {
+func NewMetadataStorageService(config *conf.MetadataStorageConfig, validate *validator.Validate) (MetadataStorageService, error) {
 	return NewElasticMetadataStorage(config, validate)
 }

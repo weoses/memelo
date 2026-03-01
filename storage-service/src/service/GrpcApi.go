@@ -97,6 +97,6 @@ func (api *SearchServiceApi) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.G
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetMeme is not implemented"))
 }
 
-func NewSearchServiceApi() *SearchServiceApi {
-	return &SearchServiceApi{}
+func NewSearchServiceApi(crud MemeCrudService) *SearchServiceApi {
+	return &SearchServiceApi{crud: crud}
 }
