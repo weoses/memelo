@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	NEW = iota
+	UNSPECIFIED = iota
+	NEW
 	DUPLICATED
 )
 
@@ -65,7 +66,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		return nil, fmt.Errorf("save image files failed: %w", err)
 	}
 
-	err = m.metadataStore.Save(ctx, &entity.ElasticImageMetaData{
+	metadataEntity := &entity.ElasticImageMetaData{
 		ImageId:     imgId,
 		S3Id:        s3id,
 		AccountId:   accountId,
@@ -76,12 +77,13 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		ThumbSize:   pipelineResult.ImageThumbnailSize,
 		Created:     time.Now().UnixMicro(),
 		Updated:     time.Now().UnixMicro(),
-	})
+	}
+	err = m.metadataStore.Save(ctx, metadataEntity)
 	if err != nil {
 		return nil, fmt.Errorf("save metadata failed: %w", err)
 	}
 
-	entities, err := m.addUrlsToElasticEntities(ctx, []*entity.ElasticImageMetaData{pipelineResult.Duplicate})
+	entities, err := m.addUrlsToElasticEntities(ctx, []*entity.ElasticImageMetaData{metadataEntity})
 	if err != nil {
 		return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
 	}

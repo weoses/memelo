@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 
@@ -12,18 +13,22 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/service"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
 
 func main() {
 	config.InitConfig()
+	loggingConfig := config.NewLoggingConfig()
+	config.InitLogs(loggingConfig)
 
 	fx.New(
+		fx.WithLogger(func() fxevent.Logger {
+			return &fxevent.SlogLogger{Logger: slog.With()}
+		}),
 		fx.Provide(NewValidator),
 		fx.Provide(config.NewServerConfig),
-		fx.Provide(config.NewLoggingConfig),
-		fx.Invoke(config.InitLogs),
 
 		fx.Provide(conf.NewImageEmbeddingConfig),
 		fx.Provide(conf.NewImageConverterConfig),

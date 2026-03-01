@@ -21,6 +21,56 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type CreateMemeStatus int32
+
+const (
+	// The first value in the enum must be zero and should be a default/unspecified value
+	CreateMemeStatus_STATUS_UNSPECIFIED CreateMemeStatus = 0
+	CreateMemeStatus_STATUS_NEW         CreateMemeStatus = 1
+	CreateMemeStatus_STATUS_DUPLICATE   CreateMemeStatus = 2
+)
+
+// Enum value maps for CreateMemeStatus.
+var (
+	CreateMemeStatus_name = map[int32]string{
+		0: "STATUS_UNSPECIFIED",
+		1: "STATUS_NEW",
+		2: "STATUS_DUPLICATE",
+	}
+	CreateMemeStatus_value = map[string]int32{
+		"STATUS_UNSPECIFIED": 0,
+		"STATUS_NEW":         1,
+		"STATUS_DUPLICATE":   2,
+	}
+)
+
+func (x CreateMemeStatus) Enum() *CreateMemeStatus {
+	p := new(CreateMemeStatus)
+	*p = x
+	return p
+}
+
+func (x CreateMemeStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CreateMemeStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_v1_search_service_proto_enumTypes[0].Descriptor()
+}
+
+func (CreateMemeStatus) Type() protoreflect.EnumType {
+	return &file_proto_v1_search_service_proto_enumTypes[0]
+}
+
+func (x CreateMemeStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CreateMemeStatus.Descriptor instead.
+func (CreateMemeStatus) EnumDescriptor() ([]byte, []int) {
+	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{0}
+}
+
 type SearchMemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
@@ -188,7 +238,7 @@ func (x *CreateMemeRequest) GetRawImage() []byte {
 type CreateMemeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Result        *MemeDto               `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	Status        int32                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
+	Status        CreateMemeStatus       `protobuf:"varint,2,opt,name=status,proto3,enum=proto.memelo.v1.CreateMemeStatus" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -230,11 +280,11 @@ func (x *CreateMemeResponse) GetResult() *MemeDto {
 	return nil
 }
 
-func (x *CreateMemeResponse) GetStatus() int32 {
+func (x *CreateMemeResponse) GetStatus() CreateMemeStatus {
 	if x != nil {
 		return x.Status
 	}
-	return 0
+	return CreateMemeStatus_STATUS_UNSPECIFIED
 }
 
 type GetMemeRequest struct {
@@ -344,14 +394,19 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\x11CreateMemeRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1b\n" +
-	"\traw_image\x18\x02 \x01(\fR\brawImage\"^\n" +
+	"\traw_image\x18\x02 \x01(\fR\brawImage\"\x81\x01\n" +
 	"\x12CreateMemeResponse\x120\n" +
-	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\x05R\x06status\" \n" +
+	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\x129\n" +
+	"\x06status\x18\x02 \x01(\x0e2!.proto.memelo.v1.CreateMemeStatusR\x06status\" \n" +
 	"\x0eGetMemeRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"C\n" +
 	"\x0fGetMemeResponse\x120\n" +
-	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result2\x8b\x02\n" +
+	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result*P\n" +
+	"\x10CreateMemeStatus\x12\x16\n" +
+	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"\n" +
+	"STATUS_NEW\x10\x01\x12\x14\n" +
+	"\x10STATUS_DUPLICATE\x10\x022\x8b\x02\n" +
 	"\rSearchService\x12U\n" +
 	"\n" +
 	"SearchMeme\x12\".proto.memelo.v1.SearchMemeRequest\x1a#.proto.memelo.v1.SearchMemeResponse\x12U\n" +
@@ -372,31 +427,34 @@ func file_proto_v1_search_service_proto_rawDescGZIP() []byte {
 	return file_proto_v1_search_service_proto_rawDescData
 }
 
+var file_proto_v1_search_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_v1_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_v1_search_service_proto_goTypes = []any{
-	(*SearchMemeRequest)(nil),  // 0: proto.memelo.v1.SearchMemeRequest
-	(*SearchMemeResponse)(nil), // 1: proto.memelo.v1.SearchMemeResponse
-	(*CreateMemeRequest)(nil),  // 2: proto.memelo.v1.CreateMemeRequest
-	(*CreateMemeResponse)(nil), // 3: proto.memelo.v1.CreateMemeResponse
-	(*GetMemeRequest)(nil),     // 4: proto.memelo.v1.GetMemeRequest
-	(*GetMemeResponse)(nil),    // 5: proto.memelo.v1.GetMemeResponse
-	(*MemeDto)(nil),            // 6: proto.memelo.v1.MemeDto
+	(CreateMemeStatus)(0),      // 0: proto.memelo.v1.CreateMemeStatus
+	(*SearchMemeRequest)(nil),  // 1: proto.memelo.v1.SearchMemeRequest
+	(*SearchMemeResponse)(nil), // 2: proto.memelo.v1.SearchMemeResponse
+	(*CreateMemeRequest)(nil),  // 3: proto.memelo.v1.CreateMemeRequest
+	(*CreateMemeResponse)(nil), // 4: proto.memelo.v1.CreateMemeResponse
+	(*GetMemeRequest)(nil),     // 5: proto.memelo.v1.GetMemeRequest
+	(*GetMemeResponse)(nil),    // 6: proto.memelo.v1.GetMemeResponse
+	(*MemeDto)(nil),            // 7: proto.memelo.v1.MemeDto
 }
 var file_proto_v1_search_service_proto_depIdxs = []int32{
-	6, // 0: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
-	6, // 1: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	6, // 2: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	0, // 3: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
-	2, // 4: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
-	4, // 5: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
-	1, // 6: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
-	3, // 7: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
-	5, // 8: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 0: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
+	7, // 1: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	0, // 2: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
+	7, // 3: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	1, // 4: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
+	3, // 5: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
+	5, // 6: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
+	2, // 7: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
+	4, // 8: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
+	6, // 9: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_search_service_proto_init() }
@@ -411,13 +469,14 @@ func file_proto_v1_search_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_search_service_proto_rawDesc), len(file_proto_v1_search_service_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_v1_search_service_proto_goTypes,
 		DependencyIndexes: file_proto_v1_search_service_proto_depIdxs,
+		EnumInfos:         file_proto_v1_search_service_proto_enumTypes,
 		MessageInfos:      file_proto_v1_search_service_proto_msgTypes,
 	}.Build()
 	File_proto_v1_search_service_proto = out.File

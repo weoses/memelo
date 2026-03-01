@@ -199,7 +199,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 		data[i] = item
 	}
 
-	return data, e.validate.Struct(data)
+	return data, nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(

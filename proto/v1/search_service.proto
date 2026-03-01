@@ -4,6 +4,13 @@ import "proto/v1/common.proto";
 option go_package = "github.com/weoses/memelo/gen/proto/v1";
 package proto.memelo.v1;
 
+enum CreateMemeStatus {
+  // The first value in the enum must be zero and should be a default/unspecified value
+  STATUS_UNSPECIFIED = 0;
+  STATUS_NEW = 1;
+  STATUS_DUPLICATE = 2;
+}
+
 message SearchMemeRequest {
   string account_id = 1;
   string query = 2;
@@ -22,7 +29,7 @@ message CreateMemeRequest {
 
 message CreateMemeResponse {
   MemeDto result = 1;
-  int32 status = 2;
+  CreateMemeStatus status = 2;
 }
 
 message GetMemeRequest{

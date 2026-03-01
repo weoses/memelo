@@ -24,3 +24,12 @@ metadata-storage:
   Index: image-metadata
   EmbeddingV1Dimensions: 1408
   EmbeddingMatchTreshold: 0.955
+
+image-embedding:
+  ApiLocation: us-central1
+  ProjectName: positive-shell-448806-f7
+  Model: multimodalembedding@001
+  Dimension: 1408
+
+image-converter:
+  ThumbSize: 360

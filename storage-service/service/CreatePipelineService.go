@@ -102,7 +102,7 @@ func (c *CreateImageServiceImpl) toJpeg(ctx context.Context, pipelineCtx *Pipeli
 }
 
 func (c *CreateImageServiceImpl) createThumbnail(ctx context.Context, pipelineCtx *PipelineContext) error {
-	imgThumb, err := c.imageConverter.MakeThumbnail(ctx, pipelineCtx.ImageThumbnail)
+	imgThumb, err := c.imageConverter.MakeThumbnail(ctx, pipelineCtx.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("cannot process original_image: %w", err)
 	}

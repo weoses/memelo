@@ -13,7 +13,8 @@ import (
 )
 
 type SearchServiceApi struct {
-	crud MemeCrudService
+	crud    MemeCrudService
+	slogger *slog.Logger
 }
 
 func (api *SearchServiceApi) metadataToMemeDto(urls *MetadataWithUrls) *v1.MemeDto {
@@ -36,7 +37,7 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *MetadataWithUrls) *v1.MemeD
 func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error) {
 	ctx = context.WithValue(ctx, "accountId", req.AccountId)
 
-	slog.InfoContext(ctx, "SearchMeme request", "query", req.Query)
+	api.slogger.InfoContext(ctx, "SearchMeme request", "query", req.Query)
 
 	accountIdUuid, err := uuid.Parse(req.AccountId)
 	if err != nil {
@@ -64,6 +65,8 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, err
 	}
 
+	api.slogger.Info("SearchMeme response", "count", len(data))
+
 	return &v1.SearchMemeResponse{
 		Results: helper.TransformSlice(
 			data,
@@ -75,7 +78,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeRequest) (*v1.CreateMemeResponse, error) {
 	ctx = context.WithValue(ctx, "accountId", req.AccountId)
 
-	slog.InfoContext(ctx, "CreateMeme request")
+	api.slogger.InfoContext(ctx, "CreateMeme request")
 
 	accountIdUuid, err := uuid.Parse(req.AccountId)
 	if err != nil {
@@ -87,9 +90,13 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 		return nil, err
 	}
 
+	api.slogger.Info("CreateMeme response",
+		"id", meme.Metadata.Metadata.ImageId.String(),
+		"status", meme.Status)
+
 	return &v1.CreateMemeResponse{
 		Result: api.metadataToMemeDto(meme.Metadata),
-		Status: int32(meme.Status),
+		Status: v1.CreateMemeStatus(meme.Status),
 	}, nil
 }
 
@@ -98,5 +105,8 @@ func (api *SearchServiceApi) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.G
 }
 
 func NewSearchServiceApi(crud MemeCrudService) *SearchServiceApi {
-	return &SearchServiceApi{crud: crud}
+	return &SearchServiceApi{
+		crud:    crud,
+		slogger: slog.With("service", "SearchServiceApi"),
+	}
 }
