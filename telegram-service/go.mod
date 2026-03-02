@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/spf13/viper v1.19.0
 	github.com/weoses/memelo/common v0.0.0-00010101000000-000000000000
+	github.com/weoses/memelo/gen v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -47,4 +48,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/weoses/memelo/common => ../../common

@@ -18,7 +18,7 @@ type MemeCreateResult struct {
 
 type MemeSearchResult struct {
 	Id          uuid.UUID
-	SortId      int64
+	SortId      string
 	ImageUrl    string
 	ThumbUrl    string
 	ThumbWidth  int

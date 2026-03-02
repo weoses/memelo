@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/weoses/memelo/common/commonconst"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -32,6 +30,7 @@ type InineHandlerServiceImpl struct {
 	userAccount UserAccountService
 	storage     StorageConnector
 	config      *conf.InlineConfig
+	log         *slog.Logger
 }
 
 func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, request *tgbotapi.ChosenInlineResult) error {
@@ -41,9 +40,9 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 
 	imageId := request.ResultID
 	userId := request.From.ID
-	slog.Info("Inline result : del query:",
+	i.log.InfoContext(ctx, "Inline result : del query:",
 		"userId", userId,
-		commonconst.QUERY_LOG, request.Query,
+		"query", request.Query,
 		"messageId", request.InlineMessageID)
 
 	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
@@ -71,7 +70,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	query := request.Query
 	delQuery := false
 
-	slog.Info("Inline query:",
+	i.log.InfoContext(ctx, "Inline query:",
 		"userId", userId,
 		"requestId", request.ID,
 		"query", request.Query,
@@ -89,13 +88,9 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		return nil, err
 	}
 
-	var searchAfter *int64
+	var searchAfter *string
 	if request.Offset != "" {
-		offset, err := strconv.ParseInt(request.Offset, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		searchAfter = &offset
+		searchAfter = &request.Offset
 	}
 
 	results, err := i.storage.ProcessSearchQuery(
@@ -109,7 +104,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		return nil, fmt.Errorf("ProcessSearchQuery failed: %w", err)
 	}
 
-	slog.Info("Search query result",
+	i.log.InfoContext(ctx, "Search query result",
 		"userId", userId,
 		"requestId", request.ID,
 		"resultListSize", len(results))
@@ -125,7 +120,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	photos := make([]interface{}, len(results))
 	for index, item := range results {
-		slog.Debug("SearchResultItem ",
+		i.log.DebugContext(ctx, "SearchResultItem",
 			"userId", userId,
 			"requestId", request.ID,
 			"index", index,
@@ -152,10 +147,10 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	nextOffset := ""
 	if len(results) == i.config.PageSize && i.config.PageSize > 0 {
-		nextOffset = strconv.FormatInt(results[i.config.PageSize-1].SortId, 10)
+		nextOffset = results[i.config.PageSize-1].SortId
 	}
 
-	slog.Info("Search next offset ",
+	i.log.InfoContext(ctx, "Search next offset",
 		"userId", userId,
 		"requestId", request.ID,
 		"nextOffset", nextOffset)
@@ -181,5 +176,6 @@ func NewInlineService(
 		userAccount: userAccount,
 		storage:     storage,
 		config:      config,
+		log:         slog.With("service", "InlineHandlerService"),
 	}
 }

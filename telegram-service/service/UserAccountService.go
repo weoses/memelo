@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -18,6 +19,7 @@ type UserAccountService interface {
 type UserAccountServiceImpl struct {
 	mongoClient *mongo.Client
 	collection  *mongo.Collection
+	log         *slog.Logger
 }
 
 // MapUserToAccount implements UserAccountService.
@@ -47,6 +49,7 @@ func (u *UserAccountServiceImpl) MapUserToAccount(ctx context.Context, userId in
 
 type UserAccountServiceStaticImpl struct {
 	staticUuid uuid.UUID
+	log        *slog.Logger
 }
 
 // MapUserToAccount implements UserAccountService.
@@ -59,9 +62,12 @@ func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.U
 	const COLLECTION_NAME = "telegram-user-account"
 	const INDEX_NAME = "telegram-id-uniq"
 
+	logger := slog.With("service", "UserAccountService")
+
 	if userAccountConfig.StaticUuid != "" {
 		return &UserAccountServiceStaticImpl{
 			staticUuid: uuid.MustParse(userAccountConfig.StaticUuid),
+			log:        logger,
 		}, nil
 	}
 
@@ -98,5 +104,6 @@ func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.U
 	return &UserAccountServiceImpl{
 		mongoClient: client,
 		collection:  collection,
+		log:         logger,
 	}, err
 }
