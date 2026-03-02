@@ -1,0 +1,32 @@
+syntax = "proto3";
+import "proto/v1/common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+
+message ExportRequest {
+  string account_id = 1;
+}
+
+message ExportImageDto {
+  bytes data = 1;
+  int32 width = 2 ;
+  int32 height = 3;
+}
+message ExportImageEmbedding {
+  string model = 1;
+  repeated float data = 2;
+}
+
+message ExportResponseChunk {
+    string ocr_result = 1;
+    ExportImageEmbedding embedding = 2;
+    ExportImageDto original_image = 3;
+    ExportImageDto thumbnail_image = 4;
+}
+
+
+service ExportService {
+  rpc ExportImages(ExportRequest) returns (stream ExportResponseChunk);
+}

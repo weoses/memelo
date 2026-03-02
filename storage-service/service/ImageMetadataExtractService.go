@@ -200,7 +200,7 @@ func calcRawImageHash(raw []byte) (string, error) {
 	return hash, nil
 }
 
-func NewCreateImageServiceImpl(
+func NewImageMetadataExtractService(
 	metadata MetadataStorageService,
 	imageConverter ocr.ImageConveter,
 	imageEmbedder ocr.EmbeddingExtractor,

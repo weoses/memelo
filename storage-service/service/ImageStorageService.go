@@ -3,7 +3,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +17,8 @@ import (
 
 type ImageStorageService interface {
 	Save(ctx context.Context, id uuid.UUID, imgRaw []byte, imgThumbnail []byte) error
-	GetImage(ctx context.Context, id uuid.UUID) (*string, error)
+	GetImageBytes(ctx context.Context, id uuid.UUID) ([]byte, error)
+	GetImageThumbBytes(ctx context.Context, id uuid.UUID) ([]byte, error)
 
 	GetUrl(ctx context.Context, id uuid.UUID) (string, error)
 	GetUrlThumb(ctx context.Context, id uuid.UUID) (string, error)
@@ -37,31 +37,23 @@ func (m *MinioFileStorageServiceImpl) DeleteImage(ctx context.Context, id uuid.U
 	return errors.Join(err1, err2)
 }
 
-// GetImage implements ImageStorageService.
-func (m *MinioFileStorageServiceImpl) GetImage(ctx context.Context, id uuid.UUID) (*string, error) {
-	obj, err := m.client.GetObject(
-		ctx,
-		m.bucketName,
-		getObjectNameV1(id, false),
-		minio.GetObjectOptions{},
-	)
+// GetImageBytes implements ImageStorageService.
+func (m *MinioFileStorageServiceImpl) GetImageBytes(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	return m.getObjectBytes(ctx, getObjectNameV1(id, false))
+}
 
+// GetImageThumbBytes implements ImageStorageService.
+func (m *MinioFileStorageServiceImpl) GetImageThumbBytes(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	return m.getObjectBytes(ctx, getObjectNameV1(id, true))
+}
+
+func (m *MinioFileStorageServiceImpl) getObjectBytes(ctx context.Context, objectName string) ([]byte, error) {
+	obj, err := m.client.GetObject(ctx, m.bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
-
-	buf := bytes.NewBufferString("")
-	base64Encoder := base64.NewEncoder(base64.RawStdEncoding, buf)
-	_, err = io.Copy(base64Encoder, obj)
-	base64Encoder.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	dataBase64 := buf.String()
-
-	return &dataBase64, nil
+	defer obj.Close()
+	return io.ReadAll(obj)
 }
 
 // GetUrl implements ImageStorageService.

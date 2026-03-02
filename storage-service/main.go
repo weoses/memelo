@@ -42,7 +42,8 @@ func main() {
 
 		fx.Provide(service.NewMetadataStorageService),
 		fx.Provide(service.NewImageStorageService),
-		fx.Provide(service.NewCreateImageServiceImpl),
+		fx.Provide(service.NewImageMetadataExtractService),
+		fx.Provide(service.NewExportService),
 
 		fx.Provide(
 			fx.Annotate(
@@ -82,6 +83,7 @@ func main() {
 		),
 
 		fx.Provide(service.NewSearchServiceApi),
+		fx.Provide(service.NewExportServiceApi),
 		fx.Invoke(Startup),
 	).Run()
 }
@@ -89,11 +91,15 @@ func main() {
 func Startup(
 	lc fx.Lifecycle,
 	searchApi v1connect.SearchServiceHandler,
+	exportApi v1connect.ExportServiceHandler,
 	cfg *config.ServerConfig,
 ) {
 	mux := http.NewServeMux()
-	path, handler := v1connect.NewSearchServiceHandler(searchApi)
-	mux.Handle(path, handler)
+	pathSearch, handlerSearch := v1connect.NewSearchServiceHandler(searchApi)
+	pathExport, handlerExport := v1connect.NewExportServiceHandler(exportApi)
+
+	mux.Handle(pathSearch, handlerSearch)
+	mux.Handle(pathExport, handlerExport)
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddress,
