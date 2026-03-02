@@ -28,13 +28,6 @@ jobs:
           echo "RELEASE_VERSION=$VERSION_DATE" >> $GITHUB_ENV
         shell: bash
 
-      - name: "OCR: Build and push" 
-        uses: docker/build-push-action@v6
-        with:
-          push: ${{github.ref == 'refs/heads/master'}}
-          file: Dockerfile-ocr-service
-          tags: ghcr.io/weoses/ocr-service:${{ env.RELEASE_VERSION }}
-
       - name: "STORAGE: Build and push" 
         uses: docker/build-push-action@v6
         with:
