@@ -16,8 +16,9 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type ImageEmbeddingExtractor interface {
+type EmbeddingExtractor interface {
 	GetImageEmbeddingV1(ctx context.Context, image []byte) (*entity.ElasticEmbeddingV1, error)
+	GetTextEmbeddingV1(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error)
 }
 
 type ImageEmbeddingExtractorImpl struct {
@@ -104,7 +105,57 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 	}, nil
 }
 
-func NewImageEmbeddingExtractor(cnf *conf.ImageEmbeddingConfig) (ImageEmbeddingExtractor, error) {
+func (i *ImageEmbeddingExtractorImpl) GetTextEmbeddingV1(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error) {
+	return i.generateTextEmbedding(ctx, text)
+}
+
+func (i *ImageEmbeddingExtractorImpl) generateTextEmbedding(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error) {
+	instance, err := structpb.NewValue(map[string]any{
+		"text": text,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct request payload: %w", err)
+	}
+
+	params, err := structpb.NewValue(map[string]any{
+		"dimension": i.dimension,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct request params: %w", err)
+	}
+
+	req := &aiplatformpb.PredictRequest{
+		Endpoint:   i.endpoint,
+		Instances:  []*structpb.Value{instance},
+		Parameters: params,
+	}
+
+	resp, err := i.client.Predict(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate text embeddings: %w", err)
+	}
+
+	instanceEmbeddingsJson, err := protojson.Marshal(resp.GetPredictions()[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert protobuf value to JSON: %w", err)
+	}
+
+	var instanceEmbeddings struct {
+		TextEmbeddings []float32 `json:"textEmbedding"`
+	}
+	if err := json.Unmarshal(instanceEmbeddingsJson, &instanceEmbeddings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	textEmbedding := instanceEmbeddings.TextEmbeddings
+	fmt.Printf("TEST %f, %f", textEmbedding[0], textEmbedding[1])
+	return &entity.ElasticEmbeddingV1{
+		Data:  &textEmbedding,
+		Model: i.model,
+	}, nil
+}
+
+func NewImageEmbeddingExtractor(cnf *conf.ImageEmbeddingConfig) (EmbeddingExtractor, error) {
 	apiEndpoint := cnf.ApiEndpoint
 	client, err := aiplatform.NewPredictionClient(context.Background(), option.WithEndpoint(apiEndpoint))
 	if err != nil {

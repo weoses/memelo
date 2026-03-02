@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
+	"github.com/weoses/memelo/storage-service/ocr"
 )
 
 type Searcher interface {
@@ -162,5 +163,41 @@ func NewFuzzySearcher(m MetadataStorageService) Searcher {
 	return &FuzzySearcher{
 		SearcherBase: SearcherBase{name: "fuzzy_searcher"},
 		metadata:     m,
+	}
+}
+
+// ===========================
+
+type TextEmbeddingSearcher struct {
+	SearcherBase
+	metadata MetadataStorageService
+	embedder ocr.EmbeddingExtractor
+}
+
+func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
+	if query == "" {
+		return make([]*entity.ElasticImageMetaData, 0), nil
+	}
+
+	embedding, err := s.embedder.GetTextEmbeddingV1(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("searcher %s: GetTextEmbeddingV1 failed: %w", s.GetName(), err)
+	}
+
+	count := 5
+
+	results, err := s.metadata.SearchByEmbeddingV1(ctx, accountId, embedding, count, false)
+	if err != nil {
+		return nil, fmt.Errorf("searcher %s: SearchByEmbeddingV1 failed: %w", s.GetName(), err)
+	}
+
+	return results, nil
+}
+
+func NewTextEmbeddingSearcher(m MetadataStorageService, e ocr.EmbeddingExtractor) Searcher {
+	return &TextEmbeddingSearcher{
+		SearcherBase: SearcherBase{name: "text_embedding_searcher"},
+		metadata:     m,
+		embedder:     e,
 	}
 }

@@ -31,7 +31,7 @@ type ImageMetadataExtractService interface {
 type CreateImageServiceImpl struct {
 	metadata       MetadataStorageService
 	imageConverter ocr.ImageConveter
-	imageEmbedder  ocr.ImageEmbeddingExtractor
+	imageEmbedder  ocr.EmbeddingExtractor
 	image2text     ocr.Img2TextService
 }
 
@@ -142,7 +142,7 @@ func (c *CreateImageServiceImpl) checkDuplicateByHash(ctx context.Context, pipel
 }
 
 func (c *CreateImageServiceImpl) checkDuplicateByEmbedding(ctx context.Context, pipelineCtx *PipelineContext) error {
-	items, err := c.metadata.GetByEmbeddingV1(ctx, pipelineCtx.AccountId, pipelineCtx.ImageEmbedding, 1)
+	items, err := c.metadata.SearchByEmbeddingV1(ctx, pipelineCtx.AccountId, pipelineCtx.ImageEmbedding, 1, true)
 
 	if err != nil {
 		return fmt.Errorf("error getting items by embedding: %w", err)
@@ -203,7 +203,7 @@ func calcRawImageHash(raw []byte) (string, error) {
 func NewCreateImageServiceImpl(
 	metadata MetadataStorageService,
 	imageConverter ocr.ImageConveter,
-	imageEmbedder ocr.ImageEmbeddingExtractor,
+	imageEmbedder ocr.EmbeddingExtractor,
 	image2text ocr.Img2TextService,
 ) ImageMetadataExtractService {
 	return &CreateImageServiceImpl{

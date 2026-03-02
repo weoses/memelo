@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/sortorder"
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -47,7 +48,7 @@ type MetadataStorageService interface {
 
 	GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
 	GetByHash(ctx context.Context, accountId uuid.UUID, hash string, count *int) ([]*entity.ElasticImageMetaData, error)
-	GetByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img *entity.ElasticEmbeddingV1, count int) ([]*entity.ElasticImageMetaData, error)
+	SearchByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img *entity.ElasticEmbeddingV1, count int, filterSimilarity bool) ([]*entity.ElasticImageMetaData, error)
 
 	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 }
@@ -203,17 +204,18 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	return data, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
+func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 	ctx context.Context,
 	accountId uuid.UUID,
 	img *entity.ElasticEmbeddingV1,
 	count int,
+	filterSimilarity bool,
 ) ([]*entity.ElasticImageMetaData, error) {
-	e.slogger.InfoContext(ctx, "GetByEmbeddingV1: call")
+	e.slogger.InfoContext(ctx, "SearchByEmbeddingV1: call")
 
 	accountIdQuery := e.accountIdQuery(accountId)
-	knnQuery := e.embeddingV1KnnAllQuery(img, count)
-	result, err := e.processKnn(ctx, *knnQuery, accountIdQuery)
+	knnQuery := e.embeddingV1KnnAllQuery(img, accountIdQuery, count)
+	result, err := e.processKnn(ctx, *knnQuery)
 	if err != nil {
 		return nil, fmt.Errorf("knn search failed: %w", err)
 	}
@@ -225,18 +227,18 @@ func (e *ElasticMetadataStorageServiceImpl) GetByEmbeddingV1(
 
 	resultsEntity := make([]*entity.ElasticImageMetaData, 0)
 	for index := range resultsSize {
-		if float64(*(result.Hits.Hits[index].Score_)) < e.embeddingMatchTreshold {
+		if filterSimilarity && float64(*(result.Hits.Hits[index].Score_)) < e.embeddingMatchTreshold {
 			continue
 		}
 
 		item, err := unmarshalSearchResultToElasticEntity(index, result)
 		if err != nil {
-			return nil, fmt.Errorf("GetByEmbeddingV1 result unmarshall failed: error: %w", err)
+			return nil, fmt.Errorf("SearchByEmbeddingV1 result unmarshall failed: error: %w", err)
 		}
 
 		err = e.validate.Struct(item)
 		if err != nil {
-			return nil, fmt.Errorf("GetByEmbeddingV1 result vaildation failed: error: %w", err)
+			return nil, fmt.Errorf("SearchByEmbeddingV1 result vaildation failed: error: %w", err)
 		}
 
 		resultsEntity = append(resultsEntity, item)
@@ -277,6 +279,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 
 func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(
 	img *entity.ElasticEmbeddingV1,
+	accountIdQuery *types.Query,
 	count int,
 ) *types.KnnSearch {
 
@@ -285,6 +288,7 @@ func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(
 	query.QueryVector = *img.Data
 	query.NumCandidates = helper.Addr(1000)
 	query.K = helper.Addr(count)
+	query.Filter = []types.Query{*accountIdQuery}
 	return query
 }
 
@@ -372,17 +376,18 @@ func (e *ElasticMetadataStorageServiceImpl) fuzzyStringAndAccountQuery(
 func (e *ElasticMetadataStorageServiceImpl) processKnn(
 	ctx context.Context,
 	knnQuery types.KnnSearch,
-	query *types.Query,
 ) (*search.Response, error) {
 
 	sortId := types.NewSortOptions()
-	sortId.SortOptions["Created"] = *types.NewFieldSort()
+	sortConfig := types.NewFieldSort()
+	sortConfig.Order = &sortorder.Desc
+
+	sortId.SortOptions["_score"] = *sortConfig
 
 	searchRequest := e.client.Search().
 		Index(IndexName).
-		Sort(sortId).
 		Knn(knnQuery).
-		Query(query).
+		Sort(sortId).
 		TrackScores(true)
 
 	knn, err := searchRequest.Do(ctx)
@@ -558,6 +563,7 @@ func NewElasticMetadataStorage(
 	denseProp := types.NewDenseVectorProperty()
 	denseProp.Index = helper.Addr(true)
 	denseProp.Dims = helper.Addr(config.EmbeddingV1Dimensions)
+	denseProp.Similarity = helper.Addr("cosine")
 	indexTypeMapping.Properties["EmbeddingV1.Data"] = denseProp
 
 	responseMapping, err := es8.Indices.PutMapping(config.Index).

@@ -26,6 +26,7 @@ metadata-storage:
   EmbeddingMatchTreshold: 0.955
 
 image-embedding:
+  #ApiEndpoint: localhost:8088
   ApiEndpoint: us-central1-aiplatform.googleapis.com:443
   ApiLocation: us-central1
   ProjectName: positive-shell-448806-f7
@@ -37,3 +38,4 @@ image-converter:
 
 image-ocr:
   ApiEndpoint: vision.googleapis.com:443
+  #ApiEndpoint: http://localhost:8088

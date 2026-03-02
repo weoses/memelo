@@ -64,6 +64,12 @@ func main() {
 		),
 		fx.Provide(
 			fx.Annotate(
+				service.NewTextEmbeddingSearcher,
+				fx.ResultTags(`group:"searchers"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
 				service.NewAllSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
