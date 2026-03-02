@@ -1,0 +1,59 @@
+syntax = "proto3";
+import "proto/v1/common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+enum CreateMemeStatus {
+  // The first value in the enum must be zero and should be a default/unspecified value
+  STATUS_UNSPECIFIED = 0;
+  STATUS_NEW = 1;
+  STATUS_DUPLICATE = 2;
+}
+
+message SearchMemeRequest {
+  string account_id = 1;
+  string query = 2;
+  optional string page_after_id = 3;
+  optional int32 page_size = 4;
+}
+
+message SearchMemeResponse {
+  repeated MemeDto results = 1;
+}
+
+message CreateMemeRequest {
+  string account_id = 1;
+  bytes raw_image = 2;
+}
+
+message CreateMemeResponse {
+  MemeDto result = 1;
+  CreateMemeStatus status = 2;
+}
+
+message GetMemeRequest{
+  string id = 1;
+}
+
+message GetMemeResponse {
+  MemeDto result = 1;
+}
+
+message DeleteMemeRequest {
+  string account_id = 1;
+  string id = 2;
+}
+
+message DeleteMemeResponse {
+  string id = 1;
+}
+
+
+
+service SearchService {
+  rpc SearchMeme(SearchMemeRequest) returns (SearchMemeResponse);
+  rpc CreateMeme(CreateMemeRequest) returns (CreateMemeResponse);
+  rpc GetMeme(GetMemeRequest) returns (GetMemeResponse);
+  rpc DeleteMeme(DeleteMemeRequest) returns (DeleteMemeResponse);
+}

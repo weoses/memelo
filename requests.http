@@ -1,0 +1,35 @@
+### Search by text query
+GRPC localhost:7001/proto.memelo.v1.SearchService/SearchMeme
+
+{
+  "account_id": "f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6",
+  "query": "khrushevka"
+}
+
+### Search all query
+GRPC localhost:7001/proto.memelo.v1.SearchService/SearchMeme
+
+{
+  "account_id": "f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6"
+}
+
+### Create
+GRPC localhost:7001/proto.memelo.v1.SearchService/CreateMeme
+
+{
+  "account_id": "f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6",
+  "raw_image": ""
+}
+
+<> 2026-03-02T002556.OK.json
+
+
+### Delete
+GRPC localhost:7001/proto.memelo.v1.SearchService/DeleteMeme
+
+{
+ "account_id": "f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6",
+  "id": "eaa4389c-5f3c-429c-af6c-2e9095b1ede0"
+}
+
+<> 2026-03-02T002519.OK.json

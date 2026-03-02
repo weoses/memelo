@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="TELEGRAM" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="kal" />
+    <module name="memelo" />
     <working_directory value="$PROJECT_DIR$/telegram-service" />
     <kind value="PACKAGE" />
     <package value="github.com/weoses/memelo/telegram-service" />
