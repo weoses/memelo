@@ -148,7 +148,6 @@ func (i *ImageEmbeddingExtractorImpl) generateTextEmbedding(ctx context.Context,
 	}
 
 	textEmbedding := instanceEmbeddings.TextEmbeddings
-	fmt.Printf("TEST %f, %f", textEmbedding[0], textEmbedding[1])
 	return &entity.ElasticEmbeddingV1{
 		Data:  &textEmbedding,
 		Model: i.model,

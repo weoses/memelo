@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -115,6 +116,7 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 
 		if len(data) > 0 {
 			elasticData = append(elasticData, data...)
+			break
 		}
 	}
 
@@ -176,6 +178,9 @@ func NewMemeCrudService(
 	imageMetadataExtract ImageMetadataExtractService,
 	searchers []Searcher,
 ) MemeCrudService {
+	slices.SortFunc(searchers, func(a Searcher, b Searcher) int {
+		return a.GetIndex() - b.GetIndex()
+	})
 	return &MemeCrudServiceImpl{
 		imageStore:           imageStore,
 		metadataStore:        metadataStore,

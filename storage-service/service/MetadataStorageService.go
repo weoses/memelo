@@ -211,7 +211,9 @@ func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 	count int,
 	filterSimilarity bool,
 ) ([]*entity.ElasticImageMetaData, error) {
-	e.slogger.InfoContext(ctx, "SearchByEmbeddingV1: call")
+	e.slogger.InfoContext(ctx, "Search embedding start",
+		"pageSize", count,
+	)
 
 	accountIdQuery := e.accountIdQuery(accountId)
 	knnQuery := e.embeddingV1KnnAllQuery(img, accountIdQuery, count)
@@ -221,9 +223,6 @@ func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 	}
 
 	resultsSize := len(result.Hits.Hits)
-	if resultsSize == 0 {
-		return []*entity.ElasticImageMetaData{}, nil
-	}
 
 	resultsEntity := make([]*entity.ElasticImageMetaData, 0)
 	for index := range resultsSize {
@@ -243,6 +242,10 @@ func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 
 		resultsEntity = append(resultsEntity, item)
 	}
+
+	e.slogger.InfoContext(ctx, "Search embedding result",
+		"count", len(resultsEntity),
+	)
 	return resultsEntity, nil
 }
 

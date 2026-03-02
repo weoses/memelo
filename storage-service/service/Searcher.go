@@ -10,6 +10,7 @@ import (
 )
 
 type Searcher interface {
+	GetIndex() int
 	GetName() string
 	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error)
 }
@@ -17,10 +18,12 @@ type Searcher interface {
 // ===========================
 
 type SearcherBase struct {
-	name string
+	name  string
+	index int
 }
 
 func (b SearcherBase) GetName() string { return b.name }
+func (b SearcherBase) GetIndex() int   { return b.index }
 
 // ===========================
 
@@ -49,8 +52,11 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 
 func NewAllSearcher(m MetadataStorageService) Searcher {
 	return &AllSearcher{
-		SearcherBase: SearcherBase{name: "all_searcher"},
-		metadata:     m,
+		SearcherBase: SearcherBase{
+			name:  "all_searcher",
+			index: 40,
+		},
+		metadata: m,
 	}
 }
 
@@ -83,8 +89,11 @@ func (s SimpleSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 
 func NewSimpleSearcher(m MetadataStorageService) Searcher {
 	return &SimpleSearcher{
-		SearcherBase: SearcherBase{name: "simple_searcher"},
-		metadata:     m,
+		SearcherBase: SearcherBase{
+			name:  "simple_searcher",
+			index: 0,
+		},
+		metadata: m,
 	}
 }
 
@@ -97,6 +106,9 @@ type IdSearcher struct {
 
 func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query == "" {
+		return make([]*entity.ElasticImageMetaData, 0), nil
+	}
+	if afterId != nil {
 		return make([]*entity.ElasticImageMetaData, 0), nil
 	}
 
@@ -124,8 +136,11 @@ func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query strin
 
 func NewIdSearcher(m MetadataStorageService) Searcher {
 	return &IdSearcher{
-		SearcherBase: SearcherBase{name: "id_searcher"},
-		metadata:     m,
+		SearcherBase: SearcherBase{
+			name:  "id_searcher",
+			index: 10,
+		},
+		metadata: m,
 	}
 }
 
@@ -138,6 +153,9 @@ type FuzzySearcher struct {
 
 func (s FuzzySearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query == "" {
+		return make([]*entity.ElasticImageMetaData, 0), nil
+	}
+	if afterId != nil {
 		return make([]*entity.ElasticImageMetaData, 0), nil
 	}
 
@@ -161,8 +179,11 @@ func (s FuzzySearcher) Search(ctx context.Context, accountId uuid.UUID, query st
 
 func NewFuzzySearcher(m MetadataStorageService) Searcher {
 	return &FuzzySearcher{
-		SearcherBase: SearcherBase{name: "fuzzy_searcher"},
-		metadata:     m,
+		SearcherBase: SearcherBase{
+			name:  "fuzzy_searcher",
+			index: 20,
+		},
+		metadata: m,
 	}
 }
 
@@ -176,6 +197,9 @@ type TextEmbeddingSearcher struct {
 
 func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query == "" {
+		return make([]*entity.ElasticImageMetaData, 0), nil
+	}
+	if afterId != nil {
 		return make([]*entity.ElasticImageMetaData, 0), nil
 	}
 
@@ -196,8 +220,11 @@ func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, 
 
 func NewTextEmbeddingSearcher(m MetadataStorageService, e ocr.EmbeddingExtractor) Searcher {
 	return &TextEmbeddingSearcher{
-		SearcherBase: SearcherBase{name: "text_embedding_searcher"},
-		metadata:     m,
-		embedder:     e,
+		SearcherBase: SearcherBase{
+			name:  "text_embedding_searcher",
+			index: 30,
+		},
+		metadata: m,
+		embedder: e,
 	}
 }

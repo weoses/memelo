@@ -44,13 +44,11 @@ func (api *SearchServiceApi) DeleteMeme(ctx context.Context, request *v1.DeleteM
 }
 
 func (api *SearchServiceApi) metadataToMemeDto(urls *MetadataWithUrls) *v1.MemeDto {
-	return &v1.MemeDto{
+	dto := &v1.MemeDto{
 		Id:        urls.Metadata.ImageId.String(),
 		OcrResult: urls.Metadata.Result,
 		ImageOriginal: &v1.ImageDto{
-			Url:    urls.UrlOriginal,
-			Width:  int32(urls.Metadata.ImageSize.Width),
-			Height: int32(urls.Metadata.ImageSize.Height),
+			Url: urls.UrlOriginal,
 		},
 		ImageThumbnail: &v1.ImageDto{
 			Url:    urls.UrlThumb,
@@ -58,6 +56,13 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *MetadataWithUrls) *v1.MemeD
 			Height: int32(urls.Metadata.ThumbSize.Height),
 		},
 	}
+
+	if urls.Metadata.ImageSize != nil {
+		dto.ImageOriginal.Width = int32(urls.Metadata.ImageSize.Width)
+		dto.ImageOriginal.Height = int32(urls.Metadata.ImageSize.Height)
+	}
+
+	return dto
 }
 
 func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error) {
