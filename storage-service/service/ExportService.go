@@ -12,10 +12,7 @@ import (
 const exportPageSize = 100
 
 type ExportService interface {
-	// Export streams a zip archive (in memory) containing all images and metadata
-	// for the given account. progress is called after each item is fully written,
-	// with the running count of items processed. Returns an io.Reader over the
-	// completed zip bytes.
+	// Export streams a "ready to pack" dtos of all exists images in database with metadata
 	Export(ctx context.Context,
 		accountId uuid.UUID,
 		callback func(ctx context.Context, items []ExportItem) error,

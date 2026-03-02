@@ -1,0 +1,19 @@
+syntax = "proto3";
+import "proto/v1/common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+
+
+message RecomputeRequest {
+  string account_id = 1;
+}
+
+message RecomputeStatus {
+  int32 processed = 1;
+}
+
+service RecomputeService {
+  rpc RecomputeOcrData(RecomputeRequest) returns (stream RecomputeStatus);
+}
