@@ -13,6 +13,7 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/service"
 	"github.com/weoses/memelo/storage-service/service/extract_pipeline"
+	"github.com/weoses/memelo/storage-service/service/search_pipeline"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"golang.org/x/net/http2"
@@ -103,31 +104,31 @@ func main() {
 
 		fx.Provide(
 			fx.Annotate(
-				service.NewSimpleSearcher,
+				search_pipeline.NewSimpleSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewIdSearcher,
+				search_pipeline.NewIdSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewFuzzySearcher,
+				search_pipeline.NewFuzzySearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewTextEmbeddingSearcher,
+				search_pipeline.NewTextEmbeddingSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewAllSearcher,
+				search_pipeline.NewAllSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
