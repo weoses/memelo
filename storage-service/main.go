@@ -12,6 +12,7 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/service"
+	"github.com/weoses/memelo/storage-service/service/extract_pipeline"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"golang.org/x/net/http2"
@@ -42,8 +43,63 @@ func main() {
 
 		fx.Provide(service.NewMetadataStorageService),
 		fx.Provide(service.NewImageStorageService),
-		fx.Provide(service.NewImageMetadataExtractService),
 		fx.Provide(service.NewExportService),
+
+		// Pipeline steps (sorted by GetPos inside NewImageMetadataExtractService)
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewCalcHashPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewCheckDuplicateByHashPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewToJpegPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewCalcEmbeddingPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewCheckDuplicateByEmbeddingPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewOcrImagePipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewCreateThumbnailPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				extract_pipeline.NewCalcSizesPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewImageMetadataExtractService,
+				fx.ParamTags(`group:"pipeline_steps"`),
+			),
+		),
 
 		fx.Provide(
 			fx.Annotate(

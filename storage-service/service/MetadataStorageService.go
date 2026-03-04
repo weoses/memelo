@@ -27,7 +27,15 @@ const MaxFuzzy = 10
 type MetadataStorageService interface {
 	Save(ctx context.Context, file *entity.ElasticImageMetaData) error
 
-	SearchAll(ctx context.Context,
+	List(
+		ctx context.Context,
+		accountId *uuid.UUID,
+		id *uuid.UUID,
+		idAfter *uuid.UUID,
+		pageSize *int,
+	) ([]*entity.ElasticImageMetaData, error)
+
+	SearchByAccountId(ctx context.Context,
 		accountId uuid.UUID,
 		idAfter *uuid.UUID,
 		pageSize *int,
@@ -60,20 +68,39 @@ type ElasticMetadataStorageServiceImpl struct {
 	slogger                *slog.Logger
 }
 
-func (e *ElasticMetadataStorageServiceImpl) SearchAll(
+func (e *ElasticMetadataStorageServiceImpl) SearchByAccountId(
 	ctx context.Context,
 	accountId uuid.UUID,
 	sortIdAfter *uuid.UUID,
 	pageSize *int,
 ) ([]*entity.ElasticImageMetaData, error) {
-	result, err := e.searchAll(ctx, accountId, sortIdAfter, pageSize)
+	result, err := e.searchByAccountId(ctx, accountId, sortIdAfter, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("search all failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
+		return nil, fmt.Errorf("search by account id failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
 	}
 
 	results, err := e.unmarshalResults(result)
 	if err != nil {
-		return nil, fmt.Errorf("result unmarshall failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
+		return nil, fmt.Errorf("search by account id failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
+	}
+
+	return results, nil
+}
+func (e *ElasticMetadataStorageServiceImpl) List(
+	ctx context.Context,
+	accountId *uuid.UUID,
+	id *uuid.UUID,
+	sortIdAfter *uuid.UUID,
+	pageSize *int,
+) ([]*entity.ElasticImageMetaData, error) {
+	result, err := e.list(ctx, accountId, id, sortIdAfter, pageSize)
+	if err != nil {
+		return nil, fmt.Errorf("list all failed: sortIdAfter=%v: %w", sortIdAfter, err)
+	}
+
+	results, err := e.unmarshalResults(result)
+	if err != nil {
+		return nil, fmt.Errorf("list unmarshall failed: sortIdAfter=%v: %w", sortIdAfter, err)
 	}
 
 	return results, nil
@@ -307,15 +334,6 @@ func (e *ElasticMetadataStorageServiceImpl) accountIdQuery(accountId uuid.UUID) 
 	return accountIdQuery
 }
 
-func (e *ElasticMetadataStorageServiceImpl) allInAccountQuery(accountId uuid.UUID) *types.Query {
-	query := types.NewQuery()
-	query.Bool = types.NewBoolQuery()
-	query.Bool.Must = []types.Query{
-		*e.accountIdQuery(accountId),
-	}
-	return query
-}
-
 func (e *ElasticMetadataStorageServiceImpl) idQuery(
 	id uuid.UUID,
 ) *types.Query {
@@ -329,7 +347,7 @@ func (e *ElasticMetadataStorageServiceImpl) hashQuery(
 ) *types.Query {
 	query := types.NewQuery()
 	query.QueryString = types.NewQueryStringQuery()
-	query.QueryString.Query = fmt.Sprintf("Hash: \"%s\"", hash)
+	query.QueryString.Query = fmt.Sprintf("CalcHash: \"%s\"", hash)
 	return query
 }
 
@@ -479,19 +497,52 @@ func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, ac
 	return resultSimple, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) searchAll(ctx context.Context, accountId uuid.UUID, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
-	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll start",
+func (e *ElasticMetadataStorageServiceImpl) list(
+	ctx context.Context,
+	accountId *uuid.UUID,
+	id *uuid.UUID,
+	idAfter *uuid.UUID,
+	pageSize *int) (*search.Response, error) {
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.list start",
+		"idAfter", idAfter,
+		"pageSize", pageSize,
+	)
+	query := types.NewQuery()
+	query.Bool = types.NewBoolQuery()
+
+	queries := make([]types.Query, 0)
+	if accountId != nil {
+		queries = append(queries, *e.accountIdQuery(*accountId))
+	}
+
+	if id != nil {
+		queries = append(queries, *e.idQuery(*id))
+	}
+
+	query.Bool.Must = queries
+
+	result, err := e.runSearchQuery(ctx, query, idAfter, pageSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search all query : %w", err)
+	}
+
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.list end", "count", len(result.Hits.Hits))
+	return result, nil
+}
+
+func (e *ElasticMetadataStorageServiceImpl) searchByAccountId(ctx context.Context, accountId uuid.UUID, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchByAccountId start",
 		"idAfter", idAfter,
 		"pageSize", pageSize,
 	)
 
-	q := e.allInAccountQuery(accountId)
+	q := e.accountIdQuery(accountId)
 	result, err := e.runSearchQuery(ctx, q, idAfter, pageSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search all query : %w", err)
 	}
 
-	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchAll end", "count", len(result.Hits.Hits))
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchByAccountId end", "count", len(result.Hits.Hits))
 	return result, nil
 }
 
@@ -560,7 +611,7 @@ func NewElasticMetadataStorage(
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
 	indexTypeMapping.Properties["Updated"] = types.NewLongNumberProperty()
 	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
-	indexTypeMapping.Properties["Hash"] = types.NewKeywordProperty()
+	indexTypeMapping.Properties["CalcHash"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()
 
 	denseProp := types.NewDenseVectorProperty()

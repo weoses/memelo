@@ -43,7 +43,14 @@ type MemeCrudServiceImpl struct {
 }
 
 func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error) {
-	pipelineResult, err := m.imageMetadataExtract.ProcessCreate(ctx, accountId, imgRaw)
+	pipelineResult, err := m.imageMetadataExtract.ProcessCreate(ctx, accountId, &StepsToDo{
+		DuplicateSearch: true,
+		Ocr:             true,
+		CreateThumbnail: true,
+		CalcSize:        true,
+		CreateEmbedding: true,
+		CalcHash:        true,
+	}, imgRaw)
 	if err != nil {
 		return nil, fmt.Errorf("metadata extract pipeline failed: %w", err)
 	}

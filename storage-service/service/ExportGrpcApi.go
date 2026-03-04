@@ -17,9 +17,23 @@ type ExportServiceApi struct {
 }
 
 func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRequest, c *connect.ServerStream[v1.ExportResponseChunk]) error {
-	accountId, err := uuid.Parse(request.GetAccountId())
-	if err != nil {
-		return fmt.Errorf("account id is not a valid uuid: %w", err)
+	var accountId *uuid.UUID
+	var id *uuid.UUID
+
+	if request.AccountId != nil {
+		u, err := uuid.Parse(request.GetAccountId())
+		if err != nil {
+			return fmt.Errorf("account id is not a valid uuid: %w", err)
+		}
+		accountId = &u
+	}
+
+	if request.Id != nil {
+		u, err := uuid.Parse(request.GetId())
+		if err != nil {
+			return fmt.Errorf("id is not a valid uuid: %w", err)
+		}
+		id = &u
 	}
 
 	e.slogger.InfoContext(ctx, "Export: started")
@@ -69,7 +83,7 @@ func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRe
 		return nil
 	}
 
-	err = e.service.Export(ctx, accountId, callback)
+	err := e.service.Export(ctx, accountId, id, callback)
 	if err != nil {
 		return fmt.Errorf("export failed: %w", err)
 	}

@@ -22,10 +22,13 @@ const (
 )
 
 type RecomputeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	AccountId          *string                `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3,oneof" json:"account_id,omitempty"`
+	RecomputeOcrData   bool                   `protobuf:"varint,2,opt,name=recompute_ocr_data,json=recomputeOcrData,proto3" json:"recompute_ocr_data,omitempty"`
+	RecomputeThumbnail bool                   `protobuf:"varint,3,opt,name=recompute_thumbnail,json=recomputeThumbnail,proto3" json:"recompute_thumbnail,omitempty"`
+	RecomputeEmbedding bool                   `protobuf:"varint,4,opt,name=recompute_embedding,json=recomputeEmbedding,proto3" json:"recompute_embedding,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RecomputeRequest) Reset() {
@@ -59,10 +62,31 @@ func (*RecomputeRequest) Descriptor() ([]byte, []int) {
 }
 
 func (x *RecomputeRequest) GetAccountId() string {
-	if x != nil {
-		return x.AccountId
+	if x != nil && x.AccountId != nil {
+		return *x.AccountId
 	}
 	return ""
+}
+
+func (x *RecomputeRequest) GetRecomputeOcrData() bool {
+	if x != nil {
+		return x.RecomputeOcrData
+	}
+	return false
+}
+
+func (x *RecomputeRequest) GetRecomputeThumbnail() bool {
+	if x != nil {
+		return x.RecomputeThumbnail
+	}
+	return false
+}
+
+func (x *RecomputeRequest) GetRecomputeEmbedding() bool {
+	if x != nil {
+		return x.RecomputeEmbedding
+	}
+	return false
 }
 
 type RecomputeStatus struct {
@@ -113,10 +137,14 @@ var File_proto_v1_recompute_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_recompute_service_proto_rawDesc = "" +
 	"\n" +
-	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\"1\n" +
-	"\x10RecomputeRequest\x12\x1d\n" +
+	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\"\xd5\x01\n" +
+	"\x10RecomputeRequest\x12\"\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\"/\n" +
+	"account_id\x18\x01 \x01(\tH\x00R\taccountId\x88\x01\x01\x12,\n" +
+	"\x12recompute_ocr_data\x18\x02 \x01(\bR\x10recomputeOcrData\x12/\n" +
+	"\x13recompute_thumbnail\x18\x03 \x01(\bR\x12recomputeThumbnail\x12/\n" +
+	"\x13recompute_embedding\x18\x04 \x01(\bR\x12recomputeEmbeddingB\r\n" +
+	"\v_account_id\"/\n" +
 	"\x0fRecomputeStatus\x12\x1c\n" +
 	"\tprocessed\x18\x01 \x01(\x05R\tprocessed2m\n" +
 	"\x10RecomputeService\x12Y\n" +
@@ -156,6 +184,7 @@ func file_proto_v1_recompute_service_proto_init() {
 		return
 	}
 	file_proto_v1_common_proto_init()
+	file_proto_v1_recompute_service_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

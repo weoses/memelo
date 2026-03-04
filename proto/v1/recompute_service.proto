@@ -7,7 +7,10 @@ package proto.memelo.v1;
 
 
 message RecomputeRequest {
-  string account_id = 1;
+  optional string account_id = 1;
+  bool recompute_ocr_data = 2;
+  bool recompute_thumbnail = 3;
+  bool recompute_embedding = 4;
 }
 
 message RecomputeStatus {

@@ -37,7 +37,7 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 		return make([]*entity.ElasticImageMetaData, 0), nil
 	}
 
-	matchedMetadataAll, err := a.metadata.SearchAll(
+	matchedMetadataAll, err := a.metadata.SearchByAccountId(
 		ctx,
 		accountId,
 		afterId,

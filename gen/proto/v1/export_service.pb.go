@@ -23,7 +23,8 @@ const (
 
 type ExportRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountId     *string                `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3,oneof" json:"account_id,omitempty"`
+	Id            *string                `protobuf:"bytes,2,opt,name=id,proto3,oneof" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -59,8 +60,15 @@ func (*ExportRequest) Descriptor() ([]byte, []int) {
 }
 
 func (x *ExportRequest) GetAccountId() string {
-	if x != nil {
-		return x.AccountId
+	if x != nil && x.AccountId != nil {
+		return *x.AccountId
+	}
+	return ""
+}
+
+func (x *ExportRequest) GetId() string {
+	if x != nil && x.Id != nil {
+		return *x.Id
 	}
 	return ""
 }
@@ -249,10 +257,13 @@ var File_proto_v1_export_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_export_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1dproto/v1/export_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\".\n" +
-	"\rExportRequest\x12\x1d\n" +
+	"\x1dproto/v1/export_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\"^\n" +
+	"\rExportRequest\x12\"\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\"R\n" +
+	"account_id\x18\x01 \x01(\tH\x00R\taccountId\x88\x01\x01\x12\x13\n" +
+	"\x02id\x18\x02 \x01(\tH\x01R\x02id\x88\x01\x01B\r\n" +
+	"\v_account_idB\x05\n" +
+	"\x03_id\"R\n" +
 	"\x0eExportImageDto\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x14\n" +
 	"\x05width\x18\x02 \x01(\x05R\x05width\x12\x16\n" +
@@ -308,6 +319,7 @@ func file_proto_v1_export_service_proto_init() {
 		return
 	}
 	file_proto_v1_common_proto_init()
+	file_proto_v1_export_service_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

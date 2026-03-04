@@ -1,6 +1,5 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="STORAGE" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="memelo" />
     <working_directory value="$PROJECT_DIR$/storage-service" />
     <kind value="PACKAGE" />
     <package value="github.com/weoses/memelo/storage-service" />

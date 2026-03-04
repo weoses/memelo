@@ -14,7 +14,7 @@ type RecomputeGrpcApiImpl struct {
 }
 
 func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.RecomputeRequest, c *connect.ServerStream[v1.RecomputeStatus]) error {
-
+	return connect.NewError(connect.CodeUnimplemented, nil)
 }
 
 func NewRecomputeGrpcApi() v1connect.RecomputeServiceHandler {
