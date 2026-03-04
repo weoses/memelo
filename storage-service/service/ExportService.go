@@ -27,9 +27,9 @@ type ExportItem struct {
 }
 
 type ExportServiceImpl struct {
-	imageStore    ImageStorageService
-	metadataStore MetadataStorageService
-	slogger       *slog.Logger
+	imageStorageService    ImageStorageService
+	metadataStorageService MetadataStorageService
+	slogger                *slog.Logger
 }
 
 func (e *ExportServiceImpl) Export(
@@ -44,7 +44,7 @@ func (e *ExportServiceImpl) Export(
 	processed := 0
 
 	for {
-		page, err := e.metadataStore.List(ctx, accountId, id, afterId, &pageSize)
+		page, err := e.metadataStorageService.List(ctx, accountId, id, afterId, &pageSize)
 		if err != nil {
 			return fmt.Errorf("export: query metadata page failed: %w", err)
 		}
@@ -57,14 +57,14 @@ func (e *ExportServiceImpl) Export(
 			e.slogger.DebugContext(ctx, "export: processing item", "imageId", meta.ImageId)
 			item := ExportItem{}
 			// Original image
-			origBytes, err := e.imageStore.GetImageBytes(ctx, meta.S3Id)
+			origBytes, err := e.imageStorageService.GetImageBytes(ctx, meta.S3Id)
 			if err != nil {
 				return fmt.Errorf("export: fetch original image %s failed: %w", meta.ImageId, err)
 			}
 			item.ImageOriginal = origBytes
 
 			// CreateThumbnail
-			thumbBytes, err := e.imageStore.GetImageThumbBytes(ctx, meta.S3Id)
+			thumbBytes, err := e.imageStorageService.GetImageThumbBytes(ctx, meta.S3Id)
 			if err != nil {
 				return fmt.Errorf("export: fetch thumbnail %s failed: %w", meta.ImageId, err)
 			}
@@ -97,8 +97,8 @@ func (e *ExportServiceImpl) Export(
 
 func NewExportService(imageStore ImageStorageService, metadataStore MetadataStorageService) ExportService {
 	return &ExportServiceImpl{
-		imageStore:    imageStore,
-		metadataStore: metadataStore,
-		slogger:       slog.With("service", "ExportService"),
+		imageStorageService:    imageStore,
+		metadataStorageService: metadataStore,
+		slogger:                slog.With("service", "ExportService"),
 	}
 }

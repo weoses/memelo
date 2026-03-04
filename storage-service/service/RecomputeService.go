@@ -14,7 +14,7 @@ type ProgressDataRecompute struct {
 }
 
 type RecomputeService interface {
-	RecomputeOcrData(
+	Recompute(
 		ctx context.Context,
 		steps *StepsToDo,
 		accountId *uuid.UUID,
@@ -23,13 +23,13 @@ type RecomputeService interface {
 }
 
 type RecomputeServiceImpl struct {
-	slogger         *slog.Logger
-	extractService  ImageMetadataExtractService
-	metadataService MetadataStorageService
-	imageService    ImageStorageService
+	slogger                *slog.Logger
+	extractService         ImageMetadataExtractService
+	metadataStorageService MetadataStorageService
+	imageStorageService    ImageStorageService
 }
 
-func (r *RecomputeServiceImpl) RecomputeOcrData(
+func (r *RecomputeServiceImpl) Recompute(
 	ctx context.Context,
 	steps *StepsToDo,
 	accountId *uuid.UUID,
@@ -40,7 +40,7 @@ func (r *RecomputeServiceImpl) RecomputeOcrData(
 	processed := 0
 
 	for {
-		page, err := r.metadataService.List(ctx, accountId, id, afterId, &pageSize)
+		page, err := r.metadataStorageService.List(ctx, accountId, id, afterId, &pageSize)
 		if err != nil {
 			return fmt.Errorf("export: query metadata page failed: %w", err)
 		}
@@ -72,7 +72,7 @@ func (r *RecomputeServiceImpl) RecomputeOcrData(
 }
 
 func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, steps *StepsToDo, data *entity.ElasticImageMetaData) error {
-	rawImg, err := r.imageService.GetImageBytes(ctx, data.S3Id)
+	rawImg, err := r.imageStorageService.GetImageBytes(ctx, data.S3Id)
 	if err != nil {
 		return fmt.Errorf("recompute: get image bytes failed: %w", err)
 	}
@@ -95,16 +95,36 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, steps *StepsToD
 		data.Result = *resultCtx.ImageOcrResult
 	}
 
-	if resultCtx.ImageThumbnail != nil {
-		err = r.imageService.Save(ctx, data.S3Id, rawImg, *resultCtx.ImageThumbnail)
+	if resultCtx.ImageRaw != nil && resultCtx.ImageThumbnail != nil {
+		err = r.imageStorageService.Save(ctx, data.S3Id, resultCtx.ImageRaw, *resultCtx.ImageThumbnail)
 		if err != nil {
 			return fmt.Errorf("recompute: save image failed: %w", err)
 		}
 	}
 
 	if resultCtx.ImageRawSize != nil {
-
+		data.ImageSize = &entity.ElasticSizes{
+			Width:  resultCtx.ImageRawSize.Width,
+			Height: resultCtx.ImageRawSize.Height,
+		}
 	}
+
+	if resultCtx.ImageThumbnailSize != nil {
+		data.ThumbSize = &entity.ElasticSizes{
+			Width:  resultCtx.ImageThumbnailSize.Width,
+			Height: resultCtx.ImageThumbnailSize.Height,
+		}
+	}
+
+	if resultCtx.ImageEmbedding != nil {
+		data.EmbeddingV1 = resultCtx.ImageEmbedding
+	}
+
+	err = r.metadataStorageService.Save(ctx, data)
+	if err != nil {
+		return fmt.Errorf("recompute: save metadata failed: %w", err)
+	}
+	return nil
 }
 
 func NewRecomputeService(extractService ImageMetadataExtractService) RecomputeService {

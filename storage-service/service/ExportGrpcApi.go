@@ -7,6 +7,7 @@ import (
 
 	connect "connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 )
@@ -19,21 +20,16 @@ type ExportServiceApi struct {
 func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRequest, c *connect.ServerStream[v1.ExportResponseChunk]) error {
 	var accountId *uuid.UUID
 	var id *uuid.UUID
+	var err error
 
-	if request.AccountId != nil {
-		u, err := uuid.Parse(request.GetAccountId())
-		if err != nil {
-			return fmt.Errorf("account id is not a valid uuid: %w", err)
-		}
-		accountId = &u
+	accountId, err = helper.AccountIdUuid(request)
+	if err != nil {
+		return fmt.Errorf("account id uuid: %w", err)
 	}
 
-	if request.Id != nil {
-		u, err := uuid.Parse(request.GetId())
-		if err != nil {
-			return fmt.Errorf("id is not a valid uuid: %w", err)
-		}
-		id = &u
+	id, err = helper.IdUuid(request)
+	if err != nil {
+		return fmt.Errorf("account id uuid: %w", err)
 	}
 
 	e.slogger.InfoContext(ctx, "Export: started")
@@ -83,7 +79,7 @@ func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRe
 		return nil
 	}
 
-	err := e.service.Export(ctx, accountId, id, callback)
+	err = e.service.Export(ctx, accountId, id, callback)
 	if err != nil {
 		return fmt.Errorf("export failed: %w", err)
 	}
