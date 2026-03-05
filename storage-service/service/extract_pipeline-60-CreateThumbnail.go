@@ -15,16 +15,12 @@ func (s *CreateThumbnailPipelineStep) GetPos() int {
 	return 60
 }
 
-func (s *CreateThumbnailPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
-	return steps.CreateThumbnail, nil
-}
-
 func (s *CreateThumbnailPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	imgThumb, err := s.imageConverter.MakeThumbnail(ctx, pCtx.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("cannot create thumbnail: %w", err)
 	}
-	pCtx.ImageThumbnail = &imgThumb
+	pCtx.ImageThumbnail = imgThumb
 	return nil
 }
 

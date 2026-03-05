@@ -35,18 +35,14 @@ func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.
 
 	return r.recomputeService.Recompute(
 		ctx,
-		&service.StepsToDo{
-			CreateEmbedding: request.GetRecomputeEmbedding(),
-			Ocr:             request.GetRecomputeOcrData(),
-			CreateThumbnail: request.GetRecomputeThumbnail(),
-		},
 		accountId,
 		id,
 		callback)
 }
 
-func NewRecomputeGrpcApi() v1connect.RecomputeServiceHandler {
+func NewRecomputeGrpcApi(service service.RecomputeService) v1connect.RecomputeServiceHandler {
 	return &RecomputeGrpcApiImpl{
-		slogger: slog.With("service", "RecomputeGrpcApi"),
+		slogger:          slog.With("service", "RecomputeGrpcApi"),
+		recomputeService: service,
 	}
 }

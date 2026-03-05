@@ -15,16 +15,12 @@ func (s *CalcEmbeddingPipelineStep) GetPos() int {
 	return 30
 }
 
-func (s *CalcEmbeddingPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
-	return steps.CreateEmbedding, nil
-}
-
 func (s *CalcEmbeddingPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	embedding, err := s.imageEmbedder.GetImageEmbeddingV1(ctx, pCtx.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("error getting image embedding: %w", err)
 	}
-	pCtx.ImageEmbedding = embedding
+	pCtx.ImageEmbedding = *embedding
 	return nil
 }
 

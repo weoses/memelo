@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/entity"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
@@ -48,14 +49,7 @@ type MemeCrudServiceImpl struct {
 }
 
 func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error) {
-	pipelineResult, err := m.imageExtractService.ProcessCreate(ctx, accountId, &StepsToDo{
-		DuplicateSearch: true,
-		Ocr:             true,
-		CreateThumbnail: true,
-		CalcSize:        true,
-		CreateEmbedding: true,
-		CalcHash:        true,
-	}, imgRaw)
+	pipelineResult, err := m.imageExtractService.ProcessCreate(ctx, accountId, imgRaw, true)
 	if err != nil {
 		return nil, fmt.Errorf("metadata extract pipeline failed: %w", err)
 	}
@@ -75,7 +69,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	s3id := uuid.New()
 	imgId := uuid.New()
 
-	err = m.imageStorageService.Save(ctx, s3id, pipelineResult.ImageRaw, *pipelineResult.ImageThumbnail)
+	err = m.imageStorageService.Save(ctx, s3id, pipelineResult.ImageRaw, pipelineResult.ImageThumbnail)
 	if err != nil {
 		return nil, fmt.Errorf("save image files failed: %w", err)
 	}
@@ -84,13 +78,19 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		ImageId:     imgId,
 		S3Id:        s3id,
 		AccountId:   accountId,
-		Result:      *pipelineResult.ImageOcrResult,
-		Hash:        *pipelineResult.ImageHash,
-		EmbeddingV1: pipelineResult.ImageEmbedding,
-		ImageSize:   pipelineResult.ImageRawSize,
-		ThumbSize:   pipelineResult.ImageThumbnailSize,
+		Result:      pipelineResult.ImageOcrResult,
+		Hash:        pipelineResult.ImageHash,
+		EmbeddingV1: &pipelineResult.ImageEmbedding,
+		ImageSize:   &pipelineResult.ImageRawSize,
+		ThumbSize:   &pipelineResult.ImageThumbnailSize,
 		Created:     time.Now().UnixMicro(),
 		Updated:     time.Now().UnixMicro(),
+		Tags: helper.TransformSlice(
+			pipelineResult.Tags,
+			make([]string, len(pipelineResult.Tags)),
+			func(tag entity.ElasticTag) string {
+				return tag.Tag
+			}),
 	}
 	err = m.metadataStorageService.Save(ctx, metadataEntity)
 	if err != nil {

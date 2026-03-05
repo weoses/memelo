@@ -15,16 +15,12 @@ func (c *CalcHashPipelineStep) GetPos() int {
 	return 0
 }
 
-func (c *CalcHashPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
-	return steps.CalcHash, nil
-}
-
 func (c *CalcHashPipelineStep) Do(_ context.Context, pipelineContext *ImageMetadataPipelineContext) error {
 	hash, err := calcRawImageHash(pipelineContext.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("create pipeline: error calculating hash: %w", err)
 	}
-	pipelineContext.ImageHash = &hash
+	pipelineContext.ImageHash = hash
 	return nil
 }
 

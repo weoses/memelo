@@ -16,10 +16,6 @@ func (s *CalcSizesPipelineStep) GetPos() int {
 	return 70
 }
 
-func (s *CalcSizesPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
-	return steps.CalcSize && steps.CreateThumbnail, nil
-}
-
 func (s *CalcSizesPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	if pCtx.ImageThumbnail == nil {
 		return fmt.Errorf("error: image thumbnail can't be nil")
@@ -30,13 +26,13 @@ func (s *CalcSizesPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipel
 		return fmt.Errorf("error getting size of raw image: %w", err)
 	}
 
-	wThumb, hThumb, err := s.imageConverter.GetSize(ctx, *pCtx.ImageThumbnail)
+	wThumb, hThumb, err := s.imageConverter.GetSize(ctx, pCtx.ImageThumbnail)
 	if err != nil {
 		return fmt.Errorf("error getting size of thumbnail: %w", err)
 	}
 
-	pCtx.ImageRawSize = &entity.ElasticSizes{Width: wRaw, Height: hRaw}
-	pCtx.ImageThumbnailSize = &entity.ElasticSizes{Width: wThumb, Height: hThumb}
+	pCtx.ImageRawSize = entity.ElasticSizes{Width: wRaw, Height: hRaw}
+	pCtx.ImageThumbnailSize = entity.ElasticSizes{Width: wThumb, Height: hThumb}
 	return nil
 }
 

@@ -57,7 +57,7 @@ type MetadataStorageService interface {
 
 	GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
 	GetByHash(ctx context.Context, accountId uuid.UUID, hash string, count *int) ([]*entity.ElasticImageMetaData, error)
-	SearchByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img *entity.ElasticEmbeddingV1, count int, filterSimilarity bool) ([]*entity.ElasticImageMetaData, error)
+	SearchByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img entity.ElasticEmbeddingV1, count int, filterSimilarity bool) ([]*entity.ElasticImageMetaData, error)
 
 	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 }
@@ -236,7 +236,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 	ctx context.Context,
 	accountId uuid.UUID,
-	img *entity.ElasticEmbeddingV1,
+	img entity.ElasticEmbeddingV1,
 	count int,
 	filterSimilarity bool,
 ) ([]*entity.ElasticImageMetaData, error) {
@@ -311,7 +311,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 }
 
 func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(
-	img *entity.ElasticEmbeddingV1,
+	img entity.ElasticEmbeddingV1,
 	accountIdQuery *types.Query,
 	count int,
 ) *types.KnnSearch {
@@ -616,6 +616,7 @@ func NewElasticMetadataStorage(
 	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["CalcHash"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()
+	indexTypeMapping.Properties["Tags"] = types.NewKeywordProperty()
 
 	denseProp := types.NewDenseVectorProperty()
 	denseProp.Index = helper.Addr(true)

@@ -33,7 +33,7 @@ func TestCreateMeme(t *testing.T) {
 
 func TestCreateDuplicate(t *testing.T) {
 	accountId := genAccountId()
-	imageData, err := os.ReadFile("images/test-pic-cat.jpeg")
+	imageData, err := os.ReadFile("images/test-pic-cat-2.jpg")
 	if err != nil {
 		t.Fatalf("failed to read test image: %v", err)
 	}

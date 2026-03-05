@@ -50,7 +50,7 @@ func (s *TagServiceImpl) CreateTag(ctx context.Context, tag string, description 
 		Created:     time.Now().UnixMicro(),
 	}
 
-	if err := s.tagStorage.SaveTag(ctx, &tagEntity); err != nil {
+	if err := s.tagStorage.SaveTag(ctx, tagEntity); err != nil {
 		return nil, fmt.Errorf("save tag failed: %w", err)
 	}
 

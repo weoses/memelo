@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
@@ -19,10 +19,10 @@ import (
 )
 
 type ElasticTagStorage interface {
-	SaveTag(ctx context.Context, tag *entity.ElasticTag) error
+	SaveTag(ctx context.Context, tag entity.ElasticTag) error
 	ListTag(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
-	SearchTagsByEmbedding(ctx context.Context, tag *entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
+	SearchTagsByEmbedding(ctx context.Context, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
 }
 
 type ElasticTagStorageImpl struct {
@@ -79,7 +79,7 @@ func NewElasticTagStorage(config *conf.ElasticTagConfig) (ElasticTagStorage, err
 	}, nil
 }
 
-func (s *ElasticTagStorageImpl) SaveTag(ctx context.Context, tag *entity.ElasticTag) error {
+func (s *ElasticTagStorageImpl) SaveTag(ctx context.Context, tag entity.ElasticTag) error {
 	tag.Updated = time.Now().UnixMicro()
 	if tag.Created == 0 {
 		tag.Created = tag.Updated
@@ -168,6 +168,65 @@ func (s *ElasticTagStorageImpl) DeleteTag(ctx context.Context, id uuid.UUID) err
 	return nil
 }
 
-func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, tag *entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error) {
-	return nil, errors.New("not implemented")
+func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error) {
+	script := types.NewScript()
+	script.Source = helper.Addr("cosineSimilarity(params.queryVector, 'EmbeddingV1.Data') + 1.0")
+
+	items, err := json.Marshal(tag.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query vector: %w", err)
+	}
+	script.Params = map[string]json.RawMessage{
+		"queryVector": items,
+	}
+
+	innerQuery := types.NewQuery()
+	innerQuery.MatchAll = types.NewMatchAllQuery()
+
+	query := types.NewQuery()
+	query.ScriptScore = types.NewScriptScoreQuery()
+	query.ScriptScore.Query = innerQuery
+	query.ScriptScore.Script = *script
+
+	result, err := s.client.Search().
+		Index(s.index).
+		Query(query).
+		TrackScores(true).
+		Do(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("tag embedding knn search failed: %w", err)
+	}
+
+	hits := result.Hits.Hits
+	if len(hits) == 0 {
+		return []entity.ElasticTag{}, nil
+	}
+
+	// Collect scores sorted ascending to compute percentile cutoff.
+	scores := make([]float64, len(hits))
+	for i, h := range hits {
+		scores[i] = float64(*h.Score_)
+	}
+	sort.Float64s(scores)
+	cutoffIdx := int(float64(len(scores)-1) * float64(percentileMatch))
+	cutoffScore := scores[cutoffIdx]
+
+	entities := make([]entity.ElasticTag, 0)
+	for _, h := range hits {
+		if float64(*h.Score_) < cutoffScore {
+			continue
+		}
+		var t entity.ElasticTag
+		if err := json.Unmarshal(h.Source_, &t); err != nil {
+			return nil, fmt.Errorf("tag embedding unmarshal failed: %w", err)
+		}
+		entities = append(entities, t)
+	}
+
+	s.slogger.InfoContext(ctx, "SearchTagsByEmbedding",
+		"total", len(hits),
+		"cutoffScore", cutoffScore,
+		"matched", len(entities),
+	)
+	return entities, nil
 }

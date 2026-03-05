@@ -54,6 +54,9 @@ func main() {
 		fx.Provide(service.NewExportService),
 		fx.Provide(service.NewMemeCrudService),
 
+		fx.Provide(service.NewRecomputeService),
+		fx.Provide(api.NewRecomputeGrpcApi),
+
 		// Pipeline steps (sorted by GetPos inside NewImageMetadataExtractService)
 		fx.Provide(
 			fx.Annotate(
@@ -100,6 +103,12 @@ func main() {
 		fx.Provide(
 			fx.Annotate(
 				service.NewCalcSizesPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewCalcTagsPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
@@ -158,16 +167,19 @@ func Startup(
 	searchApi v1connect.SearchServiceHandler,
 	exportApi v1connect.ExportServiceHandler,
 	tagsApi v1connect.TagsServiceHandler,
+	recomputeApi v1connect.RecomputeServiceHandler,
 	cfg *config.ServerConfig,
 ) {
 	mux := http.NewServeMux()
 	pathSearch, handlerSearch := v1connect.NewSearchServiceHandler(searchApi)
 	pathExport, handlerExport := v1connect.NewExportServiceHandler(exportApi)
 	pathTags, handlerTags := v1connect.NewTagsServiceHandler(tagsApi)
+	pathRecompute, handlerRecompute := v1connect.NewRecomputeServiceHandler(recomputeApi)
 
 	mux.Handle(pathSearch, handlerSearch)
 	mux.Handle(pathExport, handlerExport)
 	mux.Handle(pathTags, handlerTags)
+	mux.Handle(pathRecompute, handlerRecompute)
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddress,

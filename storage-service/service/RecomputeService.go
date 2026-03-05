@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/entity"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
@@ -17,7 +18,6 @@ type ProgressDataRecompute struct {
 type RecomputeService interface {
 	Recompute(
 		ctx context.Context,
-		steps *StepsToDo,
 		accountId *uuid.UUID,
 		id *uuid.UUID,
 		callback func(ctx context.Context, recompute ProgressDataRecompute) error) error
@@ -32,7 +32,6 @@ type RecomputeServiceImpl struct {
 
 func (r *RecomputeServiceImpl) Recompute(
 	ctx context.Context,
-	steps *StepsToDo,
 	accountId *uuid.UUID,
 	id *uuid.UUID,
 	callback func(ctx context.Context, recompute ProgressDataRecompute) error) error {
@@ -50,8 +49,12 @@ func (r *RecomputeServiceImpl) Recompute(
 		}
 
 		for _, meta := range page {
-			if err := r.recomputeOne(ctx, steps, meta); err != nil {
-				return fmt.Errorf("recompute: item %s failed: %w", meta.ImageId, err)
+			if err = r.recomputeOne(ctx, meta); err != nil {
+				r.slogger.Error("recompute: item failed:",
+					"try", meta.ImageId,
+					"imageId", meta.ImageId,
+					"error", err)
+				continue
 			}
 			processed++
 		}
@@ -68,11 +71,11 @@ func (r *RecomputeServiceImpl) Recompute(
 			break
 		}
 	}
-
+	r.slogger.Info("recompute finished:", "processed", processed)
 	return nil
 }
 
-func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, steps *StepsToDo, data *entity.ElasticImageMetaData) error {
+func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData) error {
 	rawImg, err := r.imageStorageService.GetImageBytes(ctx, data.S3Id)
 	if err != nil {
 		return fmt.Errorf("recompute: get image bytes failed: %w", err)
@@ -80,46 +83,39 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, steps *StepsToD
 
 	resultCtx, err := r.extractService.ProcessCreate(ctx,
 		data.AccountId,
-		steps,
 		rawImg,
+		false,
 	)
 
 	if err != nil {
 		return fmt.Errorf("recompute: process create failed: %w", err)
 	}
-
-	if resultCtx.ImageHash != nil {
-		data.Hash = *resultCtx.ImageHash
-	}
-
-	if resultCtx.ImageOcrResult != nil {
-		data.Result = *resultCtx.ImageOcrResult
-	}
-
+	data.Hash = resultCtx.ImageHash
+	data.Result = resultCtx.ImageOcrResult
 	if resultCtx.ImageRaw != nil && resultCtx.ImageThumbnail != nil {
-		err = r.imageStorageService.Save(ctx, data.S3Id, resultCtx.ImageRaw, *resultCtx.ImageThumbnail)
+		err = r.imageStorageService.Save(ctx, data.S3Id, resultCtx.ImageRaw, resultCtx.ImageThumbnail)
 		if err != nil {
 			return fmt.Errorf("recompute: save image failed: %w", err)
 		}
 	}
 
-	if resultCtx.ImageRawSize != nil {
-		data.ImageSize = &entity.ElasticSizes{
-			Width:  resultCtx.ImageRawSize.Width,
-			Height: resultCtx.ImageRawSize.Height,
-		}
+	data.ImageSize = &entity.ElasticSizes{
+		Width:  resultCtx.ImageRawSize.Width,
+		Height: resultCtx.ImageRawSize.Height,
 	}
 
-	if resultCtx.ImageThumbnailSize != nil {
-		data.ThumbSize = &entity.ElasticSizes{
-			Width:  resultCtx.ImageThumbnailSize.Width,
-			Height: resultCtx.ImageThumbnailSize.Height,
-		}
+	data.ThumbSize = &entity.ElasticSizes{
+		Width:  resultCtx.ImageThumbnailSize.Width,
+		Height: resultCtx.ImageThumbnailSize.Height,
 	}
 
-	if resultCtx.ImageEmbedding != nil {
-		data.EmbeddingV1 = resultCtx.ImageEmbedding
-	}
+	data.EmbeddingV1 = &resultCtx.ImageEmbedding
+	data.Tags = helper.TransformSlice(
+		resultCtx.Tags,
+		make([]string, len(resultCtx.Tags)),
+		func(tag entity.ElasticTag) string {
+			return tag.Tag
+		})
 
 	err = r.metadataStorageService.Save(ctx, data)
 	if err != nil {
@@ -128,9 +124,15 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, steps *StepsToD
 	return nil
 }
 
-func NewRecomputeService(extractService ImageMetadataExtractService) RecomputeService {
+func NewRecomputeService(
+	extractService ImageMetadataExtractService,
+	metadataStorageService storage2.MetadataStorageService,
+	imageStorageService storage2.ImageStorageService,
+) RecomputeService {
 	return &RecomputeServiceImpl{
-		slogger:        slog.With("service", "RecomputeService"),
-		extractService: extractService,
+		slogger:                slog.With("service", "RecomputeService"),
+		extractService:         extractService,
+		metadataStorageService: metadataStorageService,
+		imageStorageService:    imageStorageService,
 	}
 }

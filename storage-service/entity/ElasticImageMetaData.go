@@ -19,6 +19,7 @@ type ElasticImageMetaData struct {
 	Created     int64 `validator:required`
 	Updated     int64
 	EmbeddingV1 *ElasticEmbeddingV1 `validator:required`
+	Tags        []string
 }
 
 type ElasticEmbeddingV1 struct {

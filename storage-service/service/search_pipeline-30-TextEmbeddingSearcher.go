@@ -31,7 +31,7 @@ func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, 
 
 	count := 5
 
-	results, err := s.metadata.SearchByEmbeddingV1(ctx, accountId, embedding, count, false)
+	results, err := s.metadata.SearchByEmbeddingV1(ctx, accountId, *embedding, count, false)
 	if err != nil {
 		return nil, fmt.Errorf("searcher %s: SearchByEmbeddingV1 failed: %w", s.GetName(), err)
 	}
