@@ -29,6 +29,6 @@ func (s *CreateThumbnailPipelineStep) Do(ctx context.Context, pCtx *service.Pipe
 	return nil
 }
 
-func NewCreateThumbnailPipelineStep(imageConverter ocr.ImageConveter) service.PipelineStep {
+func NewCreateThumbnailPipelineStep(imageConverter ocr.ImageConveter) ExtractPipelineStep {
 	return &CreateThumbnailPipelineStep{imageConverter: imageConverter}
 }

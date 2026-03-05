@@ -10,7 +10,7 @@ import (
 )
 
 type FuzzySearcher struct {
-	service.SearcherBase
+	SearcherBase
 	metadata service.MetadataStorageService
 }
 
@@ -40,9 +40,9 @@ func (s FuzzySearcher) Search(ctx context.Context, accountId uuid.UUID, query st
 	return matchedMetadataAll, nil
 }
 
-func NewFuzzySearcher(m service.MetadataStorageService) service.Searcher {
+func NewFuzzySearcher(m service.MetadataStorageService) SearchPipelineStep {
 	return &FuzzySearcher{
-		SearcherBase: service.SearcherBase{Name: "fuzzy_searcher", Index: 20},
+		SearcherBase: SearcherBase{Name: "fuzzy_searcher", Index: 20},
 		metadata:     m,
 	}
 }

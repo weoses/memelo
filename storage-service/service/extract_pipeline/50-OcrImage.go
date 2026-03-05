@@ -29,6 +29,6 @@ func (s *OcrImagePipelineStep) Do(ctx context.Context, pCtx *service.PipelineCon
 	return nil
 }
 
-func NewOcrImagePipelineStep(image2text ocr.Img2TextService) service.PipelineStep {
+func NewOcrImagePipelineStep(image2text ocr.Img2TextService) ExtractPipelineStep {
 	return &OcrImagePipelineStep{image2text: image2text}
 }

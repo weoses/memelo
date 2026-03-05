@@ -10,7 +10,7 @@ import (
 )
 
 type IdSearcher struct {
-	service.SearcherBase
+	SearcherBase
 	metadata service.MetadataStorageService
 }
 
@@ -44,9 +44,9 @@ func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query strin
 	return []*entity.ElasticImageMetaData{matchedMetadataAll}, nil
 }
 
-func NewIdSearcher(m service.MetadataStorageService) service.Searcher {
+func NewIdSearcher(m service.MetadataStorageService) SearchPipelineStep {
 	return &IdSearcher{
-		SearcherBase: service.SearcherBase{Name: "id_searcher", Index: 10},
+		SearcherBase: SearcherBase{Name: "id_searcher", Index: 10},
 		metadata:     m,
 	}
 }

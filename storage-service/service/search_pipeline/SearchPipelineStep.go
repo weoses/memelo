@@ -1,4 +1,4 @@
-package service
+package search_pipeline
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
-type Searcher interface {
+type SearchPipelineStep interface {
 	GetIndex() int
 	GetName() string
 	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error)

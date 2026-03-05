@@ -10,7 +10,7 @@ import (
 )
 
 type SimpleSearcher struct {
-	service.SearcherBase
+	SearcherBase
 	metadata service.MetadataStorageService
 }
 
@@ -33,9 +33,9 @@ func (s SimpleSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 	return matchedMetadataAll, nil
 }
 
-func NewSimpleSearcher(m service.MetadataStorageService) service.Searcher {
+func NewSimpleSearcher(m service.MetadataStorageService) SearchPipelineStep {
 	return &SimpleSearcher{
-		SearcherBase: service.SearcherBase{Name: "simple_searcher", Index: 0},
+		SearcherBase: SearcherBase{Name: "simple_searcher", Index: 0},
 		metadata:     m,
 	}
 }

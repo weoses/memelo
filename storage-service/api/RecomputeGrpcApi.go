@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"context"
@@ -9,11 +9,12 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	"github.com/weoses/memelo/storage-service/service"
 )
 
 type RecomputeGrpcApiImpl struct {
 	slogger          *slog.Logger
-	recomputeService RecomputeService
+	recomputeService service.RecomputeService
 }
 
 func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.RecomputeRequest, c *connect.ServerStream[v1.RecomputeStatus]) error {
@@ -26,7 +27,7 @@ func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.
 	if err != nil {
 		return fmt.Errorf("id uuid: %w", err)
 	}
-	callback := func(ctx context.Context, ps ProgressDataRecompute) error {
+	callback := func(ctx context.Context, ps service.ProgressDataRecompute) error {
 		return c.Send(&v1.RecomputeStatus{
 			Processed: int32(ps.processed),
 		})
@@ -34,7 +35,7 @@ func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.
 
 	return r.recomputeService.Recompute(
 		ctx,
-		&StepsToDo{
+		&service.StepsToDo{
 			CreateEmbedding: request.GetRecomputeEmbedding(),
 			Ocr:             request.GetRecomputeOcrData(),
 			CreateThumbnail: request.GetRecomputeThumbnail(),

@@ -29,6 +29,6 @@ func (s *CalcEmbeddingPipelineStep) Do(ctx context.Context, pCtx *service.Pipeli
 	return nil
 }
 
-func NewCalcEmbeddingPipelineStep(imageEmbedder ocr.EmbeddingExtractor) service.PipelineStep {
+func NewCalcEmbeddingPipelineStep(imageEmbedder ocr.EmbeddingExtractor) ExtractPipelineStep {
 	return &CalcEmbeddingPipelineStep{imageEmbedder: imageEmbedder}
 }

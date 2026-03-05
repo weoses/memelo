@@ -40,6 +40,6 @@ func calcRawImageHash(raw []byte) (string, error) {
 	return hash, nil
 }
 
-func NewCalcHashPipelineStep() service.PipelineStep {
+func NewCalcHashPipelineStep() ExtractPipelineStep {
 	return &CalcHashPipelineStep{}
 }

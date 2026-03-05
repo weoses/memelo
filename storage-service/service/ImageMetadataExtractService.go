@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
+	"github.com/weoses/memelo/storage-service/service/extract_pipeline"
 )
 
 type PipelineContext struct {
@@ -30,18 +31,12 @@ type StepsToDo struct {
 	CalcHash        bool
 }
 
-type PipelineStep interface {
-	GetPos() int
-	Check(ctx context.Context, steps *StepsToDo) (bool, error)
-	Do(ctx context.Context, pipelineContext *PipelineContext) error
-}
-
 type ImageMetadataExtractService interface {
 	ProcessCreate(ctx context.Context, accountId uuid.UUID, steps *StepsToDo, raw []byte) (*PipelineContext, error)
 }
 
 type CreateImageServiceImpl struct {
-	steps []PipelineStep
+	steps []extract_pipeline.ExtractPipelineStep
 }
 
 func (c *CreateImageServiceImpl) ProcessCreate(ctx context.Context, accountId uuid.UUID, steps *StepsToDo, raw []byte) (*PipelineContext, error) {
@@ -69,8 +64,8 @@ func (c *CreateImageServiceImpl) ProcessCreate(ctx context.Context, accountId uu
 	return pipelineCtx, nil
 }
 
-func NewImageMetadataExtractService(steps []PipelineStep) ImageMetadataExtractService {
-	slices.SortFunc(steps, func(a, b PipelineStep) int {
+func NewImageMetadataExtractService(steps []extract_pipeline.ExtractPipelineStep) ImageMetadataExtractService {
+	slices.SortFunc(steps, func(a, b extract_pipeline.ExtractPipelineStep) int {
 		return a.GetPos() - b.GetPos()
 	})
 	return &CreateImageServiceImpl{steps: steps}

@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/weoses/memelo/common/config"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/service"
@@ -139,8 +140,8 @@ func main() {
 			),
 		),
 
-		fx.Provide(service.NewSearchServiceApi),
-		fx.Provide(service.NewExportServiceApi),
+		fx.Provide(api.NewSearchServiceApi),
+		fx.Provide(api.NewExportServiceApi),
 		fx.Invoke(Startup),
 	).Run()
 }

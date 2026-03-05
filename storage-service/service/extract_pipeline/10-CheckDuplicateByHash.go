@@ -35,6 +35,6 @@ func (s *CheckDuplicateByHashPipelineStep) Do(ctx context.Context, pCtx *service
 	return nil
 }
 
-func NewCheckDuplicateByHashPipelineStep(metadata service.MetadataStorageService) service.PipelineStep {
+func NewCheckDuplicateByHashPipelineStep(metadata service.MetadataStorageService) ExtractPipelineStep {
 	return &CheckDuplicateByHashPipelineStep{metadata: metadata}
 }

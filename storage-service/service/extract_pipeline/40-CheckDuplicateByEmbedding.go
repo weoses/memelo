@@ -34,6 +34,6 @@ func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, pCtx *se
 	return nil
 }
 
-func NewCheckDuplicateByEmbeddingPipelineStep(metadata service.MetadataStorageService) service.PipelineStep {
+func NewCheckDuplicateByEmbeddingPipelineStep(metadata service.MetadataStorageService) ExtractPipelineStep {
 	return &CheckDuplicateByEmbeddingPipelineStep{metadata: metadata}
 }

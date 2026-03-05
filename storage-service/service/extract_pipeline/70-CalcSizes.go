@@ -41,6 +41,6 @@ func (s *CalcSizesPipelineStep) Do(ctx context.Context, pCtx *service.PipelineCo
 	return nil
 }
 
-func NewCalcSizesPipelineStep(imageConverter ocr.ImageConveter) service.PipelineStep {
+func NewCalcSizesPipelineStep(imageConverter ocr.ImageConveter) ExtractPipelineStep {
 	return &CalcSizesPipelineStep{imageConverter: imageConverter}
 }

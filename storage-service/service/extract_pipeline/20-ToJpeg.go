@@ -29,6 +29,6 @@ func (s *ToJpegPipelineStep) Do(ctx context.Context, pCtx *service.PipelineConte
 	return nil
 }
 
-func NewToJpegPipelineStep(imageConverter ocr.ImageConveter) service.PipelineStep {
+func NewToJpegPipelineStep(imageConverter ocr.ImageConveter) ExtractPipelineStep {
 	return &ToJpegPipelineStep{imageConverter: imageConverter}
 }

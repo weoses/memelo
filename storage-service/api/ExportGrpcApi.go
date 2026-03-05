@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"context"
@@ -10,11 +10,12 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	service2 "github.com/weoses/memelo/storage-service/service"
 )
 
 type ExportServiceApi struct {
 	slogger *slog.Logger
-	service ExportService
+	service service2.ExportService
 }
 
 func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRequest, c *connect.ServerStream[v1.ExportResponseChunk]) error {
@@ -35,7 +36,7 @@ func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRe
 	e.slogger.InfoContext(ctx, "Export: started")
 
 	sent := 0
-	callback := func(ctx context.Context, items []ExportItem) error {
+	callback := func(ctx context.Context, items []service2.ExportItem) error {
 		for _, item := range items {
 
 			chunk := v1.ExportResponseChunk{
@@ -88,7 +89,7 @@ func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRe
 	return nil
 }
 
-func NewExportServiceApi(service ExportService) v1connect.ExportServiceHandler {
+func NewExportServiceApi(service service2.ExportService) v1connect.ExportServiceHandler {
 	return &ExportServiceApi{
 		service: service,
 		slogger: slog.With("service", "SearchServiceApi"),

@@ -10,7 +10,7 @@ import (
 )
 
 type AllSearcher struct {
-	service.SearcherBase
+	SearcherBase
 	metadata service.MetadataStorageService
 }
 
@@ -32,9 +32,9 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 	return matchedMetadataAll, nil
 }
 
-func NewAllSearcher(m service.MetadataStorageService) service.Searcher {
+func NewAllSearcher(m service.MetadataStorageService) SearchPipelineStep {
 	return &AllSearcher{
-		SearcherBase: service.SearcherBase{Name: "all_searcher", Index: 40},
+		SearcherBase: SearcherBase{Name: "all_searcher", Index: 40},
 		metadata:     m,
 	}
 }

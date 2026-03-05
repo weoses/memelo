@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
+	"github.com/weoses/memelo/storage-service/service/search_pipeline"
 )
 
 type SearchService interface {
@@ -15,7 +16,7 @@ type SearchService interface {
 }
 
 type SearchServiceImpl struct {
-	searchers []Searcher
+	searchers []search_pipeline.SearchPipelineStep
 	slogger   *slog.Logger
 }
 
@@ -45,8 +46,8 @@ func (m *SearchServiceImpl) Search(ctx context.Context, accountId uuid.UUID, que
 	return elasticData, nil
 }
 
-func NewSearchServiceImpl(searchers []Searcher, slogger *slog.Logger) SearchService {
-	slices.SortFunc(searchers, func(a Searcher, b Searcher) int {
+func NewSearchServiceImpl(searchers []search_pipeline.SearchPipelineStep, slogger *slog.Logger) SearchService {
+	slices.SortFunc(searchers, func(a search_pipeline.SearchPipelineStep, b search_pipeline.SearchPipelineStep) int {
 		return a.GetIndex() - b.GetIndex()
 	})
 	return &SearchServiceImpl{
