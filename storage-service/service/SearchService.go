@@ -10,8 +10,13 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
+type SearchServiceResponse struct {
+	SearcherName string
+	Result       []*entity.ElasticImageMetaData
+}
+
 type SearchService interface {
-	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchServiceResponse, error)
 }
 
 type SearchServiceImpl struct {
@@ -19,8 +24,9 @@ type SearchServiceImpl struct {
 	slogger   *slog.Logger
 }
 
-func (m *SearchServiceImpl) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
-	elasticData := make([]*entity.ElasticImageMetaData, 0)
+func (m *SearchServiceImpl) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchServiceResponse, error) {
+	selectedSearcherName := ""
+	selectedElasticData := make([]*entity.ElasticImageMetaData, 0)
 	for _, searcher := range m.searchers {
 		searcherName := searcher.GetName()
 
@@ -38,11 +44,15 @@ func (m *SearchServiceImpl) Search(ctx context.Context, accountId uuid.UUID, que
 		}
 
 		if len(data) > 0 {
-			elasticData = append(elasticData, data...)
+			selectedSearcherName = searcherName
+			selectedElasticData = append(selectedElasticData, data...)
 			break
 		}
 	}
-	return elasticData, nil
+	return &SearchServiceResponse{
+		SearcherName: selectedSearcherName,
+		Result:       selectedElasticData,
+	}, nil
 }
 
 func NewSearchServiceImpl(searchers []SearchPipelineStep) SearchService {

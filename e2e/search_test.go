@@ -109,6 +109,9 @@ func TestSearchMeme_Simple(t *testing.T) {
 	if len(respSearch.Results) == 0 {
 		t.Fatal("expected at least one result")
 	}
+	if respSearch.SearcherName != "simple_searcher" {
+		t.Fatal("expected simple_searcher")
+	}
 	if respCreate.Result.Id != respSearch.Results[0].Id {
 		t.Fatal("expected the result to be the same as the search result")
 	}
@@ -152,6 +155,9 @@ func TestSearchMeme_All(t *testing.T) {
 	}
 	if len(respSearch.Results) == 0 {
 		t.Fatal("expected at least one result")
+	}
+	if respSearch.SearcherName != "all_searcher" {
+		t.Fatal("expected all_searcher")
 	}
 	if respCreate.Result.Id != respSearch.Results[0].Id {
 		t.Fatal("expected the result to be the same as the search result")

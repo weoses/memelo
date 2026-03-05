@@ -28,8 +28,13 @@ type CreateResult struct {
 	Status   int
 }
 
+type SearchResult struct {
+	Result       []*MetadataWithUrls
+	SearcherName string
+}
+
 type MemeCrudService interface {
-	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error)
+	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 }
@@ -103,18 +108,21 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
-func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error) {
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error) {
 	elasticData, err := m.searchService.Search(ctx, accountId, query, afterId, size)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
 	}
 
-	results, err := m.constructMetadataWithUrls(ctx, elasticData)
+	results, err := m.constructMetadataWithUrls(ctx, elasticData.Result)
 	if err != nil {
-		return results, err
+		return nil, err
 	}
 
-	return results, nil
+	return &SearchResult{
+		Result:       results,
+		SearcherName: elasticData.SearcherName,
+	}, nil
 }
 
 func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {

@@ -98,13 +98,14 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, err
 	}
 
-	api.slogger.Info("SearchMeme response", "count", len(data))
+	api.slogger.Info("SearchMeme response", "count", len(data.Result))
 
 	return &v1.SearchMemeResponse{
 		Results: helper.TransformSlice(
-			data,
-			make([]*v1.MemeDto, len(data)),
+			data.Result,
+			make([]*v1.MemeDto, len(data.Result)),
 			api.metadataToMemeDto),
+		SearcherName: data.SearcherName,
 	}, nil
 }
 
