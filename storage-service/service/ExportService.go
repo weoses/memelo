@@ -79,7 +79,7 @@ func (e *ExportServiceImpl) Export(
 		last := page[len(page)-1]
 		afterId = &last.ImageId
 
-		e.slogger.DebugContext(ctx, "export: invoke callback", "processed", processed)
+		e.slogger.DebugContext(ctx, "export: invoke callback", "Processed", processed)
 		err = callback(ctx, items)
 		if err != nil {
 			return fmt.Errorf("export: callback failed: %w", err)
@@ -91,7 +91,7 @@ func (e *ExportServiceImpl) Export(
 		}
 	}
 
-	e.slogger.InfoContext(ctx, "export: completed", "processed", processed)
+	e.slogger.InfoContext(ctx, "export: completed", "Processed", processed)
 	return nil
 }
 

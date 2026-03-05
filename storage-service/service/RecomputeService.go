@@ -10,7 +10,7 @@ import (
 )
 
 type ProgressDataRecompute struct {
-	processed int
+	Processed int
 }
 
 type RecomputeService interface {
@@ -58,7 +58,7 @@ func (r *RecomputeServiceImpl) Recompute(
 		last := page[len(page)-1]
 		afterId = &last.ImageId
 
-		err = callback(ctx, ProgressDataRecompute{processed: processed})
+		err = callback(ctx, ProgressDataRecompute{Processed: processed})
 		if err != nil {
 			return fmt.Errorf("recompute: callback failed: %w", err)
 		}

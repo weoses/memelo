@@ -29,7 +29,7 @@ func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.
 	}
 	callback := func(ctx context.Context, ps service.ProgressDataRecompute) error {
 		return c.Send(&v1.RecomputeStatus{
-			Processed: int32(ps.processed),
+			Processed: int32(ps.Processed),
 		})
 	}
 
