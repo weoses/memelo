@@ -1,0 +1,34 @@
+package extract_pipeline
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/weoses/memelo/storage-service/ocr"
+	"github.com/weoses/memelo/storage-service/service"
+)
+
+type ToJpegPipelineStep struct {
+	imageConverter ocr.ImageConveter
+}
+
+func (s *ToJpegPipelineStep) GetPos() int {
+	return 20
+}
+
+func (s *ToJpegPipelineStep) Check(_ context.Context, _ *service.StepsToDo) (bool, error) {
+	return true, nil
+}
+
+func (s *ToJpegPipelineStep) Do(ctx context.Context, pCtx *service.PipelineContext) error {
+	imgJpeg, err := s.imageConverter.ProcessOriginalImage(ctx, pCtx.ImageRaw)
+	if err != nil {
+		return fmt.Errorf("cannot process original image: %w", err)
+	}
+	pCtx.ImageRaw = imgJpeg
+	return nil
+}
+
+func NewToJpegPipelineStep(imageConverter ocr.ImageConveter) service.PipelineStep {
+	return &ToJpegPipelineStep{imageConverter: imageConverter}
+}
