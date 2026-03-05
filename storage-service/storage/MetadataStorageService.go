@@ -1,4 +1,4 @@
-package service
+package storage
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/refresh"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/sortorder"
 	"github.com/gdexlab/go-render/render"
 	"github.com/go-playground/validator/v10"
@@ -76,12 +77,12 @@ func (e *ElasticMetadataStorageServiceImpl) SearchByAccountId(
 ) ([]*entity.ElasticImageMetaData, error) {
 	result, err := e.searchByAccountId(ctx, accountId, sortIdAfter, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("search by account id failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
+		return nil, fmt.Errorf("search_pipeline by account id failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
 	}
 
 	results, err := e.unmarshalResults(result)
 	if err != nil {
-		return nil, fmt.Errorf("search by account id failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
+		return nil, fmt.Errorf("search_pipeline by account id failed: accountId=%s  sortIdAfter=%v: %w", accountId.String(), sortIdAfter, err)
 	}
 
 	return results, nil
@@ -109,7 +110,7 @@ func (e *ElasticMetadataStorageServiceImpl) List(
 func (e *ElasticMetadataStorageServiceImpl) SearchSimple(ctx context.Context, accountId uuid.UUID, query string, sortIdAfter *uuid.UUID, pageSize *int) ([]*entity.ElasticImageMetaData, error) {
 	result, err := e.searchSimple(ctx, accountId, query, sortIdAfter, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("search all failed: %w", err)
+		return nil, fmt.Errorf("search_pipeline all failed: %w", err)
 	}
 
 	results, err := e.unmarshalResults(result)
@@ -123,7 +124,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchSimple(ctx context.Context, ac
 func (e *ElasticMetadataStorageServiceImpl) SearchFuzzy(ctx context.Context, accountId uuid.UUID, query string, pageSize *int) ([]*entity.ElasticImageMetaData, error) {
 	result, err := e.searchFuzzy(ctx, accountId, query, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("search all failed: %w", err)
+		return nil, fmt.Errorf("search_pipeline all failed: %w", err)
 	}
 
 	results, err := e.unmarshalResults(result)
@@ -146,6 +147,7 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 	}
 
 	result, err := e.client.DeleteByQuery(IndexName).
+		Refresh(true).
 		Query(query).
 		Do(ctx)
 
@@ -246,7 +248,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 	knnQuery := e.embeddingV1KnnAllQuery(img, accountIdQuery, count)
 	result, err := e.processKnn(ctx, *knnQuery)
 	if err != nil {
-		return nil, fmt.Errorf("knn search failed: %w", err)
+		return nil, fmt.Errorf("knn search_pipeline failed: %w", err)
 	}
 
 	resultsSize := len(result.Hits.Hits)
@@ -291,6 +293,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		Index(IndexName).
 		Document(file).
 		Id(file.ImageId.String()).
+		Refresh(refresh.True).
 		Do(ctx)
 
 	if err != nil {
@@ -413,7 +416,7 @@ func (e *ElasticMetadataStorageServiceImpl) processKnn(
 
 	knn, err := searchRequest.Do(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("elastic: failed to knn-search: response=%s : %w", render.Render(knn), err)
+		return nil, fmt.Errorf("elastic: failed to knn-search_pipeline: response=%s : %w", render.Render(knn), err)
 	}
 
 	return knn, nil
@@ -456,7 +459,7 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 
 	resp, err := searchRequest.Do(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("elastic: failed to search: response=%s : %w", render.Render(resp), err)
+		return nil, fmt.Errorf("elastic: failed to search_pipeline: response=%s : %w", render.Render(resp), err)
 	}
 
 	return resp, nil
@@ -471,7 +474,7 @@ func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(ctx context.Context, acc
 	queryFuzzy := e.fuzzyStringAndAccountQuery(accountId, queryString)
 	resultFuzzy, err := e.runSearchQuery(ctx, queryFuzzy, nil, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search FUZZY query : %w", err)
+		return nil, fmt.Errorf("failed to search_pipeline FUZZY query : %w", err)
 	}
 
 	e.slogger.InfoContext(ctx, "Search FUZZY result", "count", len(resultFuzzy.Hits.Hits))
@@ -489,7 +492,7 @@ func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, ac
 	querySimple := e.stringAndAccountQuery(accountId, queryString)
 	resultSimple, err := e.runSearchQuery(ctx, querySimple, idAfter, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search SIMPLE query : %w", err)
+		return nil, fmt.Errorf("failed to search_pipeline SIMPLE query : %w", err)
 	}
 
 	e.slogger.InfoContext(ctx, "Search SIMPLE result", "count", len(resultSimple.Hits.Hits))
@@ -523,7 +526,7 @@ func (e *ElasticMetadataStorageServiceImpl) list(
 
 	result, err := e.runSearchQuery(ctx, query, idAfter, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search all query : %w", err)
+		return nil, fmt.Errorf("failed to search_pipeline all query : %w", err)
 	}
 
 	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.list end", "count", len(result.Hits.Hits))
@@ -539,7 +542,7 @@ func (e *ElasticMetadataStorageServiceImpl) searchByAccountId(ctx context.Contex
 	q := e.accountIdQuery(accountId)
 	result, err := e.runSearchQuery(ctx, q, idAfter, pageSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search all query : %w", err)
+		return nil, fmt.Errorf("failed to search_pipeline all query : %w", err)
 	}
 
 	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchByAccountId end", "count", len(result.Hits.Hits))

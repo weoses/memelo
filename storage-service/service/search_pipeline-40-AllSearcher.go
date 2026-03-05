@@ -1,4 +1,4 @@
-package search_pipeline
+package service
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
-	"github.com/weoses/memelo/storage-service/service"
+	"github.com/weoses/memelo/storage-service/storage"
 )
 
 type AllSearcher struct {
 	SearcherBase
-	metadata service.MetadataStorageService
+	metadata storage.MetadataStorageService
 }
 
 func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
@@ -32,7 +32,7 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 	return matchedMetadataAll, nil
 }
 
-func NewAllSearcher(m service.MetadataStorageService) SearchPipelineStep {
+func NewAllSearcher(m storage.MetadataStorageService) SearchPipelineStep {
 	return &AllSearcher{
 		SearcherBase: SearcherBase{Name: "all_searcher", Index: 40},
 		metadata:     m,

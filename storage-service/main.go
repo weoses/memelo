@@ -12,9 +12,9 @@ import (
 	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"github.com/weoses/memelo/storage-service/ocr/gapi"
 	"github.com/weoses/memelo/storage-service/service"
-	"github.com/weoses/memelo/storage-service/service/extract_pipeline"
-	"github.com/weoses/memelo/storage-service/service/search_pipeline"
+	storage2 "github.com/weoses/memelo/storage-service/storage"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"golang.org/x/net/http2"
@@ -38,61 +38,68 @@ func main() {
 		fx.Provide(conf.NewImageStorageConfig),
 		fx.Provide(conf.NewMetadataStorageConfig),
 		fx.Provide(conf.NewImageOcrConfig),
+		fx.Provide(conf.NewElasticTagConfig),
 
-		fx.Provide(ocr.NewOcrProcessor),
+		fx.Provide(gapi.NewOcrProcessor),
 		fx.Provide(ocr.NewImageConverter),
-		fx.Provide(ocr.NewImageEmbeddingExtractor),
+		fx.Provide(gapi.NewImageEmbeddingExtractor),
 
-		fx.Provide(service.NewMetadataStorageService),
-		fx.Provide(service.NewImageStorageService),
+		fx.Provide(storage2.NewElasticTagStorage),
+		fx.Provide(service.NewTagMetadataExtractService),
+		fx.Provide(service.NewTagService),
+		fx.Provide(api.NewTagsGrpcApi),
+
+		fx.Provide(storage2.NewMetadataStorageService),
+		fx.Provide(storage2.NewImageStorageService),
 		fx.Provide(service.NewExportService),
+		fx.Provide(service.NewMemeCrudService),
 
 		// Pipeline steps (sorted by GetPos inside NewImageMetadataExtractService)
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewCalcHashPipelineStep,
+				service.NewCalcHashPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewCheckDuplicateByHashPipelineStep,
+				service.NewCheckDuplicateByHashPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewToJpegPipelineStep,
+				service.NewToJpegPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewCalcEmbeddingPipelineStep,
+				service.NewCalcEmbeddingPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewCheckDuplicateByEmbeddingPipelineStep,
+				service.NewCheckDuplicateByEmbeddingPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewOcrImagePipelineStep,
+				service.NewOcrImagePipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewCreateThumbnailPipelineStep,
+				service.NewCreateThumbnailPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				extract_pipeline.NewCalcSizesPipelineStep,
+				service.NewCalcSizesPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
@@ -105,38 +112,38 @@ func main() {
 
 		fx.Provide(
 			fx.Annotate(
-				search_pipeline.NewSimpleSearcher,
+				service.NewSimpleSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				search_pipeline.NewIdSearcher,
+				service.NewIdSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				search_pipeline.NewFuzzySearcher,
+				service.NewFuzzySearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				search_pipeline.NewTextEmbeddingSearcher,
+				service.NewTextEmbeddingSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				search_pipeline.NewAllSearcher,
+				service.NewAllSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewMemeCrudService,
-				fx.ParamTags(``, ``, ``, `group:"searchers"`),
+				service.NewSearchServiceImpl,
+				fx.ParamTags(`group:"searchers"`, ``),
 			),
 		),
 
@@ -150,14 +157,17 @@ func Startup(
 	lc fx.Lifecycle,
 	searchApi v1connect.SearchServiceHandler,
 	exportApi v1connect.ExportServiceHandler,
+	tagsApi v1connect.TagsServiceHandler,
 	cfg *config.ServerConfig,
 ) {
 	mux := http.NewServeMux()
 	pathSearch, handlerSearch := v1connect.NewSearchServiceHandler(searchApi)
 	pathExport, handlerExport := v1connect.NewExportServiceHandler(exportApi)
+	pathTags, handlerTags := v1connect.NewTagsServiceHandler(tagsApi)
 
 	mux.Handle(pathSearch, handlerSearch)
 	mux.Handle(pathExport, handlerExport)
+	mux.Handle(pathTags, handlerTags)
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddress,

@@ -1,4 +1,4 @@
-package search_pipeline
+package service
 
 import (
 	"context"
@@ -7,12 +7,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"github.com/weoses/memelo/storage-service/service"
+	"github.com/weoses/memelo/storage-service/storage"
 )
 
 type TextEmbeddingSearcher struct {
 	SearcherBase
-	metadata service.MetadataStorageService
+	metadata storage.MetadataStorageService
 	embedder ocr.EmbeddingExtractor
 }
 
@@ -39,7 +39,7 @@ func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, 
 	return results, nil
 }
 
-func NewTextEmbeddingSearcher(m service.MetadataStorageService, e ocr.EmbeddingExtractor) SearchPipelineStep {
+func NewTextEmbeddingSearcher(m storage.MetadataStorageService, e ocr.EmbeddingExtractor) SearchPipelineStep {
 	return &TextEmbeddingSearcher{
 		SearcherBase: SearcherBase{Name: "text_embedding_searcher", Index: 30},
 		metadata:     m,

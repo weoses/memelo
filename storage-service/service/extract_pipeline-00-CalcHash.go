@@ -1,4 +1,4 @@
-package extract_pipeline
+package service
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/weoses/memelo/common/helper"
-	"github.com/weoses/memelo/storage-service/service"
 )
 
 type CalcHashPipelineStep struct{}
@@ -16,11 +15,11 @@ func (c *CalcHashPipelineStep) GetPos() int {
 	return 0
 }
 
-func (c *CalcHashPipelineStep) Check(_ context.Context, steps *service.StepsToDo) (bool, error) {
+func (c *CalcHashPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
 	return steps.CalcHash, nil
 }
 
-func (c *CalcHashPipelineStep) Do(_ context.Context, pipelineContext *service.PipelineContext) error {
+func (c *CalcHashPipelineStep) Do(_ context.Context, pipelineContext *ImageMetadataPipelineContext) error {
 	hash, err := calcRawImageHash(pipelineContext.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("create pipeline: error calculating hash: %w", err)

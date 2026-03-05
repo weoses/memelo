@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
+	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
 
 const (
@@ -34,8 +35,8 @@ type MemeCrudService interface {
 }
 
 type MemeCrudServiceImpl struct {
-	imageStorageService    ImageStorageService
-	metadataStorageService MetadataStorageService
+	imageStorageService    storage2.ImageStorageService
+	metadataStorageService storage2.MetadataStorageService
 	imageExtractService    ImageMetadataExtractService
 	searchService          SearchService
 	slogger                *slog.Logger
@@ -105,7 +106,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error) {
 	elasticData, err := m.searchService.Search(ctx, accountId, query, afterId, size)
 	if err != nil {
-		return nil, fmt.Errorf("search service failed: %w", err)
+		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
 	}
 
 	results, err := m.constructMetadataWithUrls(ctx, elasticData)
@@ -161,8 +162,8 @@ func (m *MemeCrudServiceImpl) constructMetadataWithUrls(ctx context.Context, ela
 }
 
 func NewMemeCrudService(
-	imageStore ImageStorageService,
-	metadataStore MetadataStorageService,
+	imageStore storage2.ImageStorageService,
+	metadataStore storage2.MetadataStorageService,
 	imageMetadataExtract ImageMetadataExtractService,
 	searchService SearchService,
 ) MemeCrudService {

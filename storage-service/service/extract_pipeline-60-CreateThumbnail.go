@@ -1,11 +1,10 @@
-package extract_pipeline
+package service
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/weoses/memelo/storage-service/ocr"
-	"github.com/weoses/memelo/storage-service/service"
 )
 
 type CreateThumbnailPipelineStep struct {
@@ -16,11 +15,11 @@ func (s *CreateThumbnailPipelineStep) GetPos() int {
 	return 60
 }
 
-func (s *CreateThumbnailPipelineStep) Check(_ context.Context, steps *service.StepsToDo) (bool, error) {
+func (s *CreateThumbnailPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
 	return steps.CreateThumbnail, nil
 }
 
-func (s *CreateThumbnailPipelineStep) Do(ctx context.Context, pCtx *service.PipelineContext) error {
+func (s *CreateThumbnailPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	imgThumb, err := s.imageConverter.MakeThumbnail(ctx, pCtx.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("cannot create thumbnail: %w", err)

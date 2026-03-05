@@ -1,4 +1,4 @@
-package search_pipeline
+package service
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
-	"github.com/weoses/memelo/storage-service/service"
+	"github.com/weoses/memelo/storage-service/storage"
 )
 
 type FuzzySearcher struct {
 	SearcherBase
-	metadata service.MetadataStorageService
+	metadata storage.MetadataStorageService
 }
 
 func (s FuzzySearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
@@ -40,7 +40,7 @@ func (s FuzzySearcher) Search(ctx context.Context, accountId uuid.UUID, query st
 	return matchedMetadataAll, nil
 }
 
-func NewFuzzySearcher(m service.MetadataStorageService) SearchPipelineStep {
+func NewFuzzySearcher(m storage.MetadataStorageService) SearchPipelineStep {
 	return &FuzzySearcher{
 		SearcherBase: SearcherBase{Name: "fuzzy_searcher", Index: 20},
 		metadata:     m,

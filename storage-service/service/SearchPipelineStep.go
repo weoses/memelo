@@ -1,4 +1,4 @@
-package search_pipeline
+package service
 
 import (
 	"context"

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
+	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
 
 type ProgressDataRecompute struct {
@@ -25,8 +26,8 @@ type RecomputeService interface {
 type RecomputeServiceImpl struct {
 	slogger                *slog.Logger
 	extractService         ImageMetadataExtractService
-	metadataStorageService MetadataStorageService
-	imageStorageService    ImageStorageService
+	metadataStorageService storage2.MetadataStorageService
+	imageStorageService    storage2.ImageStorageService
 }
 
 func (r *RecomputeServiceImpl) Recompute(

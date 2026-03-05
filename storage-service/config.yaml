@@ -25,6 +25,15 @@ metadata-storage:
   EmbeddingV1Dimensions: 1408
   EmbeddingMatchTreshold: 0.955
 
+tag-storage:
+  Elastic:
+    Addresses:
+      - "http://localhost:9200/"
+    Username:
+    Password:
+  Index: tags
+  EmbeddingV1Dimensions: 1408
+
 image-embedding:
   #ApiEndpoint: localhost:8088
   ApiEndpoint: us-central1-aiplatform.googleapis.com:443

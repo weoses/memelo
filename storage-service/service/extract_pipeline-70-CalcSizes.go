@@ -1,4 +1,4 @@
-package extract_pipeline
+package service
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"github.com/weoses/memelo/storage-service/service"
 )
 
 type CalcSizesPipelineStep struct {
@@ -17,11 +16,11 @@ func (s *CalcSizesPipelineStep) GetPos() int {
 	return 70
 }
 
-func (s *CalcSizesPipelineStep) Check(_ context.Context, steps *service.StepsToDo) (bool, error) {
+func (s *CalcSizesPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
 	return steps.CalcSize && steps.CreateThumbnail, nil
 }
 
-func (s *CalcSizesPipelineStep) Do(ctx context.Context, pCtx *service.PipelineContext) error {
+func (s *CalcSizesPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	if pCtx.ImageThumbnail == nil {
 		return fmt.Errorf("error: image thumbnail can't be nil")
 	}

@@ -1,0 +1,45 @@
+syntax = "proto3";
+import "proto/v1/common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+
+message Tag {
+  string id = 1;
+  string tag = 2;
+  string description = 3;
+}
+
+message CreateTagRequest {
+  string tag = 1;
+  string description = 2;
+}
+
+message CreateTagResponse {
+  Tag result = 1;
+}
+
+message DeleteTagRequest {
+  string id = 1;
+  string name = 2;
+}
+
+message DeleteTagResponse {
+  Tag result = 1;
+}
+
+message ListTagRequest {
+  optional string tagName = 1;
+  optional string tagDescription = 2;
+}
+
+message ListTagResponse {
+  repeated Tag result = 1;
+}
+
+service TagsService {
+  rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
+  rpc DeleteTag(DeleteTagRequest) returns (DeleteTagResponse);
+  rpc ListTags(ListTagRequest) returns (ListTagResponse);
+}

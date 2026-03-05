@@ -1,25 +1,25 @@
-package extract_pipeline
+package service
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/weoses/memelo/storage-service/service"
+	"github.com/weoses/memelo/storage-service/storage"
 )
 
 type CheckDuplicateByEmbeddingPipelineStep struct {
-	metadata service.MetadataStorageService
+	metadata storage.MetadataStorageService
 }
 
 func (s *CheckDuplicateByEmbeddingPipelineStep) GetPos() int {
 	return 40
 }
 
-func (s *CheckDuplicateByEmbeddingPipelineStep) Check(_ context.Context, steps *service.StepsToDo) (bool, error) {
+func (s *CheckDuplicateByEmbeddingPipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
 	return steps.DuplicateSearch && steps.CreateEmbedding, nil
 }
 
-func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, pCtx *service.PipelineContext) error {
+func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	if pCtx.ImageEmbedding == nil {
 		return fmt.Errorf("error: image embedding can't be nil")
 	}
@@ -34,6 +34,6 @@ func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, pCtx *se
 	return nil
 }
 
-func NewCheckDuplicateByEmbeddingPipelineStep(metadata service.MetadataStorageService) ExtractPipelineStep {
+func NewCheckDuplicateByEmbeddingPipelineStep(metadata storage.MetadataStorageService) ExtractPipelineStep {
 	return &CheckDuplicateByEmbeddingPipelineStep{metadata: metadata}
 }

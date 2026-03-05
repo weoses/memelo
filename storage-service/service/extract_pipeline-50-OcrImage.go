@@ -1,26 +1,25 @@
-package extract_pipeline
+package service
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/weoses/memelo/storage-service/ocr"
-	"github.com/weoses/memelo/storage-service/service"
 )
 
 type OcrImagePipelineStep struct {
-	image2text ocr.Img2TextService
+	image2text ocr.TextExtractor
 }
 
 func (s *OcrImagePipelineStep) GetPos() int {
 	return 50
 }
 
-func (s *OcrImagePipelineStep) Check(_ context.Context, steps *service.StepsToDo) (bool, error) {
+func (s *OcrImagePipelineStep) Check(_ context.Context, steps *StepsToDo) (bool, error) {
 	return steps.Ocr, nil
 }
 
-func (s *OcrImagePipelineStep) Do(ctx context.Context, pCtx *service.PipelineContext) error {
+func (s *OcrImagePipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	ocrResult, err := s.image2text.DoOcr(ctx, pCtx.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("error ocring image: %w", err)
@@ -29,6 +28,6 @@ func (s *OcrImagePipelineStep) Do(ctx context.Context, pCtx *service.PipelineCon
 	return nil
 }
 
-func NewOcrImagePipelineStep(image2text ocr.Img2TextService) ExtractPipelineStep {
+func NewOcrImagePipelineStep(image2text ocr.TextExtractor) ExtractPipelineStep {
 	return &OcrImagePipelineStep{image2text: image2text}
 }

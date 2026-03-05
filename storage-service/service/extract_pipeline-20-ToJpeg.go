@@ -1,11 +1,10 @@
-package extract_pipeline
+package service
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/weoses/memelo/storage-service/ocr"
-	"github.com/weoses/memelo/storage-service/service"
 )
 
 type ToJpegPipelineStep struct {
@@ -16,11 +15,11 @@ func (s *ToJpegPipelineStep) GetPos() int {
 	return 20
 }
 
-func (s *ToJpegPipelineStep) Check(_ context.Context, _ *service.StepsToDo) (bool, error) {
+func (s *ToJpegPipelineStep) Check(_ context.Context, _ *StepsToDo) (bool, error) {
 	return true, nil
 }
 
-func (s *ToJpegPipelineStep) Do(ctx context.Context, pCtx *service.PipelineContext) error {
+func (s *ToJpegPipelineStep) Do(ctx context.Context, pCtx *ImageMetadataPipelineContext) error {
 	imgJpeg, err := s.imageConverter.ProcessOriginalImage(ctx, pCtx.ImageRaw)
 	if err != nil {
 		return fmt.Errorf("cannot process original image: %w", err)

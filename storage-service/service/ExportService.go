@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
+	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
 
 const exportPageSize = 100
@@ -27,8 +28,8 @@ type ExportItem struct {
 }
 
 type ExportServiceImpl struct {
-	imageStorageService    ImageStorageService
-	metadataStorageService MetadataStorageService
+	imageStorageService    storage2.ImageStorageService
+	metadataStorageService storage2.MetadataStorageService
 	slogger                *slog.Logger
 }
 
@@ -95,7 +96,7 @@ func (e *ExportServiceImpl) Export(
 	return nil
 }
 
-func NewExportService(imageStore ImageStorageService, metadataStore MetadataStorageService) ExportService {
+func NewExportService(imageStore storage2.ImageStorageService, metadataStore storage2.MetadataStorageService) ExportService {
 	return &ExportServiceImpl{
 		imageStorageService:    imageStore,
 		metadataStorageService: metadataStore,
