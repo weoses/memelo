@@ -2,19 +2,24 @@
 
 A cloud-native meme management system with multi-modal search. Upload images via Telegram, extract text with OCR, generate semantic embeddings, and search your collection by text, fuzzy match, or meaning.
 
+## How to start
+
+```bash
+docker compose --profile env up -d
+docker compose --profile service up -d
+```
+
+
 ## Architecture
 
 ```
-Telegram User
-     │
-     ▼
-telegram-service  ──(gRPC)──►  storage-service
-                                    │
-                          ┌─────────┼─────────┐
-                          ▼         ▼         ▼
-                     MinIO S3  Elasticsearch  Google Cloud
-                    (images)   (metadata +    (Vision OCR +
-                               vectors)       Vertex AI embeddings)
+Integration services  ──(gRPC)─►  storage-service
+                                       │
+                             ┌─────────┼─────────┐
+                             ▼         ▼         ▼
+                        MinIO S3  Elasticsearch  Google Cloud
+                       (images)   (metadata +    (Vision OCR +
+                                  vectors)       Vertex AI embeddings)
 ```
 
 **Modules:**
@@ -55,66 +60,15 @@ telegram-service  ──(gRPC)──►  storage-service
 - **OCR**: Google Cloud Vision API
 - **Embeddings**: Google Vertex AI
 - **DI**: Uber fx
-- **Config**: Viper (YAML + env var overrides)
-
-## Configuration
-
-Services are configured via YAML files with environment variable overrides (dots replaced by underscores, e.g. `SERVER_LISTENADDRESS`).
-
-**`storage-service/config.yaml`:**
-```yaml
-server:
-  ListenAddress: :7001
-
-image-storage:
-  S3:
-    Endpoint: localhost:9000
-    Bucket: images
-
-metadata-storage:
-  Elastic:
-    Addresses: ["http://localhost:9200/"]
-  Index: image-metadata
-  EmbeddingV1Dimensions: 1408
-  EmbeddingMatchTreshold: 0.955
-
-image-embedding:
-  ApiEndpoint: us-central1-aiplatform.googleapis.com:443
-  ProjectName: <your-gcp-project>
-  Model: multimodalembedding@001
-
-image-ocr:
-  ApiEndpoint: vision.googleapis.com:443
-
-image-converter:
-  ThumbSize: 360
-```
-
-**`telegram-service/config.yaml`:**
-```yaml
-telegram:
-  Token: <your-telegram-bot-token>
-
-storage:
-  Uri: localhost:7001
-
-mongodb:
-  Uri: mongodb://localhost:27017
-  Database: memelo
-
-inline:
-  PageSize: 10
-```
 
 ## Local Development
 
 **Start dependencies:**
 ```sh
-cd testenv
-docker compose up -d
+docker compose --profile env up -d
 ```
 
-This starts Elasticsearch (`:9200`), Kibana (`:5601`), MinIO (`:9000`), and MongoDB (`:27017`). MinIO auto-creates the `images` bucket.
+This starts Elasticsearch (`:9200`), Kibana (`:5601`), MinIO (`:9000`).
 
 **Build and run storage-service:**
 ```sh
