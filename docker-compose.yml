@@ -53,22 +53,25 @@ services:
     command: server /data
     profiles:
       - env
+    networks:
+      - env
 
   storage-service:
-    image: ghcr.io/weoses/storage-service:latest
+    build:
+      dockerfile: Dockerfile-storage-service
     environment:
-      METADATA-STORAGE_ELASTIC_USERNAME:
-      METADATA-STORAGE_ELASTIC_PASSWORD:
-      IMAGE-STORAGE_S3_ENDPOINT: minio
+      METADATA-STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
+      TAG-STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
+      IMAGE-STORAGE_S3_ENDPOINT: minio:9000
       IMAGE-STORAGE_S3_ACCESSKEY: minio123
       IMAGE-STORAGE_S3_SECRETKEY: minio123
-      GOOGLE_APPLICATION_CREDENTIALS: $HOME/.config/gcloud/application_default_credentials.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
     restart: unless-stopped
     ports:
       - "127.0.0.1:7001:7001"
     volumes:
-      - "./config/storageservice:/app/config"
-      - "./config/credentials:/app/credentials"
+      - "./storage-service/config.yaml:/app/config/config.yaml"
+      - "$HOME/.config/gcloud/application_default_credentials.json:/app/creds/creds.json"
     networks:
       - env
     profiles:
