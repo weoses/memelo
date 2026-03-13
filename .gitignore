@@ -3,6 +3,4 @@ config.yml
 .idea/*
 !.idea/runConfigurations
 
-ocr-service/src/config.yml
-storage-service-service/src/config.yml
-telegram-service-service-service/src/config.yml
+**/.env
