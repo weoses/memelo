@@ -6,7 +6,8 @@ package proto.memelo.v1;
 
 
 message ExportRequest {
-  string account_id = 1;
+  optional string account_id = 1;
+  optional string id = 2;
 }
 
 message ExportImageDto {

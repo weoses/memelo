@@ -2,8 +2,8 @@
 GRPC localhost:7001/proto.memelo.v1.SearchService/SearchMeme
 
 {
-  "account_id": "f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6",
-  "query": "khrushevka"
+  "account_id": "592c313b-e4b8-409c-908c-ddedb2ff5df4",
+  "query": ""
 }
 
 ### Search all query
@@ -38,4 +38,19 @@ GRPC localhost:7001/proto.memelo.v1.ExportService/ExportImages
 
 {
   "account_id": "f6a3e8a0-c3b8-45af-a2d3-7bbe2879e0e6"
+}
+
+
+### Create tag
+GRPC localhost:7001/proto.memelo.v1.TagsService/CreateTag
+
+{
+  "tag": "winter",
+  "description": "winter"
+}
+
+### recompute
+GRPC localhost:7001/proto.memelo.v1.RecomputeService/RecomputeOcrData
+
+{
 }

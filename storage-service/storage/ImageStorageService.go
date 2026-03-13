@@ -1,4 +1,4 @@
-package service
+package storage
 
 import (
 	"bytes"
@@ -135,9 +135,21 @@ func NewMinioFileStorageServiceImpl(config *conf.ImageStorageConfig) (ImageStora
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create minio client: %w", err)
 	}
 
+	exists, err := minioClient.BucketExists(context.Background(), config.S3.Bucket)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if bucket exists: %w", err)
+	}
+
+	if !exists {
+		err = minioClient.MakeBucket(context.Background(), config.S3.Bucket, minio.MakeBucketOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create minio bucket: %w", err)
+		}
+	}
 	return &MinioFileStorageServiceImpl{
 			bucketName: config.S3.Bucket,
 			client:     *minioClient,

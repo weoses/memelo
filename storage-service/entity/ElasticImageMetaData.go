@@ -12,12 +12,14 @@ type ElasticImageMetaData struct {
 	S3Id        uuid.UUID `validator:required`
 	AccountId   uuid.UUID `validator:required`
 	Hash        string
+	HashV2      []string
 	Result      string
 	ThumbSize   *ElasticSizes `validator:required`
 	ImageSize   *ElasticSizes
 	Created     int64 `validator:required`
 	Updated     int64
 	EmbeddingV1 *ElasticEmbeddingV1 `validator:required`
+	Tags        []string
 }
 
 type ElasticEmbeddingV1 struct {

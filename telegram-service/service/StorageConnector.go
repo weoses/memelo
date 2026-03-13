@@ -58,7 +58,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		PageSize:    &pageSize32,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("storageService: search meme query failed query: %s : %w", query, err)
+		return nil, fmt.Errorf("storageService: search_pipeline meme query failed query: %s : %w", query, err)
 	}
 
 	entityResult := make([]*entity.MemeSearchResult, len(response.Results))

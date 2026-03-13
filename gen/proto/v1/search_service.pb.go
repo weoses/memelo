@@ -142,6 +142,7 @@ func (x *SearchMemeRequest) GetPageSize() int32 {
 type SearchMemeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Results       []*MemeDto             `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	SearcherName  string                 `protobuf:"bytes,2,opt,name=searcher_name,json=searcherName,proto3" json:"searcher_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -181,6 +182,13 @@ func (x *SearchMemeResponse) GetResults() []*MemeDto {
 		return x.Results
 	}
 	return nil
+}
+
+func (x *SearchMemeResponse) GetSearcherName() string {
+	if x != nil {
+		return x.SearcherName
+	}
+	return ""
 }
 
 type CreateMemeRequest struct {
@@ -484,9 +492,10 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\tpage_size\x18\x04 \x01(\x05H\x01R\bpageSize\x88\x01\x01B\x10\n" +
 	"\x0e_page_after_idB\f\n" +
 	"\n" +
-	"_page_size\"H\n" +
+	"_page_size\"m\n" +
 	"\x12SearchMemeResponse\x122\n" +
-	"\aresults\x18\x01 \x03(\v2\x18.proto.memelo.v1.MemeDtoR\aresults\"O\n" +
+	"\aresults\x18\x01 \x03(\v2\x18.proto.memelo.v1.MemeDtoR\aresults\x12#\n" +
+	"\rsearcher_name\x18\x02 \x01(\tR\fsearcherName\"O\n" +
 	"\x11CreateMemeRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1b\n" +

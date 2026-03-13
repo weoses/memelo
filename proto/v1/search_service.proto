@@ -20,6 +20,7 @@ message SearchMemeRequest {
 
 message SearchMemeResponse {
   repeated MemeDto results = 1;
+  string searcher_name = 2;
 }
 
 message CreateMemeRequest {

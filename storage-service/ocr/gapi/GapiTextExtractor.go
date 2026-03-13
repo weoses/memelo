@@ -1,4 +1,4 @@
-package ocr
+package gapi
 
 import (
 	"bytes"
@@ -6,24 +6,20 @@ import (
 
 	vision "cloud.google.com/go/vision/apiv1"
 	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/ocr"
 	"google.golang.org/api/option"
 )
 
-type Img2TextService interface {
-	GetName() string
-	DoOcr(ctx context.Context, image []byte) (string, error)
-}
-
-type Img2TextGcloudServiceImpl struct {
+type GcloudTextExtractorImpl struct {
 	client *vision.ImageAnnotatorClient
 }
 
-// GetName implements Img2TextService.
-func (m *Img2TextGcloudServiceImpl) GetName() string {
+// GetName implements TextExtractor.
+func (m *GcloudTextExtractorImpl) GetName() string {
 	return "GCloud"
 }
 
-func (m *Img2TextGcloudServiceImpl) DoOcr(ctx context.Context, image []byte) (string, error) {
+func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image []byte) (string, error) {
 	img, err := vision.NewImageFromReader(bytes.NewReader(image))
 	if err != nil {
 		return "", err
@@ -40,7 +36,7 @@ func (m *Img2TextGcloudServiceImpl) DoOcr(ctx context.Context, image []byte) (st
 	return "", nil
 }
 
-func NewOcrProcessor(ocrConf *conf.ImageOcrConfig) (Img2TextService, error) {
+func NewOcrProcessor(ocrConf *conf.ImageOcrConfig) (ocr.TextExtractor, error) {
 	visionClient, err := vision.NewImageAnnotatorClient(
 		context.Background(),
 		option.WithEndpoint(ocrConf.ApiEndpoint),
@@ -49,7 +45,7 @@ func NewOcrProcessor(ocrConf *conf.ImageOcrConfig) (Img2TextService, error) {
 		return nil, err
 	}
 
-	return &Img2TextGcloudServiceImpl{
+	return &GcloudTextExtractorImpl{
 		client: visionClient,
 	}, nil
 }

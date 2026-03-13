@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"context"
@@ -11,10 +11,11 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	"github.com/weoses/memelo/storage-service/service"
 )
 
 type SearchServiceApi struct {
-	crud    MemeCrudService
+	crud    service.MemeCrudService
 	slogger *slog.Logger
 }
 
@@ -43,7 +44,7 @@ func (api *SearchServiceApi) DeleteMeme(ctx context.Context, request *v1.DeleteM
 	return &v1.DeleteMemeResponse{Id: request.Id}, nil
 }
 
-func (api *SearchServiceApi) metadataToMemeDto(urls *MetadataWithUrls) *v1.MemeDto {
+func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *v1.MemeDto {
 	dto := &v1.MemeDto{
 		Id:        urls.Metadata.ImageId.String(),
 		OcrResult: urls.Metadata.Result,
@@ -97,13 +98,14 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, err
 	}
 
-	api.slogger.Info("SearchMeme response", "count", len(data))
+	api.slogger.Info("SearchMeme response", "count", len(data.Result))
 
 	return &v1.SearchMemeResponse{
 		Results: helper.TransformSlice(
-			data,
-			make([]*v1.MemeDto, len(data)),
+			data.Result,
+			make([]*v1.MemeDto, len(data.Result)),
 			api.metadataToMemeDto),
+		SearcherName: data.SearcherName,
 	}, nil
 }
 
@@ -137,7 +139,7 @@ func (api *SearchServiceApi) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.G
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetMeme is not implemented"))
 }
 
-func NewSearchServiceApi(crud MemeCrudService) v1connect.SearchServiceHandler {
+func NewSearchServiceApi(crud service.MemeCrudService) v1connect.SearchServiceHandler {
 	return &SearchServiceApi{
 		crud:    crud,
 		slogger: slog.With("service", "SearchServiceApi"),

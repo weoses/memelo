@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/entity"
+	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
 
 const (
@@ -28,22 +29,27 @@ type CreateResult struct {
 	Status   int
 }
 
+type SearchResult struct {
+	Result       []*MetadataWithUrls
+	SearcherName string
+}
+
 type MemeCrudService interface {
-	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error)
+	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 }
 
 type MemeCrudServiceImpl struct {
-	imageStore           ImageStorageService
-	metadataStore        MetadataStorageService
-	imageMetadataExtract ImageMetadataExtractService
-	searchers            []Searcher
-	slogger              *slog.Logger
+	imageStorageService    storage2.ImageStorageService
+	metadataStorageService storage2.MetadataStorageService
+	imageExtractService    ImageMetadataExtractService
+	searchService          SearchService
+	slogger                *slog.Logger
 }
 
 func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error) {
-	pipelineResult, err := m.imageMetadataExtract.ProcessCreate(ctx, accountId, imgRaw)
+	pipelineResult, err := m.imageExtractService.ProcessCreate(ctx, accountId, imgRaw, true)
 	if err != nil {
 		return nil, fmt.Errorf("metadata extract pipeline failed: %w", err)
 	}
@@ -63,7 +69,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	s3id := uuid.New()
 	imgId := uuid.New()
 
-	err = m.imageStore.Save(ctx, s3id, pipelineResult.ImageRaw, pipelineResult.ImageThumbnail)
+	err = m.imageStorageService.Save(ctx, s3id, pipelineResult.ImageRaw, pipelineResult.ImageThumbnail)
 	if err != nil {
 		return nil, fmt.Errorf("save image files failed: %w", err)
 	}
@@ -74,13 +80,19 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		AccountId:   accountId,
 		Result:      pipelineResult.ImageOcrResult,
 		Hash:        pipelineResult.ImageHash,
-		EmbeddingV1: pipelineResult.ImageEmbedding,
-		ImageSize:   pipelineResult.ImageRawSize,
-		ThumbSize:   pipelineResult.ImageThumbnailSize,
+		EmbeddingV1: &pipelineResult.ImageEmbedding,
+		ImageSize:   &pipelineResult.ImageRawSize,
+		ThumbSize:   &pipelineResult.ImageThumbnailSize,
 		Created:     time.Now().UnixMicro(),
 		Updated:     time.Now().UnixMicro(),
+		Tags: helper.TransformSlice(
+			pipelineResult.Tags,
+			make([]string, len(pipelineResult.Tags)),
+			func(tag entity.ElasticTag) string {
+				return tag.Tag
+			}),
 	}
-	err = m.metadataStore.Save(ctx, metadataEntity)
+	err = m.metadataStorageService.Save(ctx, metadataEntity)
 	if err != nil {
 		return nil, fmt.Errorf("save metadata failed: %w", err)
 	}
@@ -96,40 +108,25 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
-func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*MetadataWithUrls, error) {
-	elasticData := make([]*entity.ElasticImageMetaData, 0)
-	for _, searcher := range m.searchers {
-		searcherName := searcher.GetName()
-
-		m.slogger.DebugContext(ctx, "Start searcher",
-			"searcher", searcherName)
-
-		data, err := searcher.Search(ctx, accountId, query, afterId, size)
-
-		m.slogger.DebugContext(ctx, "End searcher",
-			"searcher", searcherName,
-			"results", len(data))
-
-		if err != nil {
-			return nil, fmt.Errorf("searcher %s failed: %w", searcherName, err)
-		}
-
-		if len(data) > 0 {
-			elasticData = append(elasticData, data...)
-			break
-		}
-	}
-
-	results, err := m.constructMetadataWithUrls(ctx, elasticData)
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error) {
+	elasticData, err := m.searchService.Search(ctx, accountId, query, afterId, size)
 	if err != nil {
-		return results, err
+		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
 	}
 
-	return results, nil
+	results, err := m.constructMetadataWithUrls(ctx, elasticData.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SearchResult{
+		Result:       results,
+		SearcherName: elasticData.SearcherName,
+	}, nil
 }
 
 func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
-	metadata, err := m.metadataStore.GetById(ctx, accountId, id)
+	metadata, err := m.metadataStorageService.GetById(ctx, accountId, id)
 	if err != nil {
 		return fmt.Errorf("get metadata failed: %w", err)
 	}
@@ -137,11 +134,11 @@ func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUI
 		return fmt.Errorf("meme not found: %s", id)
 	}
 
-	if err = m.imageStore.DeleteImage(ctx, metadata.S3Id); err != nil {
+	if err = m.imageStorageService.DeleteImage(ctx, metadata.S3Id); err != nil {
 		return fmt.Errorf("delete image failed: %w", err)
 	}
 
-	if err = m.metadataStore.DeleteById(ctx, accountId, id); err != nil {
+	if err = m.metadataStorageService.DeleteById(ctx, accountId, id); err != nil {
 		return fmt.Errorf("delete metadata failed: %w", err)
 	}
 
@@ -153,12 +150,12 @@ func (m *MemeCrudServiceImpl) constructMetadataWithUrls(ctx context.Context, ela
 
 	for i, elasticDataObject := range elasticData {
 
-		urlOriginal, err := m.imageStore.GetUrl(ctx, elasticDataObject.ImageId)
+		urlOriginal, err := m.imageStorageService.GetUrl(ctx, elasticDataObject.ImageId)
 		if err != nil {
 			return nil, fmt.Errorf("get original url by %s failed: %w", elasticDataObject.ImageId, err)
 		}
 
-		urlThumb, err := m.imageStore.GetUrlThumb(ctx, elasticDataObject.ImageId)
+		urlThumb, err := m.imageStorageService.GetUrlThumb(ctx, elasticDataObject.ImageId)
 		if err != nil {
 			return nil, fmt.Errorf("get thumbnail url by %s failed: %w", elasticDataObject.ImageId, err)
 		}
@@ -173,19 +170,16 @@ func (m *MemeCrudServiceImpl) constructMetadataWithUrls(ctx context.Context, ela
 }
 
 func NewMemeCrudService(
-	imageStore ImageStorageService,
-	metadataStore MetadataStorageService,
+	imageStore storage2.ImageStorageService,
+	metadataStore storage2.MetadataStorageService,
 	imageMetadataExtract ImageMetadataExtractService,
-	searchers []Searcher,
+	searchService SearchService,
 ) MemeCrudService {
-	slices.SortFunc(searchers, func(a Searcher, b Searcher) int {
-		return a.GetIndex() - b.GetIndex()
-	})
 	return &MemeCrudServiceImpl{
-		imageStore:           imageStore,
-		metadataStore:        metadataStore,
-		imageMetadataExtract: imageMetadataExtract,
-		searchers:            searchers,
-		slogger:              slog.With("service", "MemeCrudService"),
+		imageStorageService:    imageStore,
+		metadataStorageService: metadataStore,
+		imageExtractService:    imageMetadataExtract,
+		searchService:          searchService,
+		slogger:                slog.With("service", "MemeCrudService"),
 	}
 }

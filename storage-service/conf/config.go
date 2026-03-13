@@ -12,6 +12,12 @@ type MetadataStorageConfig struct {
 	EmbeddingMatchTreshold float64
 }
 
+type ElasticTagConfig struct {
+	Elastic               *elasticsearch8.Config
+	Index                 string
+	EmbeddingV1Dimensions int
+}
+
 type ImageS3StorageConfig struct {
 	Endpoint  string
 	AccessKey string
@@ -68,5 +74,11 @@ func NewImageStorageConfig() (*ImageStorageConfig, error) {
 func NewImageOcrConfig() (*ImageOcrConfig, error) {
 	conf := &ImageOcrConfig{}
 	err := viper.UnmarshalKey("image-ocr", conf)
+	return conf, err
+}
+
+func NewElasticTagConfig() (*ElasticTagConfig, error) {
+	conf := &ElasticTagConfig{}
+	err := viper.UnmarshalKey("tag-storage", conf)
 	return conf, err
 }

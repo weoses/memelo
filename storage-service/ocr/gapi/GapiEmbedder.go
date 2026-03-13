@@ -1,4 +1,4 @@
-package ocr
+package gapi
 
 import (
 	"bytes"
@@ -11,17 +11,13 @@ import (
 	aiplatformpb "cloud.google.com/go/aiplatform/apiv1beta1/aiplatformpb"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
+	"github.com/weoses/memelo/storage-service/ocr"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type EmbeddingExtractor interface {
-	GetImageEmbeddingV1(ctx context.Context, image []byte) (*entity.ElasticEmbeddingV1, error)
-	GetTextEmbeddingV1(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error)
-}
-
-type ImageEmbeddingExtractorImpl struct {
+type GcloudImageEmbeddingExtractorImpl struct {
 	client    *aiplatform.PredictionClient
 	endpoint  string
 	dimension int
@@ -29,7 +25,7 @@ type ImageEmbeddingExtractorImpl struct {
 }
 
 // GetIconMatrix implements ImageCompareKeyExtractor.
-func (i *ImageEmbeddingExtractorImpl) GetImageEmbeddingV1(ctx context.Context, rawImage []byte) (*entity.ElasticEmbeddingV1, error) {
+func (i *GcloudImageEmbeddingExtractorImpl) GetImageEmbeddingV1(ctx context.Context, rawImage []byte) (*entity.ElasticEmbeddingV1, error) {
 	bufBase64Reader := bytes.NewBufferString("")
 	bufBytesWriter := base64.NewEncoder(base64.RawStdEncoding, bufBase64Reader)
 	bufBytesWriter.Write(rawImage)
@@ -40,7 +36,7 @@ func (i *ImageEmbeddingExtractorImpl) GetImageEmbeddingV1(ctx context.Context, r
 }
 
 // generateWithLowerDimension shows how to generate lower-dimensional embeddings for text and image inputs.
-func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
+func (i *GcloudImageEmbeddingExtractorImpl) generateWithLowerDimension(
 	dataImageBase64 *string,
 ) (*entity.ElasticEmbeddingV1, error) {
 	// location = "us-central1"
@@ -105,11 +101,11 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 	}, nil
 }
 
-func (i *ImageEmbeddingExtractorImpl) GetTextEmbeddingV1(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error) {
+func (i *GcloudImageEmbeddingExtractorImpl) GetTextEmbeddingV1(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error) {
 	return i.generateTextEmbedding(ctx, text)
 }
 
-func (i *ImageEmbeddingExtractorImpl) generateTextEmbedding(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error) {
+func (i *GcloudImageEmbeddingExtractorImpl) generateTextEmbedding(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error) {
 	instance, err := structpb.NewValue(map[string]any{
 		"text": text,
 	})
@@ -154,7 +150,7 @@ func (i *ImageEmbeddingExtractorImpl) generateTextEmbedding(ctx context.Context,
 	}, nil
 }
 
-func NewImageEmbeddingExtractor(cnf *conf.ImageEmbeddingConfig) (EmbeddingExtractor, error) {
+func NewImageEmbeddingExtractor(cnf *conf.ImageEmbeddingConfig) (ocr.EmbeddingExtractor, error) {
 	apiEndpoint := cnf.ApiEndpoint
 	client, err := aiplatform.NewPredictionClient(context.Background(), option.WithEndpoint(apiEndpoint))
 	if err != nil {
@@ -163,7 +159,7 @@ func NewImageEmbeddingExtractor(cnf *conf.ImageEmbeddingConfig) (EmbeddingExtrac
 
 	endpoint := fmt.Sprintf("projects/%s/locations/%s/publishers/google/models/%s", cnf.ProjectName, cnf.ApiLocation, cnf.Model)
 
-	return &ImageEmbeddingExtractorImpl{
+	return &GcloudImageEmbeddingExtractorImpl{
 		client:    client,
 		endpoint:  endpoint,
 		dimension: cnf.Dimension,
