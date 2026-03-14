@@ -1,6 +1,6 @@
 name: lint
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   golangci-lint:
@@ -9,14 +9,14 @@ jobs:
       matrix:
         module: [common, storage-service, telegram-service]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: ${{ matrix.module }}/go.mod
           cache: false
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
           working-directory: ${{ matrix.module }}
           version: latest
