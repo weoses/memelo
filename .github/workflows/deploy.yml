@@ -29,7 +29,6 @@ jobs:
           file: Dockerfile-storage-service
           tags: |
             ghcr.io/weoses/storage-service:${{ github.ref_name }}
-            ghcr.io/weoses/storage-service:latest
 
       - name: "TELEGRAM: Build and push"
         uses: docker/build-push-action@v6
@@ -38,7 +37,6 @@ jobs:
           file: Dockerfile-telegram-service
           tags: |
             ghcr.io/weoses/telegram-service:${{ github.ref_name }}
-            ghcr.io/weoses/storage-service:latest
 
       - name: "Make release"
         uses: softprops/action-gh-release@v2
@@ -67,11 +65,22 @@ jobs:
               git clone "$REPO_URL" "$DEPLOY_PATH"
             fi
             cd "$DEPLOY_PATH"
+            
+            docker compose down || true
+            
+            LAST_CONTAINER=$(docker ps -q -f "memelo")
+            for i in $LAST_CONTAINER
+            do
+              echo "Still lasts container $i, removing"
+              docker stop "$i"
+              docker rm "$i"
+            done            
+  
             git fetch --tags origin
             git checkout "$TAG"
 
             docker compose pull
-            docker compose up -d --wait
+            docker compose up -p memelo -d --wait --wait-timeout 300
         env:
           ELASTIC_USERNAME: ${{ vars.ELASTIC_USERNAME }}
           ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
