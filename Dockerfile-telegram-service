@@ -7,18 +7,13 @@ RUN apk add --update --no-cache bash curl \
 
 COPY ./gen gen/
 COPY ./common common/
-COPY ./tests/e2e tests/e2e
-COPY ./storage-service ./storage-service
-COPY ./telegram-service ./telegram-service
-COPY ./go.work ./go.work
-COPY ./go.work.sum ./go.work.sum
-
-RUN go build -a -installsuffix cgo -o telegram-service.bin ./telegram-service
+WORKDIR /app/telegram-service
+RUN go build -a -installsuffix cgo -o output.bin
 
 FROM alpine:latest 
 
 WORKDIR /app
-COPY --from=builder /app/telegram-service.bin telegram-service
+COPY --from=builder /app/telegram-service/output.bin telegram-service
 
 WORKDIR /app/config
 ENV APPLICATION_CONFIGPATH "/app/config"

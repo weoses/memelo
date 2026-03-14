@@ -6,39 +6,33 @@ server:
 
 image-storage:
   S3:
-    Endpoint: localhost:9000
-    AccessKey: minio123
-    SecretKey: minio123
-    Bucket: images
-
-
-ocr-service:
-  Uri: http://localhost:7002
+    Endpoint:
+    AccessKey:
+    SecretKey:
+    Bucket: melo-images
+    Secure: false
 
 metadata-storage:
   Elastic:
     Addresses:
-      - "http://localhost:9200/"
     Username: 
     Password: 
-  Index: image-metadata
+  Index: melo-image-metadata
   EmbeddingV1Dimensions: 1408
   EmbeddingMatchTreshold: 0.955
 
 tag-storage:
   Elastic:
     Addresses:
-      - "http://localhost:9200/"
     Username:
     Password:
-  Index: tags
+  Index: melo-tags
   EmbeddingV1Dimensions: 1408
 
 image-embedding:
-  #ApiEndpoint: localhost:8088
   ApiEndpoint: us-central1-aiplatform.googleapis.com:443
   ApiLocation: us-central1
-  ProjectName: positive-shell-448806-f7
+  ProjectName:
   Model: multimodalembedding@001
   Dimension: 1408
 
@@ -47,4 +41,3 @@ image-converter:
 
 image-ocr:
   ApiEndpoint: vision.googleapis.com:443
-  #ApiEndpoint: http://localhost:8088
