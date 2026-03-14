@@ -7,6 +7,9 @@ RUN apk add --update --no-cache bash curl \
 
 COPY ./gen gen/
 COPY ./common common/
+
+COPY ./telegram-service ./telegram-service
+
 WORKDIR /app/telegram-service
 RUN go build -a -installsuffix cgo -o output.bin
 
