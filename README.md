@@ -4,11 +4,30 @@ A cloud-native meme management system with multi-modal search. Upload images via
 
 ## How to start
 
+In repo root folder:
 ```bash
-docker compose --profile env up -d
-docker compose --profile service up -d
+cp .env.example .env
+
+# edit .env - must have valid GOOGLE_CREDS_PATH and IMAGE_EMBEDDING_PROJECTNAME
+
+docker compose up -d
 ```
 
+## How to obtain google creds?
+Google docs: https://docs.cloud.google.com/docs/authentication/application-default-credentials  
+App need a json file from google cloud console, if you logged in gloud cli - it located at `$HOME/.config/gcloud/application_default_credentials.json`  
+
+So, minimal instruction:
+- Register at google cloud
+- Enable two apis - `Cloud Vision API` and `Vertex AI API`. (I don't remember where is enable buttons exactly)
+- Either:
+- - Create service account 
+- - Download key for it
+- Or: 
+- - Install gcloud cli tools
+- - Login to your google account. It will create key automatically on your PC in default location.
+
+Anyway, check documentation about ADC, there is a lot of ways to pass credentials to application
 
 ## Architecture
 
@@ -65,20 +84,19 @@ Integration services  ──(gRPC)─►  storage-service
 
 **Start dependencies:**
 ```sh
-docker compose --profile env up -d
+ docker compose up elasticsearch minio -d
 ```
 
-This starts Elasticsearch (`:9200`), Kibana (`:5601`), MinIO (`:9000`).
+This starts Elasticsearch (`:9200`),  MinIO (`:9000`).
 
 **Build and run storage-service:**
 ```sh
 cd storage-service
-go run .
-```
+cp .env.example .env
 
-**Build and run telegram-service:**
-```sh
-cd telegram-service
+# edit .env here
+# app must have valid IMAGE_EMBEDDING_PROJECTNAME (google console project id like word-word-111111-a1)
+
 go run .
 ```
 

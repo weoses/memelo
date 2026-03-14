@@ -18,7 +18,7 @@ type MongodbConfig struct {
 	Database string
 }
 
-type StorageConfig struct {
+type StorageServiceConfig struct {
 	Uri string
 }
 
@@ -44,8 +44,8 @@ func NewInlineConfig() (*InlineConfig, error) {
 	return conf, err
 }
 
-func NewStorageConfig() (*StorageConfig, error) {
-	conf := &StorageConfig{}
+func NewStorageConfig() (*StorageServiceConfig, error) {
+	conf := &StorageServiceConfig{}
 	err := viper.UnmarshalKey("storage-service", conf)
 	return conf, err
 }

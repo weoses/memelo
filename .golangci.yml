@@ -1,0 +1,11 @@
+linters:
+  enable:
+    - misspell
+    - dupl
+    - embeddedstructfieldcheck
+    - errcheck
+    - errchkjson
+    - errorlint
+    - goconst
+
+version: "2"

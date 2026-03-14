@@ -7,19 +7,16 @@ RUN apk add --update --no-cache bash curl \
 
 COPY ./gen gen/
 COPY ./common common/
-COPY ./tests/e2e tests/e2e
 COPY ./storage-service ./storage-service
-COPY ./telegram-service ./telegram-service
-COPY ./go.work ./go.work
-COPY ./go.work.sum ./go.work.sum
 
-RUN go build -a -installsuffix cgo -o storage-service.bin ./storage-service
+WORKDIR /app/storage-service
+RUN go build -a -installsuffix cgo -o output.bin
 
 FROM alpine:latest 
 
 WORKDIR /app
 RUN apk add vips vips-poppler
-COPY --from=builder /app/storage-service.bin storage-service
+COPY --from=builder /app/storage-service/output.bin storage-service
 
 WORKDIR /app/config
 ENV APPLICATION_CONFIGPATH "/app/config"

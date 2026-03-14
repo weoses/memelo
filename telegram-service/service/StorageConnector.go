@@ -104,7 +104,7 @@ func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime
 	}, nil
 }
 
-func NewStorageConnector(config *conf.StorageConfig) (StorageConnector, error) {
+func NewStorageConnector(config *conf.StorageServiceConfig) (StorageConnector, error) {
 	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.Uri)
 	return &StorageConnectorImpl{
 		cl:  cl,

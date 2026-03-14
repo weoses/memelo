@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -31,7 +33,7 @@ func (u *UserAccountServiceImpl) MapUserToAccount(ctx context.Context, userId in
 
 	binding := new(entity.MongoTgUserAccountBinding)
 
-	if result.Err() == mongo.ErrNoDocuments {
+	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
 		accountId, _ := uuid.NewRandom()
 		binding.UserId = userId
 		binding.AccountId = accountId
@@ -82,16 +84,19 @@ func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.U
 	}
 
 	database := client.Database(config.Database)
-	database.CreateCollection(
+	err = database.CreateCollection(
 		context.Background(),
 		COLLECTION_NAME,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create collection: %w", err)
+	}
 
 	collection := client.
 		Database(config.Database).
 		Collection(COLLECTION_NAME)
 
-	collection.Indexes().CreateOne(
+	_, err = collection.Indexes().CreateOne(
 		context.Background(),
 		mongo.IndexModel{
 			Keys: bson.D{{Key: "userid", Value: -1}},
@@ -100,6 +105,9 @@ func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.U
 				SetName(INDEX_NAME),
 		},
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create index: %w", err)
+	}
 
 	return &UserAccountServiceImpl{
 		mongoClient: client,

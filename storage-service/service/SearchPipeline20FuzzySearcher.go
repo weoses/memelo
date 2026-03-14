@@ -11,6 +11,7 @@ import (
 
 type FuzzySearcher struct {
 	SearcherBase
+
 	metadata storage.MetadataStorageService
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -23,7 +24,10 @@ import (
 
 func main() {
 	config.InitConfig()
-	loggingConfig := config.NewLoggingConfig()
+	loggingConfig, err := config.NewLoggingConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 	config.InitLogs(loggingConfig)
 
 	fx.New(
@@ -158,6 +162,7 @@ func main() {
 
 		fx.Provide(api.NewSearchServiceApi),
 		fx.Provide(api.NewExportServiceApi),
+		fx.Provide(NewHealthCheck),
 		fx.Invoke(Startup),
 	).Run()
 }
@@ -168,6 +173,7 @@ func Startup(
 	exportApi v1connect.ExportServiceHandler,
 	tagsApi v1connect.TagsServiceHandler,
 	recomputeApi v1connect.RecomputeServiceHandler,
+	check *HealthCheck,
 	cfg *config.ServerConfig,
 ) {
 	mux := http.NewServeMux()
@@ -180,6 +186,7 @@ func Startup(
 	mux.Handle(pathExport, handlerExport)
 	mux.Handle(pathTags, handlerTags)
 	mux.Handle(pathRecompute, handlerRecompute)
+	mux.Handle("/health", check)
 
 	srv := &http.Server{
 		Addr:    cfg.ListenAddress,

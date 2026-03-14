@@ -1,0 +1,27 @@
+name: lint
+
+on: [push]
+
+jobs:
+  golangci-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [common, storage-service, telegram-service]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install packages on Ubuntu (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache: false
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: ${{ matrix.module }}
+          version: latest

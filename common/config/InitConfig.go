@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
 func InitConfig() {
+	_ = godotenv.Load(".env")
+
 	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -29,16 +32,22 @@ func InitConfig() {
 
 }
 
-func NewServerConfig() *ServerConfig {
+func NewServerConfig() (*ServerConfig, error) {
 	conf := new(ServerConfig)
-	viper.UnmarshalKey("server", conf)
-	return conf
+	err := viper.UnmarshalKey("server", conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	return conf, nil
 }
 
-func NewLoggingConfig() *LoggingConfig {
+func NewLoggingConfig() (*LoggingConfig, error) {
 	conf := new(LoggingConfig)
-	viper.UnmarshalKey("log", conf)
-	return conf
+	err := viper.UnmarshalKey("log", conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	return conf, nil
 }
 
 type ServerConfig struct {

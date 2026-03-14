@@ -1,81 +1,82 @@
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.16.2
-    environment: [
-      'ES_JAVA_OPTS=-Xms2g -Xmx2g',
-      'bootstrap.memory_lock=true',
-      'discovery.type=single-node',
-      'xpack.security.enabled=false',
-      'xpack.security.enrollment.enabled=false',
-      'cluster.routing.allocation.disk.watermark.low=600mb',
-      'cluster.routing.allocation.disk.watermark.high=500mb',
-      'cluster.routing.allocation.disk.watermark.flood_stage=400mb'
-    ]
+    environment:
+        ES_JAVA_OPTS: ${ELASTIC_JAVA_OPTS:--Xmx1g}
+        bootstrap.memory_lock: true
+        discovery.type: single-node
+        xpack.security.enabled: true
+        xpack.security.enrollment.enabled: false
+        ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+        ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
     ports:
-      - 9200:9200
+      - "127.0.0.1:9200:9200"
     networks:
       - env
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    profiles:
-      - env
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9200" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9200", "-u", "${ELASTIC_USERNAME:-elastic}:${ELASTIC_PASSWORD:-elastic}" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.16.2
-    environment:
-      - XPACK_SECURITY_ENABLED=false
-      - XPACK_ENTERPRISESEARCH_ENABLED=false
-    ports:
-      - 5601:5601
-    networks:
-      - env
-    profiles:
-      - env
-
   minio:
     image: minio/minio:latest
     environment:
-      MINIO_ACCESS_KEY: minio123
-      MINIO_SECRET_KEY: minio123
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio123}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio123}
     ports:
-      - 9000:9000
+      - "127.0.0.1:9000:9000"
     command: server /data
-    profiles:
-      - env
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - env
 
   storage-service:
     build:
       dockerfile: Dockerfile-storage-service
+    image: ghcr.io/weoses/storage-service:${RELEASE_VERSION:-latest}
     environment:
-      METADATA-STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
-      TAG-STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
-      IMAGE-STORAGE_S3_ENDPOINT: minio:9000
-      IMAGE-STORAGE_S3_ACCESSKEY: minio123
-      IMAGE-STORAGE_S3_SECRETKEY: minio123
+      METADATA_STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
+      METADATA_STORAGE_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      METADATA_STORAGE_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+
+      TAG_STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
+      TAG_STORAGE_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      TAG_STORAGE_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+
+      IMAGE_STORAGE_S3_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      IMAGE_STORAGE_S3_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
+      IMAGE_STORAGE_S3_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
+      IMAGE_STORAGE_S3_SECURE: ${MINIO_SECURE:-false}
+
+      IMAGE_EMBEDDING_PROJECTNAME: ${IMAGE_EMBEDDING_PROJECTNAME}
+
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
     restart: unless-stopped
     ports:
       - "127.0.0.1:7001:7001"
     volumes:
       - "./storage-service/config.yaml:/app/config/config.yaml"
-      - "$HOME/.config/gcloud/application_default_credentials.json:/app/creds/creds.json"
+      - "${GOOGLE_CREDS_PATH:-$HOME/.config/gcloud/application_default_credentials.json}:/app/creds/creds.json"
     networks:
       - env
-    profiles:
-      - service
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   env:

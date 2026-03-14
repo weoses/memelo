@@ -37,6 +37,9 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 	if !strings.HasPrefix(request.Query, inlineDeletePrefix) {
 		return nil
 	}
+	var accountId uuid.UUID
+	var imageIdUuid uuid.UUID
+	var err error
 
 	imageId := request.ResultID
 	userId := request.From.ID
@@ -45,13 +48,15 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 		"query", request.Query,
 		"messageId", request.InlineMessageID)
 
-	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
+	accountId, err = i.userAccount.MapUserToAccount(ctx, userId)
 	if err != nil {
 		return fmt.Errorf("ProcessChosenInlineQuery: MapUserToAccount failed, userId=%d, err=%w", userId, err)
 	}
 
-	imageIdUuid, err := uuid.Parse(imageId)
-
+	imageIdUuid, err = uuid.Parse(imageId)
+	if err != nil {
+		return fmt.Errorf("failed to parse uuid %w", err)
+	}
 	err = i.storage.DeleteMeme(ctx, accountId, imageIdUuid)
 	if err != nil {
 		return fmt.Errorf("ProcessChosenInlineQuery: DeleteMeme failed, accountId=%s, memeId=%s err=%w",

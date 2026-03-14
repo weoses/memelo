@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -28,7 +29,11 @@ func Startup(lc fx.Lifecycle, serv service.TelegramBotService) {
 
 func main() {
 	config.InitConfig()
-	loggingConfig := config.NewLoggingConfig()
+	loggingConfig, err := config.NewLoggingConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	config.InitLogs(loggingConfig)
 
 	fx.New(
