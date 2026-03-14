@@ -36,8 +36,20 @@ jobs:
         with:
           push: true
           file: Dockerfile-telegram-service
-          tags: ghcr.io/weoses/telegram-service:${{ github.ref_name }}
+          tags: |
+            ghcr.io/weoses/telegram-service:${{ github.ref_name }}
+            ghcr.io/weoses/storage-service:latest
 
+      - name: "Make release"
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          body: |
+            Version: ${{ github.ref_name }}
+            Images:
+             - ghcr.io/weoses/storage-service:${{ github.ref_name }}
+             - ghcr.io/weoses/telegram-service:${{ github.ref_name }}
+          generate_release_notes: true
   deploy:
     runs-on: ubuntu-latest
     needs: build

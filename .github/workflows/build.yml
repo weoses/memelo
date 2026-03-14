@@ -1,7 +1,9 @@
-name: master-build
+name: build
 
 on:
   push:
+    branches:
+      - '**'
     tags-ignore:
       - '**'
 jobs:
