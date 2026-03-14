@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -23,7 +24,10 @@ import (
 
 func main() {
 	config.InitConfig()
-	loggingConfig := config.NewLoggingConfig()
+	loggingConfig, err := config.NewLoggingConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 	config.InitLogs(loggingConfig)
 
 	fx.New(

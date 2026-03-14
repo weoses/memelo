@@ -54,7 +54,10 @@ func (srv *TelegramBotServiceImpl) handleMessage(ctx context.Context, update *tg
 		srv.log.ErrorContext(ctx, "Failed to process message", "error", err)
 		message := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
 		message.ReplyToMessageID = update.Message.MessageID
-		srv.bot.Send(message)
+		_, err = srv.bot.Send(message)
+		if err != nil {
+			srv.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
+		}
 		return
 	}
 
