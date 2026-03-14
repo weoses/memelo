@@ -2,7 +2,8 @@ name: master-build
 
 on:
   push:
-
+    tags-ignore:
+      - '**'
 jobs:
   docker:
     runs-on: ubuntu-latest

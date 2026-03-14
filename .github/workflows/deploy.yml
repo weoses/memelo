@@ -65,7 +65,7 @@ jobs:
           ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
           ELASTIC_JAVA_OPTS: ${{ vars.ELASTIC_JAVA_OPTS }}
           MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
-          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_ACCESS_KEY: ${{ vars.MINIO_ACCESS_KEY }}
           MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
           MINIO_SECURE: ${{ vars.MINIO_SECURE }}
           IMAGE_EMBEDDING_PROJECTNAME: ${{ vars.IMAGE_EMBEDDING_PROJECTNAME }}
