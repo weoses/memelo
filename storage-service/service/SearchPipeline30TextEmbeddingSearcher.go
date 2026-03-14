@@ -12,6 +12,7 @@ import (
 
 type TextEmbeddingSearcher struct {
 	SearcherBase
+
 	metadata storage.MetadataStorageService
 	embedder ocr.EmbeddingExtractor
 }

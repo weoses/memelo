@@ -1,6 +1,11 @@
 linters:
   enable:
-    - goimports
     - misspell
-  disable:
-    - depguard
+    - dupl
+    - embeddedstructfieldcheck
+    - errcheck
+    - errchkjson
+    - errorlint
+    - goconst
+
+version: "2"

@@ -28,8 +28,14 @@ type GcloudImageEmbeddingExtractorImpl struct {
 func (i *GcloudImageEmbeddingExtractorImpl) GetImageEmbeddingV1(ctx context.Context, rawImage []byte) (*entity.ElasticEmbeddingV1, error) {
 	bufBase64Reader := bytes.NewBufferString("")
 	bufBytesWriter := base64.NewEncoder(base64.RawStdEncoding, bufBase64Reader)
-	bufBytesWriter.Write(rawImage)
-	bufBytesWriter.Close()
+	_, err := bufBytesWriter.Write(rawImage)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write image: %w", err)
+	}
+	err = bufBytesWriter.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close image writer: %w", err)
+	}
 	base64Str := bufBase64Reader.String()
 
 	return i.generateWithLowerDimension(&base64Str)
@@ -57,7 +63,7 @@ func (i *GcloudImageEmbeddingExtractorImpl) generateWithLowerDimension(
 		return nil, fmt.Errorf("failed to construct request payload: %w", err)
 	}
 
-	// TODO(developer): Try different dimenions: 128, 256, 512, 1408
+	// TODO(developer): Try different dimensions: 128, 256, 512, 1408
 	//outputDimensionality := 128
 	params, err := structpb.NewValue(map[string]any{
 		"dimension": i.dimension,

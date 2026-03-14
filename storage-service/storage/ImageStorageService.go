@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"time"
 
@@ -28,6 +29,7 @@ type ImageStorageService interface {
 type MinioFileStorageServiceImpl struct {
 	client     minio.Client
 	bucketName string
+	slogger    *slog.Logger
 }
 
 func (m *MinioFileStorageServiceImpl) DeleteImage(ctx context.Context, id uuid.UUID) error {
@@ -52,7 +54,12 @@ func (m *MinioFileStorageServiceImpl) getObjectBytes(ctx context.Context, object
 	if err != nil {
 		return nil, err
 	}
-	defer obj.Close()
+	defer func(obj *minio.Object) {
+		err2 := obj.Close()
+		if err2 != nil {
+			m.slogger.Error("failed to close minio object", "error", err2)
+		}
+	}(obj)
 	return io.ReadAll(obj)
 }
 
@@ -153,6 +160,7 @@ func NewMinioFileStorageServiceImpl(config *conf.ImageStorageConfig) (ImageStora
 	return &MinioFileStorageServiceImpl{
 			bucketName: config.S3.Bucket,
 			client:     *minioClient,
+			slogger:    slog.With("service", "MinioFileStorageServiceImpl"),
 		},
 		nil
 }

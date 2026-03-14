@@ -11,6 +11,7 @@ import (
 
 type SimpleSearcher struct {
 	SearcherBase
+
 	metadata storage.MetadataStorageService
 }
 

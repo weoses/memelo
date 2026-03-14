@@ -11,6 +11,7 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	"github.com/weoses/memelo/storage-service/key"
 	"github.com/weoses/memelo/storage-service/service"
 )
 
@@ -20,7 +21,7 @@ type SearchServiceApi struct {
 }
 
 func (api *SearchServiceApi) DeleteMeme(ctx context.Context, request *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error) {
-	ctx = context.WithValue(ctx, "accountId", request.AccountId)
+	ctx = context.WithValue(ctx, key.AccountId, request.AccountId)
 
 	api.slogger.InfoContext(ctx, "DeleteMeme request", "id", request.Id)
 
@@ -67,7 +68,7 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 }
 
 func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error) {
-	ctx = context.WithValue(ctx, "accountId", req.AccountId)
+	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
 
 	api.slogger.InfoContext(ctx, "SearchMeme request", "query", req.Query)
 
@@ -110,7 +111,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 }
 
 func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeRequest) (*v1.CreateMemeResponse, error) {
-	ctx = context.WithValue(ctx, "accountId", req.AccountId)
+	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
 
 	api.slogger.InfoContext(ctx, "CreateMeme request")
 

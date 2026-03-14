@@ -32,16 +32,22 @@ func InitConfig() {
 
 }
 
-func NewServerConfig() *ServerConfig {
+func NewServerConfig() (*ServerConfig, error) {
 	conf := new(ServerConfig)
-	viper.UnmarshalKey("server", conf)
-	return conf
+	err := viper.UnmarshalKey("server", conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	return conf, nil
 }
 
-func NewLoggingConfig() *LoggingConfig {
+func NewLoggingConfig() (*LoggingConfig, error) {
 	conf := new(LoggingConfig)
-	viper.UnmarshalKey("log", conf)
-	return conf
+	err := viper.UnmarshalKey("log", conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	return conf, nil
 }
 
 type ServerConfig struct {

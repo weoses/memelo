@@ -11,6 +11,7 @@ import (
 
 type IdSearcher struct {
 	SearcherBase
+
 	metadata storage.MetadataStorageService
 }
 
