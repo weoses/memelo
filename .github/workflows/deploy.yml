@@ -58,8 +58,8 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
+          host: ${{ vars.SSH_HOST }}
+          username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,TAG,DEPLOY_PATH,RELEASE_VERSION
           script: |
@@ -71,7 +71,7 @@ jobs:
             git checkout "$TAG"
 
             docker compose pull
-            docker compose up -d
+            docker compose up -d --wait
         env:
           ELASTIC_USERNAME: ${{ vars.ELASTIC_USERNAME }}
           ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
