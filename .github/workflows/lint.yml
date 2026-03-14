@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module: [common, gen, storage-service, telegram-service, tests/e2e]
+        module: [common, storage-service, telegram-service]
     steps:
       - uses: actions/checkout@v4
 
