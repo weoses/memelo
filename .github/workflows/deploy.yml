@@ -80,7 +80,7 @@ jobs:
             git checkout "$TAG"
 
             docker compose pull
-            docker compose up -p memelo -d --wait --wait-timeout 300
+            docker compose -p memelo up -d --wait --wait-timeout 300
         env:
           ELASTIC_USERNAME: ${{ vars.ELASTIC_USERNAME }}
           ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
