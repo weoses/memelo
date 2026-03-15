@@ -57,4 +57,6 @@ service SearchService {
   rpc CreateMeme(CreateMemeRequest) returns (CreateMemeResponse);
   rpc GetMeme(GetMemeRequest) returns (GetMemeResponse);
   rpc DeleteMeme(DeleteMemeRequest) returns (DeleteMemeResponse);
+
+  rpc DeleteAll(DeleteAllRequest) returns (DeleteAllResponse);
 }

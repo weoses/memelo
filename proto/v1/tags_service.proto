@@ -42,4 +42,6 @@ service TagsService {
   rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
   rpc DeleteTag(DeleteTagRequest) returns (DeleteTagResponse);
   rpc ListTags(ListTagRequest) returns (ListTagResponse);
+
+  rpc DeleteAll(DeleteAllRequest) returns (DeleteAllResponse);
 }

@@ -18,6 +18,18 @@ type TagsGrpcApiImpl struct {
 	tagService service.TagService
 }
 
+func (a *TagsGrpcApiImpl) DeleteAll(ctx context.Context, request *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
+	a.slogger.InfoContext(ctx, "DeleteAll request")
+
+	if err := a.tagService.DeleteAll(ctx); err != nil {
+		a.slogger.ErrorContext(ctx, "DeleteAll error", "err", err)
+		return nil, fmt.Errorf("delete all tags failed: %w", err)
+	}
+
+	a.slogger.InfoContext(ctx, "DeleteAll success")
+	return &v1.DeleteAllResponse{}, nil
+}
+
 func (a *TagsGrpcApiImpl) CreateTag(ctx context.Context, req *v1.CreateTagRequest) (*v1.CreateTagResponse, error) {
 	entity, err := a.tagService.CreateTag(ctx, req.Tag, req.Description)
 	if err != nil {

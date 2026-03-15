@@ -395,11 +395,12 @@ const file_proto_v1_tags_service_proto_rawDesc = "" +
 	"\b_tagNameB\x11\n" +
 	"\x0f_tagDescription\"?\n" +
 	"\x0fListTagResponse\x12,\n" +
-	"\x06result\x18\x01 \x03(\v2\x14.proto.memelo.v1.TagR\x06result2\x84\x02\n" +
+	"\x06result\x18\x01 \x03(\v2\x14.proto.memelo.v1.TagR\x06result2\xd8\x02\n" +
 	"\vTagsService\x12R\n" +
 	"\tCreateTag\x12!.proto.memelo.v1.CreateTagRequest\x1a\".proto.memelo.v1.CreateTagResponse\x12R\n" +
 	"\tDeleteTag\x12!.proto.memelo.v1.DeleteTagRequest\x1a\".proto.memelo.v1.DeleteTagResponse\x12M\n" +
-	"\bListTags\x12\x1f.proto.memelo.v1.ListTagRequest\x1a .proto.memelo.v1.ListTagResponseB\xac\x01\n" +
+	"\bListTags\x12\x1f.proto.memelo.v1.ListTagRequest\x1a .proto.memelo.v1.ListTagResponse\x12R\n" +
+	"\tDeleteAll\x12!.proto.memelo.v1.DeleteAllRequest\x1a\".proto.memelo.v1.DeleteAllResponseB\xac\x01\n" +
 	"\x13com.proto.memelo.v1B\x10TagsServiceProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
 var (
@@ -423,6 +424,8 @@ var file_proto_v1_tags_service_proto_goTypes = []any{
 	(*DeleteTagResponse)(nil), // 4: proto.memelo.v1.DeleteTagResponse
 	(*ListTagRequest)(nil),    // 5: proto.memelo.v1.ListTagRequest
 	(*ListTagResponse)(nil),   // 6: proto.memelo.v1.ListTagResponse
+	(*DeleteAllRequest)(nil),  // 7: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil), // 8: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_tags_service_proto_depIdxs = []int32{
 	0, // 0: proto.memelo.v1.CreateTagResponse.result:type_name -> proto.memelo.v1.Tag
@@ -431,11 +434,13 @@ var file_proto_v1_tags_service_proto_depIdxs = []int32{
 	1, // 3: proto.memelo.v1.TagsService.CreateTag:input_type -> proto.memelo.v1.CreateTagRequest
 	3, // 4: proto.memelo.v1.TagsService.DeleteTag:input_type -> proto.memelo.v1.DeleteTagRequest
 	5, // 5: proto.memelo.v1.TagsService.ListTags:input_type -> proto.memelo.v1.ListTagRequest
-	2, // 6: proto.memelo.v1.TagsService.CreateTag:output_type -> proto.memelo.v1.CreateTagResponse
-	4, // 7: proto.memelo.v1.TagsService.DeleteTag:output_type -> proto.memelo.v1.DeleteTagResponse
-	6, // 8: proto.memelo.v1.TagsService.ListTags:output_type -> proto.memelo.v1.ListTagResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
+	7, // 6: proto.memelo.v1.TagsService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
+	2, // 7: proto.memelo.v1.TagsService.CreateTag:output_type -> proto.memelo.v1.CreateTagResponse
+	4, // 8: proto.memelo.v1.TagsService.DeleteTag:output_type -> proto.memelo.v1.DeleteTagResponse
+	6, // 9: proto.memelo.v1.TagsService.ListTags:output_type -> proto.memelo.v1.ListTagResponse
+	8, // 10: proto.memelo.v1.TagsService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name

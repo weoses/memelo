@@ -22,6 +22,7 @@ type ElasticTagStorage interface {
 	SaveTag(ctx context.Context, tag entity.ElasticTag) error
 	ListTag(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
+	DeleteAllTags(ctx context.Context) error
 	SearchTagsByEmbedding(ctx context.Context, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
 }
 
@@ -165,6 +166,23 @@ func (s *ElasticTagStorageImpl) DeleteTag(ctx context.Context, id uuid.UUID) err
 	}
 
 	s.slogger.InfoContext(ctx, "DeleteTag", "id", id, "deleted", result.Deleted)
+	return nil
+}
+
+func (s *ElasticTagStorageImpl) DeleteAllTags(ctx context.Context) error {
+	q := types.NewQuery()
+	q.MatchAll = types.NewMatchAllQuery()
+
+	result, err := s.client.DeleteByQuery(s.index).
+		Query(q).
+		Refresh(true).
+		Do(ctx)
+
+	if err != nil {
+		return fmt.Errorf("delete all tags query failed: %w", err)
+	}
+
+	s.slogger.InfoContext(ctx, "DeleteAllTags", "deleted", result.Deleted)
 	return nil
 }
 

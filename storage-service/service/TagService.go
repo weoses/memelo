@@ -17,6 +17,7 @@ var ErrTagDuplicate = errors.New("tag already exists")
 type TagService interface {
 	CreateTag(ctx context.Context, tag string, description string) (*entity.ElasticTag, error)
 	DeleteTag(ctx context.Context, id uuid.UUID) error
+	DeleteAll(ctx context.Context) error
 	ListTags(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
 }
 
@@ -59,6 +60,10 @@ func (s *TagServiceImpl) CreateTag(ctx context.Context, tag string, description 
 
 func (s *TagServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
 	return s.tagStorage.DeleteTag(ctx, id)
+}
+
+func (s *TagServiceImpl) DeleteAll(ctx context.Context) error {
+	return s.tagStorage.DeleteAllTags(ctx)
 }
 
 func (s *TagServiceImpl) ListTags(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error) {

@@ -149,6 +149,86 @@ func (x *MemeDto) GetImageOriginal() *ImageDto {
 	return nil
 }
 
+type DeleteAllRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAllRequest) Reset() {
+	*x = DeleteAllRequest{}
+	mi := &file_proto_v1_common_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAllRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAllRequest) ProtoMessage() {}
+
+func (x *DeleteAllRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_common_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAllRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAllRequest) Descriptor() ([]byte, []int) {
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DeleteAllRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+type DeleteAllResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAllResponse) Reset() {
+	*x = DeleteAllResponse{}
+	mi := &file_proto_v1_common_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAllResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAllResponse) ProtoMessage() {}
+
+func (x *DeleteAllResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_common_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAllResponse.ProtoReflect.Descriptor instead.
+func (*DeleteAllResponse) Descriptor() ([]byte, []int) {
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{3}
+}
+
 var File_proto_v1_common_proto protoreflect.FileDescriptor
 
 const file_proto_v1_common_proto_rawDesc = "" +
@@ -163,7 +243,11 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"ocr_result\x18\x02 \x01(\tR\tocrResult\x12B\n" +
 	"\x0fimage_thumbnail\x18\x03 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\x0eimageThumbnail\x12@\n" +
-	"\x0eimage_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rimageOriginalB\xa7\x01\n" +
+	"\x0eimage_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rimageOriginal\"1\n" +
+	"\x10DeleteAllRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\"\x13\n" +
+	"\x11DeleteAllResponseB\xa7\x01\n" +
 	"\x13com.proto.memelo.v1B\vCommonProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
 var (
@@ -178,10 +262,12 @@ func file_proto_v1_common_proto_rawDescGZIP() []byte {
 	return file_proto_v1_common_proto_rawDescData
 }
 
-var file_proto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_proto_v1_common_proto_goTypes = []any{
-	(*ImageDto)(nil), // 0: proto.memelo.v1.ImageDto
-	(*MemeDto)(nil),  // 1: proto.memelo.v1.MemeDto
+	(*ImageDto)(nil),          // 0: proto.memelo.v1.ImageDto
+	(*MemeDto)(nil),           // 1: proto.memelo.v1.MemeDto
+	(*DeleteAllRequest)(nil),  // 2: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil), // 3: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_common_proto_depIdxs = []int32{
 	0, // 0: proto.memelo.v1.MemeDto.image_thumbnail:type_name -> proto.memelo.v1.ImageDto
@@ -204,7 +290,7 @@ func file_proto_v1_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_common_proto_rawDesc), len(file_proto_v1_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

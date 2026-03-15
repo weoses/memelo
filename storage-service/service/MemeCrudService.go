@@ -38,6 +38,7 @@ type MemeCrudService interface {
 	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, imgRaw []byte) (*CreateResult, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
+	DeleteAll(ctx context.Context, accountId uuid.UUID) error
 }
 
 type MemeCrudServiceImpl struct {
@@ -139,6 +140,36 @@ func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUI
 	}
 
 	if err = m.metadataStorageService.DeleteById(ctx, accountId, id); err != nil {
+		return fmt.Errorf("delete metadata failed: %w", err)
+	}
+
+	return nil
+}
+
+func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID) error {
+	pageSize := 100
+	var afterId *uuid.UUID
+
+	for {
+		results, err := m.metadataStorageService.SearchByAccountId(ctx, accountId, afterId, &pageSize)
+		if err != nil {
+			return fmt.Errorf("list memes failed: %w", err)
+		}
+
+		for _, meta := range results {
+			if err := m.imageStorageService.DeleteImage(ctx, meta.S3Id); err != nil {
+				return fmt.Errorf("delete image %s failed: %w", meta.S3Id, err)
+			}
+		}
+
+		if len(results) < pageSize {
+			break
+		}
+
+		afterId = &results[len(results)-1].ImageId
+	}
+
+	if err := m.metadataStorageService.DeleteByAccountId(ctx, accountId); err != nil {
 		return fmt.Errorf("delete metadata failed: %w", err)
 	}
 
