@@ -517,7 +517,7 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"STATUS_NEW\x10\x01\x12\x14\n" +
-	"\x10STATUS_DUPLICATE\x10\x022\xe2\x02\n" +
+	"\x10STATUS_DUPLICATE\x10\x022\xb6\x03\n" +
 	"\rSearchService\x12U\n" +
 	"\n" +
 	"SearchMeme\x12\".proto.memelo.v1.SearchMemeRequest\x1a#.proto.memelo.v1.SearchMemeResponse\x12U\n" +
@@ -525,7 +525,8 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"CreateMeme\x12\".proto.memelo.v1.CreateMemeRequest\x1a#.proto.memelo.v1.CreateMemeResponse\x12L\n" +
 	"\aGetMeme\x12\x1f.proto.memelo.v1.GetMemeRequest\x1a .proto.memelo.v1.GetMemeResponse\x12U\n" +
 	"\n" +
-	"DeleteMeme\x12\".proto.memelo.v1.DeleteMemeRequest\x1a#.proto.memelo.v1.DeleteMemeResponseB\xae\x01\n" +
+	"DeleteMeme\x12\".proto.memelo.v1.DeleteMemeRequest\x1a#.proto.memelo.v1.DeleteMemeResponse\x12R\n" +
+	"\tDeleteAll\x12!.proto.memelo.v1.DeleteAllRequest\x1a\".proto.memelo.v1.DeleteAllResponseB\xae\x01\n" +
 	"\x13com.proto.memelo.v1B\x12SearchServiceProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
 var (
@@ -553,25 +554,29 @@ var file_proto_v1_search_service_proto_goTypes = []any{
 	(*DeleteMemeRequest)(nil),  // 7: proto.memelo.v1.DeleteMemeRequest
 	(*DeleteMemeResponse)(nil), // 8: proto.memelo.v1.DeleteMemeResponse
 	(*MemeDto)(nil),            // 9: proto.memelo.v1.MemeDto
+	(*DeleteAllRequest)(nil),   // 10: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil),  // 11: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_search_service_proto_depIdxs = []int32{
-	9, // 0: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
-	9, // 1: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	0, // 2: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
-	9, // 3: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	1, // 4: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
-	3, // 5: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
-	5, // 6: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
-	7, // 7: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
-	2, // 8: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
-	4, // 9: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
-	6, // 10: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
-	8, // 11: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9,  // 0: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
+	9,  // 1: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	0,  // 2: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
+	9,  // 3: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	1,  // 4: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
+	3,  // 5: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
+	5,  // 6: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
+	7,  // 7: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
+	10, // 8: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
+	2,  // 9: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
+	4,  // 10: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
+	6,  // 11: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
+	8,  // 12: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
+	11, // 13: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_search_service_proto_init() }

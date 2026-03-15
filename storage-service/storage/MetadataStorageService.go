@@ -22,7 +22,6 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
-const IndexName = "image-metadata"
 const MaxFuzzy = 10
 
 type MetadataStorageService interface {
@@ -60,11 +59,13 @@ type MetadataStorageService interface {
 	SearchByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img entity.ElasticEmbeddingV1, count int, filterSimilarity bool) ([]*entity.ElasticImageMetaData, error)
 
 	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
+	DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error
 }
 
 type ElasticMetadataStorageServiceImpl struct {
 	client                 *elasticsearch8.TypedClient
 	embeddingMatchTreshold float64
+	indexName              string
 	validate               *validator.Validate
 	slogger                *slog.Logger
 }
@@ -135,6 +136,22 @@ func (e *ElasticMetadataStorageServiceImpl) SearchFuzzy(ctx context.Context, acc
 	return results, nil
 }
 
+func (e *ElasticMetadataStorageServiceImpl) DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error {
+	e.slogger.InfoContext(ctx, "DeleteByAccountId: delete request", "accountId", accountId)
+
+	result, err := e.client.DeleteByQuery(e.indexName).
+		Refresh(true).
+		Query(e.accountIdQuery(accountId)).
+		Do(ctx)
+
+	if err != nil {
+		return fmt.Errorf("DeleteByAccountId query failed: %w", err)
+	}
+
+	e.slogger.InfoContext(ctx, "DeleteByAccountId: delete response", "accountId", accountId, "deleted", result.Deleted)
+	return nil
+}
+
 func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
 	e.slogger.InfoContext(ctx, "DeleteById: delete request",
 		"id", id)
@@ -146,7 +163,7 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 		*e.accountIdQuery(accountId),
 	}
 
-	result, err := e.client.DeleteByQuery(IndexName).
+	result, err := e.client.DeleteByQuery(e.indexName).
 		Refresh(true).
 		Query(query).
 		Do(ctx)
@@ -173,7 +190,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, account
 	}
 
 	result, err := e.client.Search().
-		Index(IndexName).
+		Index(e.indexName).
 		Query(query).
 		Do(ctx)
 
@@ -290,7 +307,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 	}
 
 	response, err := e.client.
-		Index(IndexName).
+		Index(e.indexName).
 		Document(file).
 		Id(file.ImageId.String()).
 		Refresh(refresh.True).
@@ -409,7 +426,7 @@ func (e *ElasticMetadataStorageServiceImpl) processKnn(
 	sortId.SortOptions["_score"] = *sortConfig
 
 	searchRequest := e.client.Search().
-		Index(IndexName).
+		Index(e.indexName).
 		Knn(knnQuery).
 		Sort(sortId).
 		TrackScores(true)
@@ -443,7 +460,7 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	sortId.SortOptions["ImageId"] = *types.NewFieldSort()
 
 	searchRequest := e.client.Search().
-		Index(IndexName).
+		Index(e.indexName).
 		Query(query).
 		Fields(*resultField).
 		Highlight(highlight).
@@ -635,6 +652,7 @@ func NewElasticMetadataStorage(
 	return &ElasticMetadataStorageServiceImpl{
 		client:                 es8,
 		embeddingMatchTreshold: config.EmbeddingMatchTreshold,
+		indexName:              config.Index,
 		validate:               validate,
 		slogger:                logger,
 	}, nil

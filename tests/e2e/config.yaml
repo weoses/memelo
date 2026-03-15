@@ -1,2 +1,4 @@
 storage-service:
   Uri: http://localhost:7001
+  Username:
+  Password:

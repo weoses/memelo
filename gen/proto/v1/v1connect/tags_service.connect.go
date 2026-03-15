@@ -39,6 +39,8 @@ const (
 	TagsServiceDeleteTagProcedure = "/proto.memelo.v1.TagsService/DeleteTag"
 	// TagsServiceListTagsProcedure is the fully-qualified name of the TagsService's ListTags RPC.
 	TagsServiceListTagsProcedure = "/proto.memelo.v1.TagsService/ListTags"
+	// TagsServiceDeleteAllProcedure is the fully-qualified name of the TagsService's DeleteAll RPC.
+	TagsServiceDeleteAllProcedure = "/proto.memelo.v1.TagsService/DeleteAll"
 )
 
 // TagsServiceClient is a client for the proto.memelo.v1.TagsService service.
@@ -46,6 +48,7 @@ type TagsServiceClient interface {
 	CreateTag(context.Context, *v1.CreateTagRequest) (*v1.CreateTagResponse, error)
 	DeleteTag(context.Context, *v1.DeleteTagRequest) (*v1.DeleteTagResponse, error)
 	ListTags(context.Context, *v1.ListTagRequest) (*v1.ListTagResponse, error)
+	DeleteAll(context.Context, *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error)
 }
 
 // NewTagsServiceClient constructs a client for the proto.memelo.v1.TagsService service. By default,
@@ -77,6 +80,12 @@ func NewTagsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(tagsServiceMethods.ByName("ListTags")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteAll: connect.NewClient[v1.DeleteAllRequest, v1.DeleteAllResponse](
+			httpClient,
+			baseURL+TagsServiceDeleteAllProcedure,
+			connect.WithSchema(tagsServiceMethods.ByName("DeleteAll")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -85,6 +94,7 @@ type tagsServiceClient struct {
 	createTag *connect.Client[v1.CreateTagRequest, v1.CreateTagResponse]
 	deleteTag *connect.Client[v1.DeleteTagRequest, v1.DeleteTagResponse]
 	listTags  *connect.Client[v1.ListTagRequest, v1.ListTagResponse]
+	deleteAll *connect.Client[v1.DeleteAllRequest, v1.DeleteAllResponse]
 }
 
 // CreateTag calls proto.memelo.v1.TagsService.CreateTag.
@@ -114,11 +124,21 @@ func (c *tagsServiceClient) ListTags(ctx context.Context, req *v1.ListTagRequest
 	return nil, err
 }
 
+// DeleteAll calls proto.memelo.v1.TagsService.DeleteAll.
+func (c *tagsServiceClient) DeleteAll(ctx context.Context, req *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
+	response, err := c.deleteAll.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // TagsServiceHandler is an implementation of the proto.memelo.v1.TagsService service.
 type TagsServiceHandler interface {
 	CreateTag(context.Context, *v1.CreateTagRequest) (*v1.CreateTagResponse, error)
 	DeleteTag(context.Context, *v1.DeleteTagRequest) (*v1.DeleteTagResponse, error)
 	ListTags(context.Context, *v1.ListTagRequest) (*v1.ListTagResponse, error)
+	DeleteAll(context.Context, *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error)
 }
 
 // NewTagsServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -146,6 +166,12 @@ func NewTagsServiceHandler(svc TagsServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(tagsServiceMethods.ByName("ListTags")),
 		connect.WithHandlerOptions(opts...),
 	)
+	tagsServiceDeleteAllHandler := connect.NewUnaryHandlerSimple(
+		TagsServiceDeleteAllProcedure,
+		svc.DeleteAll,
+		connect.WithSchema(tagsServiceMethods.ByName("DeleteAll")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/proto.memelo.v1.TagsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TagsServiceCreateTagProcedure:
@@ -154,6 +180,8 @@ func NewTagsServiceHandler(svc TagsServiceHandler, opts ...connect.HandlerOption
 			tagsServiceDeleteTagHandler.ServeHTTP(w, r)
 		case TagsServiceListTagsProcedure:
 			tagsServiceListTagsHandler.ServeHTTP(w, r)
+		case TagsServiceDeleteAllProcedure:
+			tagsServiceDeleteAllHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -173,4 +201,8 @@ func (UnimplementedTagsServiceHandler) DeleteTag(context.Context, *v1.DeleteTagR
 
 func (UnimplementedTagsServiceHandler) ListTags(context.Context, *v1.ListTagRequest) (*v1.ListTagResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.TagsService.ListTags is not implemented"))
+}
+
+func (UnimplementedTagsServiceHandler) DeleteAll(context.Context, *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.TagsService.DeleteAll is not implemented"))
 }

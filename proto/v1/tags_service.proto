@@ -12,8 +12,9 @@ message Tag {
 }
 
 message CreateTagRequest {
-  string tag = 1;
-  string description = 2;
+  string account_id = 1;
+  string tag = 2;
+  string description = 3;
 }
 
 message CreateTagResponse {
@@ -21,8 +22,8 @@ message CreateTagResponse {
 }
 
 message DeleteTagRequest {
-  string id = 1;
-  string name = 2;
+  string account_id = 1;
+  string id = 2;
 }
 
 message DeleteTagResponse {
@@ -30,8 +31,9 @@ message DeleteTagResponse {
 }
 
 message ListTagRequest {
-  optional string tagName = 1;
-  optional string tagDescription = 2;
+  string account_id = 1;
+  optional string tagName = 2;
+  optional string tagDescription = 3;
 }
 
 message ListTagResponse {
@@ -42,4 +44,6 @@ service TagsService {
   rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
   rpc DeleteTag(DeleteTagRequest) returns (DeleteTagResponse);
   rpc ListTags(ListTagRequest) returns (ListTagResponse);
+
+  rpc DeleteAll(DeleteAllRequest) returns (DeleteAllResponse);
 }

@@ -83,8 +83,9 @@ func (x *Tag) GetDescription() string {
 
 type CreateTagRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tag           string                 `protobuf:"bytes,1,opt,name=tag,proto3" json:"tag,omitempty"`
-	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	Tag           string                 `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -117,6 +118,13 @@ func (x *CreateTagRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateTagRequest.ProtoReflect.Descriptor instead.
 func (*CreateTagRequest) Descriptor() ([]byte, []int) {
 	return file_proto_v1_tags_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CreateTagRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
 }
 
 func (x *CreateTagRequest) GetTag() string {
@@ -179,8 +187,8 @@ func (x *CreateTagResponse) GetResult() *Tag {
 
 type DeleteTagRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -215,16 +223,16 @@ func (*DeleteTagRequest) Descriptor() ([]byte, []int) {
 	return file_proto_v1_tags_service_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *DeleteTagRequest) GetId() string {
+func (x *DeleteTagRequest) GetAccountId() string {
 	if x != nil {
-		return x.Id
+		return x.AccountId
 	}
 	return ""
 }
 
-func (x *DeleteTagRequest) GetName() string {
+func (x *DeleteTagRequest) GetId() string {
 	if x != nil {
-		return x.Name
+		return x.Id
 	}
 	return ""
 }
@@ -275,8 +283,9 @@ func (x *DeleteTagResponse) GetResult() *Tag {
 
 type ListTagRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	TagName        *string                `protobuf:"bytes,1,opt,name=tagName,proto3,oneof" json:"tagName,omitempty"`
-	TagDescription *string                `protobuf:"bytes,2,opt,name=tagDescription,proto3,oneof" json:"tagDescription,omitempty"`
+	AccountId      string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	TagName        *string                `protobuf:"bytes,2,opt,name=tagName,proto3,oneof" json:"tagName,omitempty"`
+	TagDescription *string                `protobuf:"bytes,3,opt,name=tagDescription,proto3,oneof" json:"tagDescription,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -309,6 +318,13 @@ func (x *ListTagRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListTagRequest.ProtoReflect.Descriptor instead.
 func (*ListTagRequest) Descriptor() ([]byte, []int) {
 	return file_proto_v1_tags_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListTagRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
 }
 
 func (x *ListTagRequest) GetTagName() string {
@@ -377,29 +393,35 @@ const file_proto_v1_tags_service_proto_rawDesc = "" +
 	"\x03Tag\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03tag\x18\x02 \x01(\tR\x03tag\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"F\n" +
-	"\x10CreateTagRequest\x12\x10\n" +
-	"\x03tag\x18\x01 \x01(\tR\x03tag\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\"A\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"e\n" +
+	"\x10CreateTagRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x10\n" +
+	"\x03tag\x18\x02 \x01(\tR\x03tag\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"A\n" +
 	"\x11CreateTagResponse\x12,\n" +
-	"\x06result\x18\x01 \x01(\v2\x14.proto.memelo.v1.TagR\x06result\"6\n" +
-	"\x10DeleteTagRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"A\n" +
+	"\x06result\x18\x01 \x01(\v2\x14.proto.memelo.v1.TagR\x06result\"A\n" +
+	"\x10DeleteTagRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"A\n" +
 	"\x11DeleteTagResponse\x12,\n" +
-	"\x06result\x18\x01 \x01(\v2\x14.proto.memelo.v1.TagR\x06result\"{\n" +
+	"\x06result\x18\x01 \x01(\v2\x14.proto.memelo.v1.TagR\x06result\"\x9a\x01\n" +
 	"\x0eListTagRequest\x12\x1d\n" +
-	"\atagName\x18\x01 \x01(\tH\x00R\atagName\x88\x01\x01\x12+\n" +
-	"\x0etagDescription\x18\x02 \x01(\tH\x01R\x0etagDescription\x88\x01\x01B\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1d\n" +
+	"\atagName\x18\x02 \x01(\tH\x00R\atagName\x88\x01\x01\x12+\n" +
+	"\x0etagDescription\x18\x03 \x01(\tH\x01R\x0etagDescription\x88\x01\x01B\n" +
 	"\n" +
 	"\b_tagNameB\x11\n" +
 	"\x0f_tagDescription\"?\n" +
 	"\x0fListTagResponse\x12,\n" +
-	"\x06result\x18\x01 \x03(\v2\x14.proto.memelo.v1.TagR\x06result2\x84\x02\n" +
+	"\x06result\x18\x01 \x03(\v2\x14.proto.memelo.v1.TagR\x06result2\xd8\x02\n" +
 	"\vTagsService\x12R\n" +
 	"\tCreateTag\x12!.proto.memelo.v1.CreateTagRequest\x1a\".proto.memelo.v1.CreateTagResponse\x12R\n" +
 	"\tDeleteTag\x12!.proto.memelo.v1.DeleteTagRequest\x1a\".proto.memelo.v1.DeleteTagResponse\x12M\n" +
-	"\bListTags\x12\x1f.proto.memelo.v1.ListTagRequest\x1a .proto.memelo.v1.ListTagResponseB\xac\x01\n" +
+	"\bListTags\x12\x1f.proto.memelo.v1.ListTagRequest\x1a .proto.memelo.v1.ListTagResponse\x12R\n" +
+	"\tDeleteAll\x12!.proto.memelo.v1.DeleteAllRequest\x1a\".proto.memelo.v1.DeleteAllResponseB\xac\x01\n" +
 	"\x13com.proto.memelo.v1B\x10TagsServiceProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
 var (
@@ -423,6 +445,8 @@ var file_proto_v1_tags_service_proto_goTypes = []any{
 	(*DeleteTagResponse)(nil), // 4: proto.memelo.v1.DeleteTagResponse
 	(*ListTagRequest)(nil),    // 5: proto.memelo.v1.ListTagRequest
 	(*ListTagResponse)(nil),   // 6: proto.memelo.v1.ListTagResponse
+	(*DeleteAllRequest)(nil),  // 7: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil), // 8: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_tags_service_proto_depIdxs = []int32{
 	0, // 0: proto.memelo.v1.CreateTagResponse.result:type_name -> proto.memelo.v1.Tag
@@ -431,11 +455,13 @@ var file_proto_v1_tags_service_proto_depIdxs = []int32{
 	1, // 3: proto.memelo.v1.TagsService.CreateTag:input_type -> proto.memelo.v1.CreateTagRequest
 	3, // 4: proto.memelo.v1.TagsService.DeleteTag:input_type -> proto.memelo.v1.DeleteTagRequest
 	5, // 5: proto.memelo.v1.TagsService.ListTags:input_type -> proto.memelo.v1.ListTagRequest
-	2, // 6: proto.memelo.v1.TagsService.CreateTag:output_type -> proto.memelo.v1.CreateTagResponse
-	4, // 7: proto.memelo.v1.TagsService.DeleteTag:output_type -> proto.memelo.v1.DeleteTagResponse
-	6, // 8: proto.memelo.v1.TagsService.ListTags:output_type -> proto.memelo.v1.ListTagResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
+	7, // 6: proto.memelo.v1.TagsService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
+	2, // 7: proto.memelo.v1.TagsService.CreateTag:output_type -> proto.memelo.v1.CreateTagResponse
+	4, // 8: proto.memelo.v1.TagsService.DeleteTag:output_type -> proto.memelo.v1.DeleteTagResponse
+	6, // 9: proto.memelo.v1.TagsService.ListTags:output_type -> proto.memelo.v1.ListTagResponse
+	8, // 10: proto.memelo.v1.TagsService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name

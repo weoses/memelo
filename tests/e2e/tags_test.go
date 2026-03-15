@@ -17,6 +17,7 @@ func uniqueTagName() string {
 
 func TestCreateTag(t *testing.T) {
 	resp, err := tagsClient.CreateTag(context.Background(), &v1.CreateTagRequest{
+		AccountId:   testAccountId,
 		Tag:         uniqueTagName(),
 		Description: "e2e test tag",
 	})
@@ -29,11 +30,12 @@ func TestCreateTag(t *testing.T) {
 }
 
 func TestListTags(t *testing.T) {
-	resp, err := tagsClient.ListTags(context.Background(), &v1.ListTagRequest{})
+	resp, err := tagsClient.ListTags(context.Background(), &v1.ListTagRequest{
+		AccountId: testAccountId,
+	})
 	if err != nil {
 		t.Fatalf("ListTags failed: %v", err)
 	}
-	// result may be empty but must not be nil
 	if resp.GetResult() == nil {
 		t.Fatal("expected non-nil result slice from ListTags")
 	}
@@ -43,6 +45,7 @@ func TestDeleteTag(t *testing.T) {
 	name := uniqueTagName()
 
 	created, err := tagsClient.CreateTag(context.Background(), &v1.CreateTagRequest{
+		AccountId:   testAccountId,
 		Tag:         name,
 		Description: "e2e delete test",
 	})
@@ -51,12 +54,17 @@ func TestDeleteTag(t *testing.T) {
 	}
 	id := created.GetResult().GetId()
 
-	_, err = tagsClient.DeleteTag(context.Background(), &v1.DeleteTagRequest{Id: id})
+	_, err = tagsClient.DeleteTag(context.Background(), &v1.DeleteTagRequest{
+		AccountId: testAccountId,
+		Id:        id,
+	})
 	if err != nil {
 		t.Fatalf("DeleteTag failed: %v", err)
 	}
 
-	list, err := tagsClient.ListTags(context.Background(), &v1.ListTagRequest{})
+	list, err := tagsClient.ListTags(context.Background(), &v1.ListTagRequest{
+		AccountId: testAccountId,
+	})
 	if err != nil {
 		t.Fatalf("ListTags after delete failed: %v", err)
 	}
@@ -69,7 +77,11 @@ func TestDeleteTag(t *testing.T) {
 
 func TestCreateTag_Duplicate(t *testing.T) {
 	name := uniqueTagName()
-	req := &v1.CreateTagRequest{Tag: name, Description: "dup test"}
+	req := &v1.CreateTagRequest{
+		AccountId:   testAccountId,
+		Tag:         name,
+		Description: "dup test",
+	}
 
 	_, err := tagsClient.CreateTag(context.Background(), req)
 	if err != nil {

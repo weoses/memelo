@@ -20,6 +20,26 @@ type SearchServiceApi struct {
 	slogger *slog.Logger
 }
 
+func (api *SearchServiceApi) DeleteAll(ctx context.Context, request *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
+	ctx = context.WithValue(ctx, key.AccountId, request.AccountId)
+
+	api.slogger.InfoContext(ctx, "DeleteAll request", "accountId", request.AccountId)
+
+	accountIdUuid, err := uuid.Parse(request.AccountId)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+	}
+
+	if err = api.crud.DeleteAll(ctx, accountIdUuid); err != nil {
+		api.slogger.ErrorContext(ctx, "DeleteAll error", "accountId", request.AccountId, "err", err)
+		return nil, err
+	}
+
+	api.slogger.InfoContext(ctx, "DeleteAll success", "accountId", request.AccountId)
+
+	return &v1.DeleteAllResponse{}, nil
+}
+
 func (api *SearchServiceApi) DeleteMeme(ctx context.Context, request *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error) {
 	ctx = context.WithValue(ctx, key.AccountId, request.AccountId)
 

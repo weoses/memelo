@@ -17,3 +17,9 @@ message MemeDto {
   ImageDto image_thumbnail = 3;
   ImageDto image_original = 4;
 }
+
+message DeleteAllRequest {
+  string account_id = 1;
+}
+
+message DeleteAllResponse {}
