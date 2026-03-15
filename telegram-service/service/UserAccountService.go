@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -73,7 +74,7 @@ func runMigrations(pool *pgxpool.Pool) error {
 		return fmt.Errorf("migrate init: %w", err)
 	}
 	err = m.Up()
-	if err != nil && err != migrate.ErrNoChange {
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil

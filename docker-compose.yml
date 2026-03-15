@@ -109,6 +109,8 @@ services:
       STORAGE_SERVICE_URI: http://storage-service:7001
       POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
     restart: unless-stopped
+    volumes:
+      - "./telegram-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     depends_on:
