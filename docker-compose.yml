@@ -82,9 +82,45 @@ services:
       retries: 3
       start_period: 10s
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-memelo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memelo}
+      POSTGRES_DB: ${POSTGRES_DB:-telegram}
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - env
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  telegram-service:
+    build:
+      dockerfile: Dockerfile-telegram-service
+    image: ghcr.io/weoses/telegram-service:${RELEASE_VERSION:-latest}
+    environment:
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      STORAGE_SERVICE_URI: http://storage-service:7001
+      POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
+    restart: unless-stopped
+    networks:
+      - env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage-service:
+        condition: service_healthy
+
 networks:
   env:
 
 volumes:
   elastic_data:
   minio_data:
+  postgres_data:
