@@ -9,19 +9,11 @@ jobs:
   wait-for-images:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for storage-service
-        uses: PaulLesur/wait-docker-image-github-action@v1.0
+      - name: Wait for build workflow
+        uses: int128/wait-for-workflows-action@v1
         with:
-          image: ghcr.io/weoses/storage-service
-          tag: dev-${{ github.sha }}
-          timeout: 300
-
-      - name: Wait for telegram-service
-        uses: PaulLesur/wait-docker-image-github-action@v1.0
-        with:
-          image: ghcr.io/weoses/telegram-service
-          tag: dev-${{ github.sha }}
-          timeout: 300
+          filter-workflow-names: |
+            build*
 
   tag-images:
     runs-on: ubuntu-latest
