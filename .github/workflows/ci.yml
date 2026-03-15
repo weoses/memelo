@@ -53,11 +53,12 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
+        timeout-minutes: 10
         with:
           host: ${{ vars.SSH_HOST }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,TAG,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
+          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
           script: |
             if [ ! -d "$DEPLOY_PATH/.git" ]; then
               git clone "$REPO_URL" "$DEPLOY_PATH"
@@ -94,9 +95,8 @@ jobs:
           POSTGRES_USER: ${{vars.POSTGRES_USER}}
           POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORS}}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          TAG: dev-${{ github.sha }}
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
-          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_VERSION: dev-${{ github.sha }}
 
       - name: Tests
         uses: robherley/go-test-action@v0
@@ -168,11 +168,12 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
+        timeout-minutes: 10
         with:
           host: ${{ vars.SSH_HOST }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,TAG,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
+          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
           script: |
             if [ ! -d "$DEPLOY_PATH/.git" ]; then
               git clone "$REPO_URL" "$DEPLOY_PATH"
@@ -209,7 +210,6 @@ jobs:
           POSTGRES_USER: ${{vars.POSTGRES_USER}}
           POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORS}}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          TAG: ${{ github.ref_name }}
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: ${{ github.ref_name }}
 
