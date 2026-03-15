@@ -40,7 +40,7 @@ jobs:
 
       - name: "Make release"
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && endsWith(github.ref_name, '.00')
         with:
           body: |
             **Docker images:**

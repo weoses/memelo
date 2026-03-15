@@ -181,12 +181,12 @@ func (m *MemeCrudServiceImpl) constructMetadataWithUrls(ctx context.Context, ela
 
 	for i, elasticDataObject := range elasticData {
 
-		urlOriginal, err := m.imageStorageService.GetUrl(ctx, elasticDataObject.ImageId)
+		urlOriginal, err := m.imageStorageService.GetUrl(ctx, elasticDataObject.S3Id)
 		if err != nil {
 			return nil, fmt.Errorf("get original url by %s failed: %w", elasticDataObject.ImageId, err)
 		}
 
-		urlThumb, err := m.imageStorageService.GetUrlThumb(ctx, elasticDataObject.ImageId)
+		urlThumb, err := m.imageStorageService.GetUrlThumb(ctx, elasticDataObject.S3Id)
 		if err != nil {
 			return nil, fmt.Errorf("get thumbnail url by %s failed: %w", elasticDataObject.ImageId, err)
 		}
