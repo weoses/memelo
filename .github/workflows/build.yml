@@ -1,4 +1,4 @@
-name: master-build
+name: build
 
 on:
   push:
@@ -26,13 +26,13 @@ jobs:
       - name: "STORAGE: Build and push" 
         uses: docker/build-push-action@v6
         with:
-          push: ${{github.ref == 'refs/heads/master'}}
+          push: true
           file: Dockerfile-storage-service
-          tags: ghcr.io/weoses/storage-service:latest
+          tags: ghcr.io/weoses/storage-service:dev-${{ github.sha }}
 
       - name: "TELEGRAM: Build and push" 
         uses: docker/build-push-action@v6
         with:
-          push: ${{github.ref == 'refs/heads/master'}}
+          push: true
           file: Dockerfile-telegram-service
-          tags: ghcr.io/weoses/telegram-service:latest
+          tags: ghcr.io/weoses/telegram-service:dev-${{ github.sha }}

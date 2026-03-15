@@ -2,20 +2,53 @@ name: release-build&deploy
 
 on:
   push:
-    tags-ignore:
-      - '**'
-    branches:
-      - "**"
+    tags:
+      - 'v*'
   workflow_run:
     workflows: ["build"] # Name of the first workflow
     branches: [main]  # Branch to run on
     types:
       - completed
-
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag storage-service image by tag
+        uses: Nextdoor/docker-image-retag-action@main
+        with:
+          image: ghcr.io/weoses/storage-service
+          source_tag: ${{ github.sha }}
+          dest_tag: ${{ github.ref_name }}
+
+      - name: Retag telegram-service image by tag
+        uses: Nextdoor/docker-image-retag-action@main
+        with:
+          image: ghcr.io/weoses/telegram-service
+          source_tag: ${{ github.sha }}
+          dest_tag: ${{ github.ref_name }}
+
+      - name: "Make release"
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag' && endsWith(github.ref_name, '.00')
+        with:
+          body: |
+            **Docker images:**
+            `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
+            `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
+            
+            **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          generate_release_notes: true
   deploy:
     runs-on: ubuntu-latest
-    environment: memelo-test
+    needs: build
+    environment: production
     steps:
       - uses: actions/checkout@v5
 
@@ -46,7 +79,7 @@ jobs:
               docker stop "$i"
               docker rm "$i"
             done            
-  
+            
             git fetch --tags origin
             git checkout "$TAG"
 
