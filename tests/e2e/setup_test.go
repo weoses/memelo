@@ -45,13 +45,19 @@ func cleanup() {
 func TestMain(m *testing.M) {
 	_ = godotenv.Load(".env")
 	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read config: %v\n", err)
 		os.Exit(1)
+	}
+
+	// workaround because viper does not treat env vars the same as other config
+	for _, key := range viper.AllKeys() {
+		val := viper.Get(key)
+		viper.Set(key, val)
 	}
 
 	err := viper.UnmarshalKey("storage-service", &config)

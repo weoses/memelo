@@ -43,17 +43,24 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           body: |
-            Version: ${{ github.ref_name }}  
-            Docker images:  
-             `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
-             `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
-            Deploy workflow: [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **Docker images:**
+            `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
+            `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
+            
+            **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           generate_release_notes: true
   deploy:
     runs-on: ubuntu-latest
     needs: build
     environment: production
     steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tests/e2e/go.mod
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -67,9 +74,9 @@ jobs:
             fi
             cd "$DEPLOY_PATH"
             
-            docker compose down || true
+            docker compose -p memelo down || true
             
-            LAST_CONTAINER=$(docker ps -q -f "memelo")
+            LAST_CONTAINER=$(docker ps -q -f "name=memelo")
             for i in $LAST_CONTAINER
             do
               echo "Still lasts container $i, removing"
@@ -96,3 +103,12 @@ jobs:
           TAG: ${{ github.ref_name }}
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: ${{ github.ref_name }}
+
+      - name: Tests
+        uses: robherley/go-test-action@v0
+        with:
+          moduleDirectory: tests/e2e
+        env:
+          STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
+          STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
+          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD}}
