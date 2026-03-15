@@ -20,10 +20,10 @@ import (
 
 type ElasticTagStorage interface {
 	SaveTag(ctx context.Context, tag entity.ElasticTag) error
-	ListTag(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
-	DeleteTag(ctx context.Context, id uuid.UUID) error
-	DeleteAllTags(ctx context.Context) error
-	SearchTagsByEmbedding(ctx context.Context, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
+	ListTag(ctx context.Context, accountId uuid.UUID, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
+	DeleteTag(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
+	DeleteAllTags(ctx context.Context, accountId uuid.UUID) error
+	SearchTagsByEmbedding(ctx context.Context, accountId uuid.UUID, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
 }
 
 type ElasticTagStorageImpl struct {
@@ -57,6 +57,7 @@ func NewElasticTagStorage(config *conf.ElasticTagConfig) (ElasticTagStorage, err
 	indexTypeMapping := types.NewTypeMapping()
 	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
 	indexTypeMapping.Properties["Updated"] = types.NewLongNumberProperty()
+	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
 	indexTypeMapping.Properties["Tag"] = types.NewKeywordProperty()
 
 	denseProp := types.NewDenseVectorProperty()
@@ -78,6 +79,14 @@ func NewElasticTagStorage(config *conf.ElasticTagConfig) (ElasticTagStorage, err
 		index:   config.Index,
 		slogger: logger,
 	}, nil
+}
+
+func (s *ElasticTagStorageImpl) accountIdQuery(accountId uuid.UUID) *types.Query {
+	q := types.NewQuery()
+	q.Match = map[string]types.MatchQuery{
+		"AccountId": {Query: accountId.String()},
+	}
+	return q
 }
 
 func (s *ElasticTagStorageImpl) SaveTag(ctx context.Context, tag entity.ElasticTag) error {
@@ -102,33 +111,28 @@ func (s *ElasticTagStorageImpl) SaveTag(ctx context.Context, tag entity.ElasticT
 	return nil
 }
 
-func (s *ElasticTagStorageImpl) ListTag(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error) {
+func (s *ElasticTagStorageImpl) ListTag(ctx context.Context, accountId uuid.UUID, queryName *string, queryDescription *string) ([]entity.ElasticTag, error) {
 	q := types.NewQuery()
+	q.Bool = types.NewBoolQuery()
+	musts := []types.Query{*s.accountIdQuery(accountId)}
 
-	if queryName == nil && queryDescription == nil {
-		q.MatchAll = types.NewMatchAllQuery()
-	} else {
-		q.Bool = types.NewBoolQuery()
-		musts := make([]types.Query, 0)
-
-		if queryName != nil {
-			nameQ := types.NewQuery()
-			nameQ.Match = map[string]types.MatchQuery{
-				"Tag": {Query: *queryName},
-			}
-			musts = append(musts, *nameQ)
+	if queryName != nil {
+		nameQ := types.NewQuery()
+		nameQ.Match = map[string]types.MatchQuery{
+			"Tag": {Query: *queryName},
 		}
-
-		if queryDescription != nil {
-			descQ := types.NewQuery()
-			descQ.Match = map[string]types.MatchQuery{
-				"Description": {Query: *queryDescription},
-			}
-			musts = append(musts, *descQ)
-		}
-
-		q.Bool.Must = musts
+		musts = append(musts, *nameQ)
 	}
+
+	if queryDescription != nil {
+		descQ := types.NewQuery()
+		descQ.Match = map[string]types.MatchQuery{
+			"Description": {Query: *queryDescription},
+		}
+		musts = append(musts, *descQ)
+	}
+
+	q.Bool.Must = musts
 
 	result, err := s.client.Search().
 		Index(s.index).
@@ -151,10 +155,13 @@ func (s *ElasticTagStorageImpl) ListTag(ctx context.Context, queryName *string, 
 	return entities, nil
 }
 
-func (s *ElasticTagStorageImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
+func (s *ElasticTagStorageImpl) DeleteTag(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
 	q := types.NewQuery()
-	q.Ids = types.NewIdsQuery()
-	q.Ids.Values = []string{id.String()}
+	q.Bool = types.NewBoolQuery()
+	q.Bool.Must = []types.Query{
+		*s.accountIdQuery(accountId),
+		{Ids: &types.IdsQuery{Values: []string{id.String()}}},
+	}
 
 	result, err := s.client.DeleteByQuery(s.index).
 		Query(q).
@@ -169,12 +176,9 @@ func (s *ElasticTagStorageImpl) DeleteTag(ctx context.Context, id uuid.UUID) err
 	return nil
 }
 
-func (s *ElasticTagStorageImpl) DeleteAllTags(ctx context.Context) error {
-	q := types.NewQuery()
-	q.MatchAll = types.NewMatchAllQuery()
-
+func (s *ElasticTagStorageImpl) DeleteAllTags(ctx context.Context, accountId uuid.UUID) error {
 	result, err := s.client.DeleteByQuery(s.index).
-		Query(q).
+		Query(s.accountIdQuery(accountId)).
 		Refresh(true).
 		Do(ctx)
 
@@ -182,11 +186,11 @@ func (s *ElasticTagStorageImpl) DeleteAllTags(ctx context.Context) error {
 		return fmt.Errorf("delete all tags query failed: %w", err)
 	}
 
-	s.slogger.InfoContext(ctx, "DeleteAllTags", "deleted", result.Deleted)
+	s.slogger.InfoContext(ctx, "DeleteAllTags", "accountId", accountId, "deleted", result.Deleted)
 	return nil
 }
 
-func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error) {
+func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, accountId uuid.UUID, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error) {
 	script := types.NewScript()
 	script.Source = helper.Addr("cosineSimilarity(params.queryVector, 'EmbeddingV1.Data') + 1.0")
 
@@ -198,12 +202,9 @@ func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, tag e
 		"queryVector": items,
 	}
 
-	innerQuery := types.NewQuery()
-	innerQuery.MatchAll = types.NewMatchAllQuery()
-
 	query := types.NewQuery()
 	query.ScriptScore = types.NewScriptScoreQuery()
-	query.ScriptScore.Query = innerQuery
+	query.ScriptScore.Query = s.accountIdQuery(accountId)
 	query.ScriptScore.Script = *script
 
 	result, err := s.client.Search().

@@ -15,10 +15,10 @@ import (
 var ErrTagDuplicate = errors.New("tag already exists")
 
 type TagService interface {
-	CreateTag(ctx context.Context, tag string, description string) (*entity.ElasticTag, error)
-	DeleteTag(ctx context.Context, id uuid.UUID) error
-	DeleteAll(ctx context.Context) error
-	ListTags(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
+	CreateTag(ctx context.Context, accountId uuid.UUID, tag string, description string) (*entity.ElasticTag, error)
+	DeleteTag(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
+	DeleteAll(ctx context.Context, accountId uuid.UUID) error
+	ListTags(ctx context.Context, accountId uuid.UUID, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
 }
 
 type TagServiceImpl struct {
@@ -27,8 +27,8 @@ type TagServiceImpl struct {
 	slogger                   *slog.Logger
 }
 
-func (s *TagServiceImpl) CreateTag(ctx context.Context, tag string, description string) (*entity.ElasticTag, error) {
-	existing, err := s.tagStorage.ListTag(ctx, &tag, nil)
+func (s *TagServiceImpl) CreateTag(ctx context.Context, accountId uuid.UUID, tag string, description string) (*entity.ElasticTag, error) {
+	existing, err := s.tagStorage.ListTag(ctx, accountId, &tag, nil)
 	if err != nil {
 		return nil, fmt.Errorf("list tags failed: %w", err)
 	}
@@ -45,6 +45,7 @@ func (s *TagServiceImpl) CreateTag(ctx context.Context, tag string, description 
 
 	tagEntity := entity.ElasticTag{
 		Id:          uuid.New(),
+		AccountId:   accountId,
 		Tag:         tag,
 		Description: description,
 		EmbeddingV1: metadata.Embedding,
@@ -58,16 +59,16 @@ func (s *TagServiceImpl) CreateTag(ctx context.Context, tag string, description 
 	return &tagEntity, nil
 }
 
-func (s *TagServiceImpl) DeleteTag(ctx context.Context, id uuid.UUID) error {
-	return s.tagStorage.DeleteTag(ctx, id)
+func (s *TagServiceImpl) DeleteTag(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
+	return s.tagStorage.DeleteTag(ctx, accountId, id)
 }
 
-func (s *TagServiceImpl) DeleteAll(ctx context.Context) error {
-	return s.tagStorage.DeleteAllTags(ctx)
+func (s *TagServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID) error {
+	return s.tagStorage.DeleteAllTags(ctx, accountId)
 }
 
-func (s *TagServiceImpl) ListTags(ctx context.Context, queryName *string, queryDescription *string) ([]entity.ElasticTag, error) {
-	return s.tagStorage.ListTag(ctx, queryName, queryDescription)
+func (s *TagServiceImpl) ListTags(ctx context.Context, accountId uuid.UUID, queryName *string, queryDescription *string) ([]entity.ElasticTag, error) {
+	return s.tagStorage.ListTag(ctx, accountId, queryName, queryDescription)
 }
 
 func NewTagService(storage storage2.ElasticTagStorage, tagMetadataExtractService TagMetadataExtractService) TagService {

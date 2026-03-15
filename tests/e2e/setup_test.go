@@ -10,11 +10,13 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 )
+
+const testAccountId = "00000000-0000-0000-0000-000000000e2e"
 
 type Config struct {
 	Uri      string `json:"uri"`
@@ -28,9 +30,16 @@ var (
 	config       Config
 )
 
-func genAccountId() string {
-	accountIdUuid, _ := uuid.NewRandom()
-	return accountIdUuid.String()
+func cleanup() {
+	ctx := context.Background()
+	_, err := searchClient.DeleteAll(ctx, &v1.DeleteAllRequest{AccountId: testAccountId})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cleanup: DeleteAll memes failed: %v\n", err)
+	}
+	_, err = tagsClient.DeleteAll(ctx, &v1.DeleteAllRequest{AccountId: testAccountId})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cleanup: DeleteAll tags failed: %v\n", err)
+	}
 }
 
 func TestMain(m *testing.M) {
@@ -64,7 +73,10 @@ func TestMain(m *testing.M) {
 		config.Uri,
 		connect.WithInterceptors(NewAuthInterceptor(config.Username, config.Password)))
 
-	os.Exit(m.Run())
+	cleanup()
+	code := m.Run()
+	cleanup()
+	os.Exit(code)
 }
 
 func genAuthData(username string, password string) string {
@@ -91,7 +103,6 @@ func (a AuthInterceptor) WrapStreamingClient(clientFunc connect.StreamingClientF
 }
 
 func (a AuthInterceptor) WrapStreamingHandler(handlerFunc connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	//TODO implement me
 	panic("implement me")
 }
 

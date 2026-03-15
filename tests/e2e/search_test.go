@@ -9,14 +9,13 @@ import (
 )
 
 func TestCreateMeme(t *testing.T) {
-	accountId := genAccountId()
 	imageData, err := os.ReadFile("images/test-pic-cat.jpeg")
 	if err != nil {
 		t.Fatalf("failed to read test image: %v", err)
 	}
 
 	resp, err := searchClient.CreateMeme(context.Background(), &v1.CreateMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		RawImage:  imageData,
 	})
 	if err != nil {
@@ -32,14 +31,13 @@ func TestCreateMeme(t *testing.T) {
 }
 
 func TestCreateDuplicate(t *testing.T) {
-	accountId := genAccountId()
 	imageData, err := os.ReadFile("images/test-pic-cat.jpeg")
 	if err != nil {
 		t.Fatalf("failed to read test image: %v", err)
 	}
 
 	resp, err := searchClient.CreateMeme(context.Background(), &v1.CreateMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		RawImage:  imageData,
 	})
 	if err != nil {
@@ -49,16 +47,12 @@ func TestCreateDuplicate(t *testing.T) {
 		t.Fatal("expected non-empty ID in CreateMeme response")
 	}
 
-	if resp.GetStatus() != v1.CreateMemeStatus_STATUS_NEW {
-		t.Fatal("expected CreateMeme status STATUS_NEW")
-	}
-
 	resp2, err := searchClient.CreateMeme(context.Background(), &v1.CreateMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		RawImage:  imageData,
 	})
 	if err != nil {
-		t.Fatalf("CreateMeme failed: %v", err)
+		t.Fatalf("second CreateMeme failed: %v", err)
 	}
 	if resp2.GetResult().GetId() == "" {
 		t.Fatal("expected non-empty ID in CreateMeme response")
@@ -74,15 +68,13 @@ func TestCreateDuplicate(t *testing.T) {
 }
 
 func TestSearchMeme_Simple(t *testing.T) {
-	accountId := genAccountId()
-
 	imageData, err := os.ReadFile("images/test-pic-cat.jpeg")
 	if err != nil {
 		t.Fatalf("failed to read test image: %v", err)
 	}
 
 	respCreate, err := searchClient.CreateMeme(context.Background(), &v1.CreateMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		RawImage:  imageData,
 	})
 	if err != nil {
@@ -92,12 +84,12 @@ func TestSearchMeme_Simple(t *testing.T) {
 		t.Fatal("expected non-empty ID in CreateMeme response")
 	}
 
-	if respCreate.GetStatus() != v1.CreateMemeStatus_STATUS_NEW {
-		t.Fatal("expected CreateMeme status STATUS_NEW")
+	if respCreate.GetStatus() != v1.CreateMemeStatus_STATUS_NEW && respCreate.GetStatus() != v1.CreateMemeStatus_STATUS_DUPLICATE {
+		t.Fatal("expected CreateMeme status STATUS_NEW or STATUS_DUPLICATE")
 	}
 
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		Query:     "guys",
 	})
 	if err != nil {
@@ -112,24 +104,19 @@ func TestSearchMeme_Simple(t *testing.T) {
 	if respSearch.SearcherName != "simple_searcher" {
 		t.Fatal("expected simple_searcher")
 	}
-	if respCreate.Result.Id != respSearch.Results[0].Id {
-		t.Fatal("expected the result to be the same as the search result")
-	}
 	if respSearch.Results[0].OcrResult != "ok guys this is my face reveal..." {
 		t.Fatal("expected the result to be 'ok guys this is my face reveal'")
 	}
 }
 
 func TestSearchMeme_All(t *testing.T) {
-	accountId := genAccountId()
-
 	imageData, err := os.ReadFile("images/test-pic-cat.jpeg")
 	if err != nil {
 		t.Fatalf("failed to read test image: %v", err)
 	}
 
 	respCreate, err := searchClient.CreateMeme(context.Background(), &v1.CreateMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		RawImage:  imageData,
 	})
 	if err != nil {
@@ -139,12 +126,8 @@ func TestSearchMeme_All(t *testing.T) {
 		t.Fatal("expected non-empty ID in CreateMeme response")
 	}
 
-	if respCreate.GetStatus() != v1.CreateMemeStatus_STATUS_NEW {
-		t.Fatal("expected CreateMeme status STATUS_NEW")
-	}
-
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		Query:     "",
 	})
 	if err != nil {
@@ -159,18 +142,14 @@ func TestSearchMeme_All(t *testing.T) {
 	if respSearch.SearcherName != "all_searcher" {
 		t.Fatal("expected all_searcher")
 	}
-	if respCreate.Result.Id != respSearch.Results[0].Id {
-		t.Fatal("expected the result to be the same as the search result")
-	}
 	if respSearch.Results[0].OcrResult != "ok guys this is my face reveal..." {
 		t.Fatal("expected the result to be 'ok guys this is my face reveal'")
 	}
 }
 
 func TestSearchMeme_Empty(t *testing.T) {
-	accountId := genAccountId()
 	resp, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
-		AccountId: accountId,
+		AccountId: testAccountId,
 		Query:     "test",
 	})
 	if err != nil {

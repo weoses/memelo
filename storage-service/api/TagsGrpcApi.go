@@ -19,9 +19,14 @@ type TagsGrpcApiImpl struct {
 }
 
 func (a *TagsGrpcApiImpl) DeleteAll(ctx context.Context, request *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
-	a.slogger.InfoContext(ctx, "DeleteAll request")
+	a.slogger.InfoContext(ctx, "DeleteAll request", "accountId", request.AccountId)
 
-	if err := a.tagService.DeleteAll(ctx); err != nil {
+	accountId, err := uuid.Parse(request.AccountId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid account_id: %w", err))
+	}
+
+	if err := a.tagService.DeleteAll(ctx, accountId); err != nil {
 		a.slogger.ErrorContext(ctx, "DeleteAll error", "err", err)
 		return nil, fmt.Errorf("delete all tags failed: %w", err)
 	}
@@ -31,7 +36,12 @@ func (a *TagsGrpcApiImpl) DeleteAll(ctx context.Context, request *v1.DeleteAllRe
 }
 
 func (a *TagsGrpcApiImpl) CreateTag(ctx context.Context, req *v1.CreateTagRequest) (*v1.CreateTagResponse, error) {
-	entity, err := a.tagService.CreateTag(ctx, req.Tag, req.Description)
+	accountId, err := uuid.Parse(req.AccountId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid account_id: %w", err))
+	}
+
+	entity, err := a.tagService.CreateTag(ctx, accountId, req.Tag, req.Description)
 	if err != nil {
 		if errors.Is(err, service.ErrTagDuplicate) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, err)
@@ -49,12 +59,17 @@ func (a *TagsGrpcApiImpl) CreateTag(ctx context.Context, req *v1.CreateTagReques
 }
 
 func (a *TagsGrpcApiImpl) DeleteTag(ctx context.Context, req *v1.DeleteTagRequest) (*v1.DeleteTagResponse, error) {
+	accountId, err := uuid.Parse(req.AccountId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid account_id: %w", err))
+	}
+
 	parsedId, err := uuid.Parse(req.Id)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", err))
 	}
 
-	if err := a.tagService.DeleteTag(ctx, parsedId); err != nil {
+	if err := a.tagService.DeleteTag(ctx, accountId, parsedId); err != nil {
 		return nil, fmt.Errorf("delete tag failed: %w", err)
 	}
 
@@ -62,7 +77,12 @@ func (a *TagsGrpcApiImpl) DeleteTag(ctx context.Context, req *v1.DeleteTagReques
 }
 
 func (a *TagsGrpcApiImpl) ListTags(ctx context.Context, req *v1.ListTagRequest) (*v1.ListTagResponse, error) {
-	entities, err := a.tagService.ListTags(ctx, req.TagName, req.TagDescription)
+	accountId, err := uuid.Parse(req.AccountId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid account_id: %w", err))
+	}
+
+	entities, err := a.tagService.ListTags(ctx, accountId, req.TagName, req.TagDescription)
 	if err != nil {
 		return nil, fmt.Errorf("list tags failed: %w", err)
 	}
