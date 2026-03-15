@@ -97,7 +97,7 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: dev-${{ github.sha }}
-          TAG:  ${{ github.ref_name }}
+          TAG:  ${{ github.sha }}
 
       - name: Tests
         uses: robherley/go-test-action@v0
@@ -213,7 +213,7 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: ${{ github.ref_name }}
-          TAG:  ${{ github.ref_name }}
+          TAG:  ${{ github.sha }}
 
       - name: Tests
         uses: robherley/go-test-action@v0
