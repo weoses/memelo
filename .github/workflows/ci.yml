@@ -58,7 +58,7 @@ jobs:
           host: ${{ vars.SSH_HOST }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
+          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD,TAG
           script: |
             if [ ! -d "$DEPLOY_PATH/.git" ]; then
               git clone "$REPO_URL" "$DEPLOY_PATH"
@@ -97,6 +97,7 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: dev-${{ github.sha }}
+          TAG:  ${{ github.ref_name }}
 
       - name: Tests
         uses: robherley/go-test-action@v0
@@ -173,7 +174,7 @@ jobs:
           host: ${{ vars.SSH_HOST }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
+          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD,TAG
           script: |
             if [ ! -d "$DEPLOY_PATH/.git" ]; then
               git clone "$REPO_URL" "$DEPLOY_PATH"
@@ -212,6 +213,7 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: ${{ github.ref_name }}
+          TAG:  ${{ github.ref_name }}
 
       - name: Tests
         uses: robherley/go-test-action@v0
