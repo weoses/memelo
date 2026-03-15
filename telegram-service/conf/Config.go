@@ -13,9 +13,8 @@ type InlineConfig struct {
 	PageSize int
 }
 
-type MongodbConfig struct {
-	Uri      string
-	Database string
+type PostgresConfig struct {
+	DSN string
 }
 
 type StorageServiceConfig struct {
@@ -32,9 +31,9 @@ func NewTelegramConfig() (*TelegramConfig, error) {
 	return conf, err
 }
 
-func NewMongodbConfig() (*MongodbConfig, error) {
-	conf := &MongodbConfig{}
-	err := viper.UnmarshalKey("mongo", conf)
+func NewPostgresConfig() (*PostgresConfig, error) {
+	conf := &PostgresConfig{}
+	err := viper.UnmarshalKey("postgres", conf)
 	return conf, err
 }
 

@@ -2,51 +2,51 @@ package service
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"log/slog"
 
+	"github.com/golang-migrate/migrate/v4"
+	migratepgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/weoses/memelo/telegram-service/conf"
-	"github.com/weoses/memelo/telegram-service/entity"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 type UserAccountService interface {
 	MapUserToAccount(ctx context.Context, userId int64) (uuid.UUID, error)
 }
 
 type UserAccountServiceImpl struct {
-	mongoClient *mongo.Client
-	collection  *mongo.Collection
-	log         *slog.Logger
+	pool *pgxpool.Pool
+	log  *slog.Logger
 }
 
 // MapUserToAccount implements UserAccountService.
 func (u *UserAccountServiceImpl) MapUserToAccount(ctx context.Context, userId int64) (uuid.UUID, error) {
-
-	result := u.collection.FindOne(ctx, bson.D{{
-		Key: "userid", Value: userId,
-	}})
-
-	binding := new(entity.MongoTgUserAccountBinding)
-
-	if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-		accountId, _ := uuid.NewRandom()
-		binding.UserId = userId
-		binding.AccountId = accountId
-		_, err := u.collection.InsertOne(ctx, binding)
-		return accountId, err
-	}
-
-	err := result.Decode(binding)
+	newId, _ := uuid.NewRandom()
+	_, err := u.pool.Exec(ctx,
+		`INSERT INTO tg_user_account_bindings (telegram_id, account_id)
+		 VALUES ($1, $2) ON CONFLICT (telegram_id) DO NOTHING`,
+		userId, newId)
 	if err != nil {
-		return uuid.UUID{}, err
+		return uuid.UUID{}, fmt.Errorf("insert: %w", err)
 	}
 
-	return binding.AccountId, nil
+	var accountIdStr string
+	err = u.pool.QueryRow(ctx,
+		`SELECT account_id FROM tg_user_account_bindings WHERE telegram_id = $1`,
+		userId).Scan(&accountIdStr)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("select: %w", err)
+	}
+	return uuid.Parse(accountIdStr)
 }
 
 type UserAccountServiceStaticImpl struct {
@@ -59,11 +59,28 @@ func (u *UserAccountServiceStaticImpl) MapUserToAccount(ctx context.Context, use
 	return u.staticUuid, nil
 }
 
-func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.UserAccountConfig) (UserAccountService, error) {
+func runMigrations(pool *pgxpool.Pool) error {
+	src, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("iofs source: %w", err)
+	}
+	db := stdlib.OpenDBFromPool(pool)
+	drv, err := migratepgx.WithInstance(db, &migratepgx.Config{})
+	if err != nil {
+		return fmt.Errorf("migrate driver: %w", err)
+	}
+	m, err := migrate.NewWithInstance("iofs", src, "postgres", drv)
+	if err != nil {
+		return fmt.Errorf("migrate init: %w", err)
+	}
+	err = m.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+	return nil
+}
 
-	const COLLECTION_NAME = "telegram-user-account"
-	const INDEX_NAME = "telegram-id-uniq"
-
+func NewUserAccountService(config *conf.PostgresConfig, userAccountConfig *conf.UserAccountConfig) (UserAccountService, error) {
 	logger := slog.With("service", "UserAccountService")
 
 	if userAccountConfig.StaticUuid != "" {
@@ -73,45 +90,17 @@ func NewUserAccountService(config *conf.MongodbConfig, userAccountConfig *conf.U
 		}, nil
 	}
 
-	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().
-		ApplyURI(config.Uri).
-		SetServerAPIOptions(serverAPI)
-	// Create a new client and connect to the server
-	client, err := mongo.Connect(opts)
+	pool, err := pgxpool.New(context.Background(), config.DSN)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pgxpool.New: %w", err)
 	}
 
-	database := client.Database(config.Database)
-	err = database.CreateCollection(
-		context.Background(),
-		COLLECTION_NAME,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create collection: %w", err)
-	}
-
-	collection := client.
-		Database(config.Database).
-		Collection(COLLECTION_NAME)
-
-	_, err = collection.Indexes().CreateOne(
-		context.Background(),
-		mongo.IndexModel{
-			Keys: bson.D{{Key: "userid", Value: -1}},
-			Options: options.Index().
-				SetUnique(true).
-				SetName(INDEX_NAME),
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create index: %w", err)
+	if err := runMigrations(pool); err != nil {
+		return nil, fmt.Errorf("migrations: %w", err)
 	}
 
 	return &UserAccountServiceImpl{
-		mongoClient: client,
-		collection:  collection,
-		log:         logger,
-	}, err
+		pool: pool,
+		log:  logger,
+	}, nil
 }

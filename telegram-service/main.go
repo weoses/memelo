@@ -42,7 +42,7 @@ func main() {
 		}),
 		fx.Provide(conf.NewTelegramConfig),
 		fx.Provide(conf.NewUserAccountConfig),
-		fx.Provide(conf.NewMongodbConfig),
+		fx.Provide(conf.NewPostgresConfig),
 		fx.Provide(conf.NewStorageConfig),
 		fx.Provide(conf.NewInlineConfig),
 		fx.Provide(service.NewTelegramBot),

@@ -40,7 +40,7 @@ jobs:
 
       - name: "Make release"
         uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && endsWith(github.ref_name, '.00')
         with:
           body: |
             **Docker images:**
@@ -67,7 +67,7 @@ jobs:
           host: ${{ vars.SSH_HOST }}
           username: ${{ vars.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,TAG,DEPLOY_PATH,RELEASE_VERSION
+          envs: ELASTIC_USERNAME,ELASTIC_PASSWORD,ELASTIC_JAVA_OPTS,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,IMAGE_EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,TAG,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD
           script: |
             if [ ! -d "$DEPLOY_PATH/.git" ]; then
               git clone "$REPO_URL" "$DEPLOY_PATH"
@@ -99,6 +99,10 @@ jobs:
           MINIO_SECURE: ${{ vars.MINIO_SECURE }}
           IMAGE_EMBEDDING_PROJECTNAME: ${{ vars.IMAGE_EMBEDDING_PROJECTNAME }}
           GOOGLE_CREDS_PATH: ${{ vars.GOOGLE_CREDS_PATH }}
+          TELEGRAM_TOKEN: ${{secrets.TELEGRAM_TOKEN}}
+          POSTGRES_DB: ${{vars.POSTGRES_DB}}
+          POSTGRES_USER: ${{vars.POSTGRES_USER}}
+          POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORS}}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           TAG: ${{ github.ref_name }}
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
