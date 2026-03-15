@@ -54,6 +54,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	// workaround because viper does not treat env vars the same as other config
+	for _, key := range viper.AllKeys() {
+		val := viper.Get(key)
+		viper.Set(key, val)
+	}
+
 	err := viper.UnmarshalKey("storage-service", &config)
 	if err != nil {
 		panic(err)
