@@ -54,6 +54,11 @@ jobs:
     needs: build
     environment: production
     steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tests/e2e/go.mod
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -96,3 +101,12 @@ jobs:
           TAG: ${{ github.ref_name }}
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: ${{ github.ref_name }}
+
+      - name: Tests
+        uses: robherley/go-test-action@v0
+        with:
+          moduleDirectory: tests/e2e
+        env:
+          STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
+          STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
+          STORAGE_SERVICE_PASSWORD: ${{ vars.TEST_PROXY_PASSWORD}}
