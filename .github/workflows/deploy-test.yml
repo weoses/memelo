@@ -2,53 +2,32 @@ name: deploy-test
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_run:
-    workflows: ["build"] # Name of the first workflow
-    branches: [main]  # Branch to run on
-    types:
-      - completed
+    tags-ignore:
+      - '**'
+    branches:
+      - "**"
 jobs:
-  build:
+  wait-for-images:
     runs-on: ubuntu-latest
     steps:
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+     - name: Wait for storage-service
+       uses: PaulLesur/wait-docker-image-github-action@v1.0
+       with:
+         image: ghcr.io/weoses/storage-service
+         tag: dev-${{ github.sha }}
+         timeout: 300
 
-      - name: Retag storage-service image by tag
-        uses: Nextdoor/docker-image-retag-action@main
-        with:
-          image: ghcr.io/weoses/storage-service
-          source_tag: ${{ github.sha }}
-          dest_tag: ${{ github.ref_name }}
+     - name: Wait for telegram-service
+       uses: PaulLesur/wait-docker-image-github-action@v1.0
+       with:
+         image: ghcr.io/weoses/telegram-service
+         tag: dev-${{ github.sha }}
+         timeout: 300
 
-      - name: Retag telegram-service image by tag
-        uses: Nextdoor/docker-image-retag-action@main
-        with:
-          image: ghcr.io/weoses/telegram-service
-          source_tag: ${{ github.sha }}
-          dest_tag: ${{ github.ref_name }}
-
-      - name: "Make release"
-        uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag' && endsWith(github.ref_name, '.00')
-        with:
-          body: |
-            **Docker images:**
-            `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
-            `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
-            
-            **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          generate_release_notes: true
   deploy:
     runs-on: ubuntu-latest
-    needs: build
-    environment: production
+    needs: wait-for-images
+    environment: memelo-test
     steps:
       - uses: actions/checkout@v5
 
@@ -82,7 +61,7 @@ jobs:
             
             git fetch --tags origin
             git checkout "$TAG"
-
+  
             docker compose pull
             docker compose -p memelo up -d --wait --wait-timeout 300
         env:
@@ -100,7 +79,7 @@ jobs:
           POSTGRES_USER: ${{vars.POSTGRES_USER}}
           POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORS}}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          TAG: ${{ github.ref_name }}
+          TAG: dev-${{ github.sha }}
           DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
           RELEASE_VERSION: ${{ github.ref_name }}
 

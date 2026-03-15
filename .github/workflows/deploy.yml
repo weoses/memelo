@@ -1,16 +1,75 @@
 name: deploy-release
 
 on:
-  workflow_run:
-    workflows: ["build"] # Name of the first workflow
-    branches: [main]  # Branch to run on
-    types:
-      - completed
+  push:
+    tags:
+      - 'v*'
 
 jobs:
+  wait-for-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for storage-service
+        uses: PaulLesur/wait-docker-image-github-action@v1.0
+        with:
+          image: ghcr.io/weoses/storage-service
+          tag: dev-${{ github.sha }}
+          timeout: 300
+
+      - name: Wait for telegram-service
+        uses: PaulLesur/wait-docker-image-github-action@v1.0
+        with:
+          image: ghcr.io/weoses/telegram-service
+          tag: dev-${{ github.sha }}
+          timeout: 300
+
+  tag-images:
+    runs-on: ubuntu-latest
+    needs: wait-for-images
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag storage-service image by tag
+        uses: Nextdoor/docker-image-retag-action@main
+        with:
+          image: ghcr.io/weoses/storage-service
+          source_tag: dev-${{ github.sha }}
+          dest_tag: ${{ github.ref_name }}
+
+      - name: Retag telegram-service image by tag
+        uses: Nextdoor/docker-image-retag-action@main
+        with:
+          image: ghcr.io/weoses/telegram-service
+          source_tag: dev-${{ github.sha }}
+          dest_tag: ${{ github.ref_name }}
+
+  make-release:
+    runs-on: ubuntu-latest
+    needs: wait-for-images
+    if: github.ref_type == 'tag' && endsWith(github.ref_name, '.00')
+    steps:
+      - name: "Make release"
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            **Docker images:**
+            `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
+            `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
+
+            **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          generate_release_notes: true
+
   deploy:
     runs-on: ubuntu-latest
-    environment: memelo-test
+    needs:
+      - tag-images
+      - make-release
+    environment: production
     steps:
       - uses: actions/checkout@v5
 
