@@ -19,6 +19,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    volumes:
+      - "elastic_data:/usr/share/elasticsearch/data"
 
   minio:
     image: minio/minio:latest
@@ -36,6 +38,8 @@ services:
       start_period: 10s
     networks:
       - env
+    volumes:
+      - "minio_data:/data"
 
   storage-service:
     build:
@@ -80,3 +84,7 @@ services:
 
 networks:
   env:
+
+volumes:
+  elastic_data:
+  minio_data:
