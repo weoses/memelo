@@ -43,17 +43,19 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           body: |
-            Version: ${{ github.ref_name }}  
-            Docker images:  
-             `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
-             `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
-            Deploy workflow: [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **Docker images:**
+            `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
+            `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
+            
+            **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           generate_release_notes: true
   deploy:
     runs-on: ubuntu-latest
     needs: build
     environment: production
     steps:
+      - uses: actions/checkout@v5
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
