@@ -1,11 +1,6 @@
-name: release-build&deploy
+name: deploy-release
 
 on:
-  push:
-    tags-ignore:
-      - '**'
-    branches:
-      - "**"
   workflow_run:
     workflows: ["build"] # Name of the first workflow
     branches: [main]  # Branch to run on
