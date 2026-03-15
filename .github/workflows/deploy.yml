@@ -74,9 +74,9 @@ jobs:
             fi
             cd "$DEPLOY_PATH"
             
-            docker compose down || true
+            docker compose -p memelo down || true
             
-            LAST_CONTAINER=$(docker ps -q -f "memelo")
+            LAST_CONTAINER=$(docker ps -q -f "name=memelo")
             for i in $LAST_CONTAINER
             do
               echo "Still lasts container $i, removing"
@@ -111,4 +111,4 @@ jobs:
         env:
           STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
           STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
-          STORAGE_SERVICE_PASSWORD: ${{ vars.TEST_PROXY_PASSWORD}}
+          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD}}
