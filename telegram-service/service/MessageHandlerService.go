@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type MessageHandlerService interface {
-	ProcessMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
+	ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
+	ProcessCommandAddTag(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
 type MessageHandlerResponse struct {
@@ -25,8 +27,39 @@ type MessageHandlerServiceImpl struct {
 	log                *slog.Logger
 }
 
+func (m MessageHandlerServiceImpl) ProcessCommandAddTag(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
+	arguments := message.CommandArguments()
+	if arguments == "" {
+		return nil, errors.New("empty arguments for add tag, need NAME DESCRIPTION")
+	}
+	args := strings.SplitN(arguments, " ", 2)
+	if len(args) < 2 {
+		return nil, errors.New("invalid arguments for add tag, need NAME DESCRIPTION")
+	}
+
+	name := args[0]
+	description := args[1]
+	if len(name) == 0 || len(description) == 0 {
+		return nil, errors.New("empty arguments for add tag, need NAME DESCRIPTION")
+	}
+
+	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed: %w", err)
+	}
+
+	if err := m.storage.AddTag(ctx, accountId, name, description); err != nil {
+		return nil, fmt.Errorf("messageHandlerService: AddTag failed: %w", err)
+	}
+
+	return &MessageHandlerResponse{
+		Message:   fmt.Sprintf("Tag `%s` created", name),
+		ParseMode: "Markdown",
+	}, nil
+}
+
 // ProcessMessage implements MessageHandlerService.
-func (m MessageHandlerServiceImpl) ProcessMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
+func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
 	var fileId string
 	if len(message.Photo) >= 1 {
 		fileId = message.Photo[len(message.Photo)-1].FileID
@@ -56,7 +89,12 @@ func (m MessageHandlerServiceImpl) ProcessMessage(ctx context.Context, message *
 		"duplicate", result.DuplicateStatus)
 
 	return &MessageHandlerResponse{
-		Message:   fmt.Sprintf("\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`", result.Text, result.Id, result.DuplicateStatus),
+		Message: fmt.Sprintf(
+			"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+			result.Text,
+			result.Id,
+			result.DuplicateStatus,
+			strings.Join(result.Tags, ", ")),
 		ParseMode: "Markdown",
 	}, nil
 }
