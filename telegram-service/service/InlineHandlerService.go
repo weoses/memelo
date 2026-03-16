@@ -137,7 +137,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
 			item.Id.String(),
 			item.ImageUrl,
-			item.ImageUrl,
+			item.ThumbUrl,
 		)
 		inlineChoice.MimeType = "image/jpeg"
 		inlineChoice.Height = item.ThumbHeight

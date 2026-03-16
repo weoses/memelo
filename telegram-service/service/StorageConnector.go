@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -25,11 +27,30 @@ type StorageConnector interface {
 	CreateMeme(ctx context.Context, file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
 
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
+
+	AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error
 }
 
 type StorageConnectorImpl struct {
-	cl  v1connect.SearchServiceClient
-	log *slog.Logger
+	cl     v1connect.SearchServiceClient
+	tagsCl v1connect.TagsServiceClient
+	log    *slog.Logger
+}
+
+func (s *StorageConnectorImpl) AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error {
+	_, err := s.tagsCl.CreateTag(ctx, &v1.CreateTagRequest{
+		AccountId:   accountId.String(),
+		Tag:         name,
+		Description: description,
+	})
+	if err != nil {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeAlreadyExists {
+			return fmt.Errorf("tag '%s' already exists", name)
+		}
+		return fmt.Errorf("AddTag failed: name=%s %w", name, err)
+	}
+	return nil
 }
 
 func (s *StorageConnectorImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error {
@@ -101,13 +122,16 @@ func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime
 		Id:              memeId,
 		Text:            response.Result.GetOcrResult(),
 		DuplicateStatus: response.Status.String(),
+		Tags:            response.Result.GetTags(),
 	}, nil
 }
 
 func NewStorageConnector(config *conf.StorageServiceConfig) (StorageConnector, error) {
 	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.Uri)
+	tagsCl := v1connect.NewTagsServiceClient(http.DefaultClient, config.Uri)
 	return &StorageConnectorImpl{
-		cl:  cl,
-		log: slog.With("service", "StorageConnectorService"),
+		cl:     cl,
+		tagsCl: tagsCl,
+		log:    slog.With("service", "StorageConnectorService"),
 	}, nil
 }

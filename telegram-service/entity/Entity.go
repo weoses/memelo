@@ -9,6 +9,7 @@ type MemeCreateResult struct {
 	Id              uuid.UUID
 	Text            string
 	DuplicateStatus string
+	Tags            []string
 }
 
 type MemeSearchResult struct {

@@ -36,7 +36,11 @@ func (srv *TelegramBotServiceImpl) StartBot(ctx context.Context) {
 			if update.InlineQuery != nil {
 				srv.handleInlineRequest(ctx, &update)
 			} else if update.Message != nil {
-				srv.handleMessage(ctx, &update)
+				if update.Message.IsCommand() {
+					srv.handleCommand(ctx, update.Message)
+				} else {
+					srv.handleMessage(ctx, update.Message)
+				}
 			} else if update.ChosenInlineResult != nil {
 				srv.handleChosenResult(ctx, &update)
 			}
@@ -44,30 +48,61 @@ func (srv *TelegramBotServiceImpl) StartBot(ctx context.Context) {
 	}
 }
 
-func (srv *TelegramBotServiceImpl) handleMessage(ctx context.Context, update *tgbotapi.Update) {
+func (srv *TelegramBotServiceImpl) handleCommand(ctx context.Context, requestMessage *tgbotapi.Message) {
 	srv.log.InfoContext(ctx, "Bot message request")
 	srv.log.DebugContext(ctx, "Bot message request details",
-		"request", update.Message)
+		"request", requestMessage)
 
-	answer, err := srv.message.ProcessMessage(ctx, update.Message)
-	if err != nil {
-		srv.log.ErrorContext(ctx, "Failed to process message", "error", err)
-		message := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
-		message.ReplyToMessageID = update.Message.MessageID
-		_, err = srv.bot.Send(message)
+	if requestMessage.Command() == "addtag" {
+		responseData, err := srv.message.ProcessCommandAddTag(ctx, requestMessage)
+		if err != nil {
+			srv.sendCommonErrorMessage(ctx, requestMessage, err)
+		}
+
+		err = srv.sendCommonResponseMessage(ctx, requestMessage, responseData)
 		if err != nil {
 			srv.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
+			srv.sendCommonErrorMessage(ctx, requestMessage, err)
+			return
 		}
+
+	}
+}
+
+func (srv *TelegramBotServiceImpl) handleMessage(ctx context.Context, requestMessage *tgbotapi.Message) {
+	srv.log.InfoContext(ctx, "Bot message request")
+	srv.log.DebugContext(ctx, "Bot message request details",
+		"request", requestMessage)
+
+	answer, err := srv.message.ProcessImageMessage(ctx, requestMessage)
+	if err != nil {
+		srv.log.ErrorContext(ctx, "Failed to process message", "error", err)
+		srv.sendCommonErrorMessage(ctx, requestMessage, err)
 		return
 	}
 
-	message := tgbotapi.NewMessage(update.Message.Chat.ID, answer.Message)
-	message.ReplyToMessageID = update.Message.MessageID
-	message.ParseMode = answer.ParseMode
-	_, err = srv.bot.Send(message)
+	err = srv.sendCommonResponseMessage(ctx, requestMessage, answer)
 	if err != nil {
 		srv.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
+		srv.sendCommonErrorMessage(ctx, requestMessage, err)
 		return
+	}
+}
+
+func (srv *TelegramBotServiceImpl) sendCommonResponseMessage(ctx context.Context, requestMessage *tgbotapi.Message, answer *MessageHandlerResponse) error {
+	responseMessage := tgbotapi.NewMessage(requestMessage.Chat.ID, answer.Message)
+	responseMessage.ReplyToMessageID = requestMessage.MessageID
+	responseMessage.ParseMode = answer.ParseMode
+	_, err := srv.bot.Send(responseMessage)
+	return err
+}
+
+func (srv *TelegramBotServiceImpl) sendCommonErrorMessage(ctx context.Context, requestMessage *tgbotapi.Message, err error) {
+	errorResponseMessage := tgbotapi.NewMessage(requestMessage.Chat.ID, err.Error())
+	errorResponseMessage.ReplyToMessageID = requestMessage.MessageID
+	_, err = srv.bot.Send(errorResponseMessage)
+	if err != nil {
+		srv.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
 	}
 }
 
