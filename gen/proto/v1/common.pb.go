@@ -87,6 +87,7 @@ type MemeDto struct {
 	OcrResult      string                 `protobuf:"bytes,2,opt,name=ocr_result,json=ocrResult,proto3" json:"ocr_result,omitempty"`
 	ImageThumbnail *ImageDto              `protobuf:"bytes,3,opt,name=image_thumbnail,json=imageThumbnail,proto3" json:"image_thumbnail,omitempty"`
 	ImageOriginal  *ImageDto              `protobuf:"bytes,4,opt,name=image_original,json=imageOriginal,proto3" json:"image_original,omitempty"`
+	Tags           []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -145,6 +146,13 @@ func (x *MemeDto) GetImageThumbnail() *ImageDto {
 func (x *MemeDto) GetImageOriginal() *ImageDto {
 	if x != nil {
 		return x.ImageOriginal
+	}
+	return nil
+}
+
+func (x *MemeDto) GetTags() []string {
+	if x != nil {
+		return x.Tags
 	}
 	return nil
 }
@@ -237,13 +245,14 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"\bImageDto\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
 	"\x05width\x18\x02 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x03 \x01(\x05R\x06height\"\xbe\x01\n" +
+	"\x06height\x18\x03 \x01(\x05R\x06height\"\xd2\x01\n" +
 	"\aMemeDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"ocr_result\x18\x02 \x01(\tR\tocrResult\x12B\n" +
 	"\x0fimage_thumbnail\x18\x03 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\x0eimageThumbnail\x12@\n" +
-	"\x0eimage_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rimageOriginal\"1\n" +
+	"\x0eimage_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rimageOriginal\x12\x12\n" +
+	"\x04tags\x18\x05 \x03(\tR\x04tags\"1\n" +
 	"\x10DeleteAllRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"\x13\n" +
