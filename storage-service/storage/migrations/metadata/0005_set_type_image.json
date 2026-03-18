@@ -1,0 +1,20 @@
+{
+  "method": "POST",
+  "url": "/{index}/_update_by_query",
+  "body": {
+    "script": {
+      "lang": "painless",
+      "source": "ctx._source.Type = 'image'"
+    },
+    "query": {
+      "bool": {
+        "must_not": {
+          "exists": {
+            "field": "Type"
+          }
+        }
+      }
+    }
+  },
+  "timeout": "160s"
+}

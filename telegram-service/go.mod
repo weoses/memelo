@@ -1,6 +1,6 @@
 module github.com/weoses/memelo/telegram-service
 
-go 1.24.10
+go 1.25.0
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.18.1

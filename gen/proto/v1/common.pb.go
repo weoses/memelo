@@ -24,8 +24,8 @@ const (
 type ImageDto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Width         int32                  `protobuf:"varint,2,opt,name=width,proto3" json:"width,omitempty"`
-	Height        int32                  `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	ImageWidth    *int32                 `protobuf:"varint,2,opt,name=image_width,json=imageWidth,proto3,oneof" json:"image_width,omitempty"`
+	ImageHeight   *int32                 `protobuf:"varint,3,opt,name=image_height,json=imageHeight,proto3,oneof" json:"image_height,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,16 +67,16 @@ func (x *ImageDto) GetUrl() string {
 	return ""
 }
 
-func (x *ImageDto) GetWidth() int32 {
-	if x != nil {
-		return x.Width
+func (x *ImageDto) GetImageWidth() int32 {
+	if x != nil && x.ImageWidth != nil {
+		return *x.ImageWidth
 	}
 	return 0
 }
 
-func (x *ImageDto) GetHeight() int32 {
-	if x != nil {
-		return x.Height
+func (x *ImageDto) GetImageHeight() int32 {
+	if x != nil && x.ImageHeight != nil {
+		return *x.ImageHeight
 	}
 	return 0
 }
@@ -86,8 +86,9 @@ type MemeDto struct {
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	OcrResult      string                 `protobuf:"bytes,2,opt,name=ocr_result,json=ocrResult,proto3" json:"ocr_result,omitempty"`
 	ImageThumbnail *ImageDto              `protobuf:"bytes,3,opt,name=image_thumbnail,json=imageThumbnail,proto3" json:"image_thumbnail,omitempty"`
-	ImageOriginal  *ImageDto              `protobuf:"bytes,4,opt,name=image_original,json=imageOriginal,proto3" json:"image_original,omitempty"`
+	MediaOriginal  *ImageDto              `protobuf:"bytes,4,opt,name=media_original,json=mediaOriginal,proto3" json:"media_original,omitempty"`
 	Tags           []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	Type           string                 `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -143,9 +144,9 @@ func (x *MemeDto) GetImageThumbnail() *ImageDto {
 	return nil
 }
 
-func (x *MemeDto) GetImageOriginal() *ImageDto {
+func (x *MemeDto) GetMediaOriginal() *ImageDto {
 	if x != nil {
-		return x.ImageOriginal
+		return x.MediaOriginal
 	}
 	return nil
 }
@@ -155,6 +156,13 @@ func (x *MemeDto) GetTags() []string {
 		return x.Tags
 	}
 	return nil
+}
+
+func (x *MemeDto) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
 }
 
 type DeleteAllRequest struct {
@@ -241,18 +249,22 @@ var File_proto_v1_common_proto protoreflect.FileDescriptor
 
 const file_proto_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/v1/common.proto\x12\x0fproto.memelo.v1\"J\n" +
+	"\x15proto/v1/common.proto\x12\x0fproto.memelo.v1\"\x8b\x01\n" +
 	"\bImageDto\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
-	"\x05width\x18\x02 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x03 \x01(\x05R\x06height\"\xd2\x01\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12$\n" +
+	"\vimage_width\x18\x02 \x01(\x05H\x00R\n" +
+	"imageWidth\x88\x01\x01\x12&\n" +
+	"\fimage_height\x18\x03 \x01(\x05H\x01R\vimageHeight\x88\x01\x01B\x0e\n" +
+	"\f_image_widthB\x0f\n" +
+	"\r_image_height\"\xe6\x01\n" +
 	"\aMemeDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"ocr_result\x18\x02 \x01(\tR\tocrResult\x12B\n" +
 	"\x0fimage_thumbnail\x18\x03 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\x0eimageThumbnail\x12@\n" +
-	"\x0eimage_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rimageOriginal\x12\x12\n" +
-	"\x04tags\x18\x05 \x03(\tR\x04tags\"1\n" +
+	"\x0emedia_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rmediaOriginal\x12\x12\n" +
+	"\x04tags\x18\x05 \x03(\tR\x04tags\x12\x12\n" +
+	"\x04type\x18\x06 \x01(\tR\x04type\"1\n" +
 	"\x10DeleteAllRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"\x13\n" +
@@ -280,7 +292,7 @@ var file_proto_v1_common_proto_goTypes = []any{
 }
 var file_proto_v1_common_proto_depIdxs = []int32{
 	0, // 0: proto.memelo.v1.MemeDto.image_thumbnail:type_name -> proto.memelo.v1.ImageDto
-	0, // 1: proto.memelo.v1.MemeDto.image_original:type_name -> proto.memelo.v1.ImageDto
+	0, // 1: proto.memelo.v1.MemeDto.media_original:type_name -> proto.memelo.v1.ImageDto
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -293,6 +305,7 @@ func file_proto_v1_common_proto_init() {
 	if File_proto_v1_common_proto != nil {
 		return
 	}
+	file_proto_v1_common_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

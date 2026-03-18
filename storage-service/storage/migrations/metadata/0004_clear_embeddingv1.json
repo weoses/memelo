@@ -1,0 +1,16 @@
+{
+  "method": "POST",
+  "url": "/{index}/_update_by_query",
+  "body": {
+    "script": {
+      "lang": "painless",
+      "source": "ctx._source.remove('EmbeddingV1')"
+    },
+    "query": {
+      "exists": {
+        "field": "EmbeddingV1.Data"
+      }
+    }
+  },
+  "timeout": "160s"
+}

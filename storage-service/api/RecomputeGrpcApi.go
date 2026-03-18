@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	connect "connectrpc.com/connect"
+	"connectrpc.com/connect"
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"

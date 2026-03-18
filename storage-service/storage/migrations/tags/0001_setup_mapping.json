@@ -1,0 +1,29 @@
+{
+  "method": "PUT",
+  "url": "/{index}/_mapping",
+  "body": {
+    "properties": {
+      "Created":   { "type": "long" },
+      "Updated":   { "type": "long" },
+      "AccountId": { "type": "keyword" },
+      "Tag":       { "type": "keyword" },
+      "EmbeddingV1.Data": {
+        "type": "dense_vector",
+        "dims": {dims},
+        "index": true,
+        "similarity": "cosine"
+      },
+      "Embedding": {
+        "type": "nested",
+        "properties": {
+          "Data": {
+            "type": "dense_vector",
+            "dims": {dims},
+            "index": true,
+            "similarity": "cosine"
+          }
+        }
+      }
+    }
+  }
+}

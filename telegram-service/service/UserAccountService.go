@@ -80,17 +80,17 @@ func runMigrations(pool *pgxpool.Pool) error {
 	return nil
 }
 
-func NewUserAccountService(config *conf.PostgresConfig, userAccountConfig *conf.UserAccountConfig) (UserAccountService, error) {
+func NewUserAccountService(config *conf.Config) (UserAccountService, error) {
 	logger := slog.With("service", "UserAccountService")
 
-	if userAccountConfig.StaticUuid != "" {
+	if config.UserAccount.StaticUuid != "" {
 		return &UserAccountServiceStaticImpl{
-			staticUuid: uuid.MustParse(userAccountConfig.StaticUuid),
+			staticUuid: uuid.MustParse(config.UserAccount.StaticUuid),
 			log:        logger,
 		}, nil
 	}
 
-	pool, err := pgxpool.New(context.Background(), config.DSN)
+	pool, err := pgxpool.New(context.Background(), config.Postgres.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.New: %w", err)
 	}

@@ -7,7 +7,8 @@ type ElasticTag struct {
 	AccountId   uuid.UUID
 	Tag         string
 	Description string
-	EmbeddingV1 *ElasticEmbeddingV1
-	Created     int64
-	Updated     int64
+
+	Embedding *EmbeddingItem
+	Created   int64
+	Updated   int64
 }

@@ -57,3 +57,11 @@ type ServerConfig struct {
 type LoggingConfig struct {
 	Level string
 }
+
+type MediaStorageConfig struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	Secure    bool
+}

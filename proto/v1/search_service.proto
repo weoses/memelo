@@ -11,6 +11,11 @@ enum CreateMemeStatus {
   STATUS_DUPLICATE = 2;
 }
 
+message MediaDataDto {
+  optional string s3_path = 1;
+  optional bytes data = 2;
+}
+
 message SearchMemeRequest {
   string account_id = 1;
   string query = 2;
@@ -25,7 +30,8 @@ message SearchMemeResponse {
 
 message CreateMemeRequest {
   string account_id = 1;
-  bytes raw_image = 2;
+  optional MediaDataDto image = 2;
+  optional MediaDataDto video = 3;
 }
 
 message CreateMemeResponse {

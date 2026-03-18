@@ -4,37 +4,61 @@ log:
 server:
   ListenAddress: :7001
 
-image-storage:
-  S3:
-    Endpoint:
-    AccessKey:
-    SecretKey:
-    Bucket: melo-images
-    Secure: false
+embeddings:
+  Dimensions: 1408
+  VideoEmbeddingIntervalSec: 10
 
-metadata-storage:
+search:
+  SemanticDuplicateThreshold: 0.955
+  SemanticTextSearchThreshold: 0.5
+  Fuzziness: "AUTO:4,8"
+
+
+media-storage:
+  Endpoint:
+  AccessKey:
+  SecretKey:
+  Bucket: melo-images
+  Secure: false
+
+temp-storage:
+  Endpoint:
+  AccessKey:
+  SecretKey:
+  Bucket: melo-temp
+  Secure: false
+
+temp-storage-expiry: 24h
+
+metadata-db:
   Elastic:
     Addresses:
-    Username: 
-    Password: 
+    Username:
+    Password:
   Index: melo-image-metadata
-  EmbeddingV1Dimensions: 1408
-  EmbeddingMatchTreshold: 0.955
 
-tag-storage:
+tag-db:
   Elastic:
     Addresses:
     Username:
     Password:
   Index: melo-tags
-  EmbeddingV1Dimensions: 1408
 
-image-embedding:
+media-embedding:
   ApiEndpoint: us-central1-aiplatform.googleapis.com:443
   ApiLocation: us-central1
   ProjectName:
   Model: multimodalembedding@001
-  Dimension: 1408
+
+audio-stt:
+  ApiEndpoint: us-speech.googleapis.com:443
+  ApiLocation: us
+  ProjectName:
+  Recognizer: "_"
+  Model: chirp_3
+  LanguageCodes:
+    - 'en-US'
+    - 'ru-RU'
 
 image-converter:
   ThumbSize: 360

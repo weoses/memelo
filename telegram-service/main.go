@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"net"
+	"net/http"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/common/config"
@@ -13,38 +15,50 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
-func Startup(lc fx.Lifecycle, serv service.TelegramBotService) {
-	ctx, cancel := context.WithCancel(context.Background())
+func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) {
+	var srv *http.Server
 	lc.Append(fx.Hook{
-		OnStart: func(startCtx context.Context) error {
-			go serv.StartBot(ctx)
+		OnStart: func(ctx context.Context) error {
+			if err := svc.RegisterWebhook(); err != nil {
+				return err
+			}
+			mux := http.NewServeMux()
+			mux.Handle("/webhook", svc.Handler())
+			mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			srv = &http.Server{
+				Addr:    cfg.Server.ListenAddress,
+				Handler: mux,
+			}
+			ln, err := net.Listen("tcp", cfg.Server.ListenAddress)
+			if err != nil {
+				return err
+			}
+			go func() { _ = srv.Serve(ln) }()
 			return nil
 		},
-		OnStop: func(stopCtx context.Context) error {
-			cancel()
-			return nil
+		OnStop: func(ctx context.Context) error {
+			_ = svc.RemoveWebhook()
+			return srv.Shutdown(ctx)
 		},
 	})
 }
 
 func main() {
 	config.InitConfig()
-	loggingConfig, err := config.NewLoggingConfig()
+	cfg, err := conf.NewConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	config.InitLogs(loggingConfig)
+	config.InitLogs(cfg.Log)
 
 	fx.New(
 		fx.WithLogger(func() fxevent.Logger {
 			return &fxevent.SlogLogger{Logger: slog.With()}
 		}),
-		fx.Provide(conf.NewTelegramConfig),
-		fx.Provide(conf.NewUserAccountConfig),
-		fx.Provide(conf.NewPostgresConfig),
-		fx.Provide(conf.NewStorageConfig),
-		fx.Provide(conf.NewInlineConfig),
+		fx.Supply(cfg),
 		fx.Provide(service.NewTelegramBot),
 		fx.Provide(service.NewStorageConnector),
 		fx.Provide(fx.Annotate(service.NewTelegramFileResolverService, fx.From(new(*tgbotapi.BotAPI)))),

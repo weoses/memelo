@@ -3,9 +3,11 @@ package storage
 import (
 	"bytes"
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
@@ -21,6 +23,9 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 )
+
+//go:embed migrations/metadata
+var metadataMigrationFS embed.FS
 
 const MaxFuzzy = 10
 
@@ -51,23 +56,25 @@ type MetadataStorageService interface {
 	SearchFuzzy(ctx context.Context,
 		accountId uuid.UUID,
 		query string,
+		fuzziness string,
 		pageSize *int,
 	) ([]*entity.ElasticImageMetaData, error)
 
 	GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
 	GetByHash(ctx context.Context, accountId uuid.UUID, hash string, count *int) ([]*entity.ElasticImageMetaData, error)
-	SearchByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img entity.ElasticEmbeddingV1, count int, filterSimilarity bool) ([]*entity.ElasticImageMetaData, error)
+	SearchByEmbeddingV1(ctx context.Context, accountId uuid.UUID, img entity.EmbeddingItem, count *int, threshold float64) ([]*entity.ElasticImageMetaData, error)
 
 	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error
 }
 
 type ElasticMetadataStorageServiceImpl struct {
-	client                 *elasticsearch8.TypedClient
-	embeddingMatchTreshold float64
-	indexName              string
-	validate               *validator.Validate
-	slogger                *slog.Logger
+	*ElasticMigrator
+
+	client    *elasticsearch8.TypedClient
+	indexName string
+	validate  *validator.Validate
+	slogger   *slog.Logger
 }
 
 func (e *ElasticMetadataStorageServiceImpl) SearchByAccountId(
@@ -122,8 +129,8 @@ func (e *ElasticMetadataStorageServiceImpl) SearchSimple(ctx context.Context, ac
 	return results, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) SearchFuzzy(ctx context.Context, accountId uuid.UUID, query string, pageSize *int) ([]*entity.ElasticImageMetaData, error) {
-	result, err := e.searchFuzzy(ctx, accountId, query, pageSize)
+func (e *ElasticMetadataStorageServiceImpl) SearchFuzzy(ctx context.Context, accountId uuid.UUID, query string, fuzziness string, pageSize *int) ([]*entity.ElasticImageMetaData, error) {
+	result, err := e.searchFuzzy(ctx, accountId, query, fuzziness, pageSize)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline all failed: %w", err)
 	}
@@ -253,9 +260,9 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 	ctx context.Context,
 	accountId uuid.UUID,
-	img entity.ElasticEmbeddingV1,
-	count int,
-	filterSimilarity bool,
+	img entity.EmbeddingItem,
+	count *int,
+	semanticTreshold float64,
 ) ([]*entity.ElasticImageMetaData, error) {
 	e.slogger.InfoContext(ctx, "Search embedding start",
 		"pageSize", count,
@@ -272,7 +279,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchByEmbeddingV1(
 
 	resultsEntity := make([]*entity.ElasticImageMetaData, 0)
 	for index := range resultsSize {
-		if filterSimilarity && float64(*(result.Hits.Hits[index].Score_)) < e.embeddingMatchTreshold {
+		if float64(*(result.Hits.Hits[index].Score_)) < semanticTreshold {
 			continue
 		}
 
@@ -328,16 +335,16 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 }
 
 func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(
-	img entity.ElasticEmbeddingV1,
+	img entity.EmbeddingItem,
 	accountIdQuery *types.Query,
-	count int,
+	count *int,
 ) *types.KnnSearch {
 
 	query := types.NewKnnSearch()
-	query.Field = "EmbeddingV1.Data"
-	query.QueryVector = *img.Data
+	query.Field = "EmbeddingList.Data"
+	query.QueryVector = img.Data
 	query.NumCandidates = helper.Addr(1000)
-	query.K = helper.Addr(count)
+	query.K = count
 	query.Filter = []types.Query{*accountIdQuery}
 	return query
 }
@@ -395,12 +402,13 @@ func (e *ElasticMetadataStorageServiceImpl) stringAndAccountQuery(
 func (e *ElasticMetadataStorageServiceImpl) fuzzyStringAndAccountQuery(
 	accountId uuid.UUID,
 	queryString string,
+	fuzziness string,
 ) *types.Query {
 	q1 := types.NewQuery()
 	q1.Match = map[string]types.MatchQuery{
 		"Result": {
 			Query:     queryString,
-			Fuzziness: "AUTO",
+			Fuzziness: fuzziness,
 			Operator:  &operator.And,
 		},
 	}
@@ -482,13 +490,18 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	return resp, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(ctx context.Context, accountId uuid.UUID, queryString string, pageSize *int) (*search.Response, error) {
+func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(
+	ctx context.Context,
+	accountId uuid.UUID,
+	queryString string,
+	fuzziness string,
+	pageSize *int) (*search.Response, error) {
 	e.slogger.InfoContext(ctx, "Search FUZZY start",
 		"query", queryString,
 		"pageSize", pageSize,
 	)
 
-	queryFuzzy := e.fuzzyStringAndAccountQuery(accountId, queryString)
+	queryFuzzy := e.fuzzyStringAndAccountQuery(accountId, queryString, fuzziness)
 	resultFuzzy, err := e.runSearchQuery(ctx, queryFuzzy, nil, pageSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search_pipeline FUZZY query : %w", err)
@@ -603,9 +616,11 @@ func unmarshalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDa
 }
 
 func NewElasticMetadataStorage(
-	config *conf.MetadataStorageConfig,
+	cfg *conf.Config,
 	validate *validator.Validate,
 ) (MetadataStorageService, error) {
+	config := cfg.MetadataDb
+	configEmbeddings := cfg.Embeddings
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 	logger := slog.With("service", "ElasticMetadataStorage")
 	indexExists, err := es8.Indices.
@@ -627,37 +642,29 @@ func NewElasticMetadataStorage(
 			"error", err)
 	}
 
-	indexTypeMapping := types.NewTypeMapping()
-	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
-	indexTypeMapping.Properties["Updated"] = types.NewLongNumberProperty()
-	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
-	indexTypeMapping.Properties["CalcHash"] = types.NewKeywordProperty()
-	indexTypeMapping.Properties["ImageId"] = types.NewKeywordProperty()
-	indexTypeMapping.Properties["Tags"] = types.NewKeywordProperty()
-
-	denseProp := types.NewDenseVectorProperty()
-	denseProp.Index = helper.Addr(true)
-	denseProp.Dims = helper.Addr(config.EmbeddingV1Dimensions)
-	denseProp.Similarity = helper.Addr("cosine")
-	indexTypeMapping.Properties["EmbeddingV1.Data"] = denseProp
-
-	responseMapping, err := es8.Indices.PutMapping(config.Index).
-		Properties(indexTypeMapping.Properties).
-		Do(context.Background())
-
-	logger.InfoContext(context.Background(), "Elastic create mapping index",
-		"response", render.Render(responseMapping),
-		"error", err)
+	migrator, err := NewElasticMigrator(
+		config.Elastic,
+		metadataMigrationFS, "migrations/metadata",
+		config.Index, MigrationHistoryIndex,
+		map[string]string{
+			"index": config.Index,
+			"dims":  strconv.Itoa(configEmbeddings.Dimensions),
+		},
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create metadata migrator failed: %w", err)
+	}
 
 	return &ElasticMetadataStorageServiceImpl{
-		client:                 es8,
-		embeddingMatchTreshold: config.EmbeddingMatchTreshold,
-		indexName:              config.Index,
-		validate:               validate,
-		slogger:                logger,
+		ElasticMigrator: migrator,
+		client:          es8,
+		indexName:       config.Index,
+		validate:        validate,
+		slogger:         logger,
 	}, nil
 }
 
-func NewMetadataStorageService(config *conf.MetadataStorageConfig, validate *validator.Validate) (MetadataStorageService, error) {
-	return NewElasticMetadataStorage(config, validate)
+func NewMetadataStorageService(cfg *conf.Config, validate *validator.Validate) (MetadataStorageService, error) {
+	return NewElasticMetadataStorage(cfg, validate)
 }

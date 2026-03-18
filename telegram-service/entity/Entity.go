@@ -12,11 +12,19 @@ type MemeCreateResult struct {
 	Tags            []string
 }
 
+const ResultTypeImage = "image"
+const ResultTypeVideo = "video"
+
 type MemeSearchResult struct {
-	Id          uuid.UUID
-	SortId      string
-	ImageUrl    string
+	Id string
+
+	MediaUrl    string
+	MediaWidth  int
+	MediaHeight int
+
 	ThumbUrl    string
 	ThumbWidth  int
 	ThumbHeight int
+
+	Type string
 }

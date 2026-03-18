@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "url": "/{index}/_update_by_query",
+  "body": {
+    "script": {
+      "lang": "painless",
+      "source": "if (ctx._source.EmbeddingV1 != null && ctx._source.EmbeddingV1.Data != null && ctx._source.Embedding == null) { Map newEmb = new HashMap(); newEmb.put('Data', ctx._source.EmbeddingV1.Data); newEmb.put('Model', ctx._source.EmbeddingV1.Model); newEmb.put('Type', 'text'); newEmb.put('TimeStart', 0); newEmb.put('TimeEnd', 0); ctx._source.Embedding = newEmb; }"
+    },
+    "query": {
+      "exists": {
+        "field": "EmbeddingV1.Data"
+      }
+    }
+  }
+}

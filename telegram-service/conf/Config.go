@@ -1,7 +1,10 @@
 package conf
 
 import (
+	"fmt"
+
 	"github.com/spf13/viper"
+	commonconfig "github.com/weoses/memelo/common/config"
 )
 
 type TelegramConfig struct {
@@ -25,32 +28,30 @@ type UserAccountConfig struct {
 	StaticUuid string
 }
 
-func NewTelegramConfig() (*TelegramConfig, error) {
-	conf := &TelegramConfig{}
-	err := viper.UnmarshalKey("telegram", conf)
-	return conf, err
+type Config struct {
+	Server         *commonconfig.ServerConfig  `mapstructure:"server"`
+	Log            *commonconfig.LoggingConfig `mapstructure:"log"`
+	Telegram       *TelegramConfig             `mapstructure:"telegram"`
+	Postgres       *PostgresConfig             `mapstructure:"postgres"`
+	Inline         *InlineConfig               `mapstructure:"inline"`
+	StorageService *StorageServiceConfig       `mapstructure:"storage-service"`
+	UserAccount    *UserAccountConfig          `mapstructure:"user-account"`
 }
 
-func NewPostgresConfig() (*PostgresConfig, error) {
-	conf := &PostgresConfig{}
-	err := viper.UnmarshalKey("postgres", conf)
-	return conf, err
+func NewConfig() (*Config, error) {
+	cfg := &Config{}
+	if err := viper.Unmarshal(cfg); err != nil {
+		return nil, fmt.Errorf("error reading config: %w", err)
+	}
+	return cfg, nil
 }
 
-func NewInlineConfig() (*InlineConfig, error) {
-	conf := &InlineConfig{}
-	err := viper.UnmarshalKey("inline", conf)
-	return conf, err
+type WebhookConfig struct {
+	ExternalUrl string
 }
 
-func NewStorageConfig() (*StorageServiceConfig, error) {
-	conf := &StorageServiceConfig{}
-	err := viper.UnmarshalKey("storage-service", conf)
-	return conf, err
-}
-
-func NewUserAccountConfig() (*UserAccountConfig, error) {
-	conf := &UserAccountConfig{}
-	err := viper.UnmarshalKey("user-account", conf)
+func NewWebhookConfig() (*WebhookConfig, error) {
+	conf := &WebhookConfig{}
+	err := viper.UnmarshalKey("webhook", conf)
 	return conf, err
 }

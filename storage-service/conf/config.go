@@ -1,33 +1,34 @@
 package conf
 
 import (
+	"fmt"
+	"time"
+
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/spf13/viper"
+	commonconfig "github.com/weoses/memelo/common/config"
 )
 
-type MetadataStorageConfig struct {
+type CommonEmbeddingsConfig struct {
+	Dimensions                int
+	VideoEmbeddingIntervalSec int
+}
+
+type SearchConfig struct {
+	SemanticDuplicateThreshold  float64
+	SemanticTextSearchThreshold float64
+	Fuzziness                   string
+}
+
+type MetadataDbConfig struct {
 	Elastic                *elasticsearch8.Config
 	Index                  string
-	EmbeddingV1Dimensions  int
 	EmbeddingMatchTreshold float64
 }
 
-type ElasticTagConfig struct {
-	Elastic               *elasticsearch8.Config
-	Index                 string
-	EmbeddingV1Dimensions int
-}
-
-type ImageS3StorageConfig struct {
-	Endpoint  string
-	AccessKey string
-	SecretKey string
-	Bucket    string
-	Secure    bool
-}
-
-type ImageStorageConfig struct {
-	S3 *ImageS3StorageConfig
+type TagDbConfig struct {
+	Elastic *elasticsearch8.Config
+	Index   string
 }
 
 type ImageConverterConfig struct {
@@ -35,11 +36,10 @@ type ImageConverterConfig struct {
 	ThumbSize       int
 }
 
-type ImageEmbeddingConfig struct {
+type MediaEmbedderConfig struct {
 	ApiEndpoint string
 	ApiLocation string
 	ProjectName string
-	Dimension   int
 	Model       string
 }
 
@@ -47,38 +47,35 @@ type ImageOcrConfig struct {
 	ApiEndpoint string
 }
 
-func NewImageConverterConfig() (*ImageConverterConfig, error) {
-	conf := new(ImageConverterConfig)
-	err := viper.UnmarshalKey("image-converter", conf)
-	return conf, err
+type AudioSttConfig struct {
+	ApiEndpoint   string
+	ApiLocation   string
+	ProjectName   string
+	Recognizer    string
+	Model         string
+	LanguageCodes []string
 }
 
-func NewImageEmbeddingConfig() (*ImageEmbeddingConfig, error) {
-	conf := new(ImageEmbeddingConfig)
-	err := viper.UnmarshalKey("image-embedding", conf)
-	return conf, err
+type Config struct {
+	Server            *commonconfig.ServerConfig       `mapstructure:"server"`
+	Log               *commonconfig.LoggingConfig      `mapstructure:"log"`
+	Search            *SearchConfig                    `mapstructure:"search"`
+	Embeddings        *CommonEmbeddingsConfig          `mapstructure:"embeddings"`
+	MediaStorage      *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
+	TempStorage       *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
+	TempStorageExpiry time.Duration                    `mapstructure:"temp-storage-expiry"`
+	MetadataDb        *MetadataDbConfig                `mapstructure:"metadata-db"`
+	TagDb             *TagDbConfig                     `mapstructure:"tag-db"`
+	MediaEmbedding    *MediaEmbedderConfig             `mapstructure:"media-embedding"`
+	ImageConverter    *ImageConverterConfig            `mapstructure:"image-converter"`
+	ImageOcr          *ImageOcrConfig                  `mapstructure:"image-ocr"`
+	AudioStt          *AudioSttConfig                  `mapstructure:"audio-stt"`
 }
 
-func NewMetadataStorageConfig() (*MetadataStorageConfig, error) {
-	conf := &MetadataStorageConfig{}
-	err := viper.UnmarshalKey("metadata-storage", conf)
-	return conf, err
-}
-
-func NewImageStorageConfig() (*ImageStorageConfig, error) {
-	conf := &ImageStorageConfig{}
-	err := viper.UnmarshalKey("image-storage", conf)
-	return conf, err
-}
-
-func NewImageOcrConfig() (*ImageOcrConfig, error) {
-	conf := &ImageOcrConfig{}
-	err := viper.UnmarshalKey("image-ocr", conf)
-	return conf, err
-}
-
-func NewElasticTagConfig() (*ElasticTagConfig, error) {
-	conf := &ElasticTagConfig{}
-	err := viper.UnmarshalKey("tag-storage", conf)
-	return conf, err
+func NewConfig() (*Config, error) {
+	cfg := &Config{}
+	if err := viper.Unmarshal(cfg); err != nil {
+		return nil, fmt.Errorf("error reading config: %w", err)
+	}
+	return cfg, nil
 }

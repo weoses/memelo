@@ -12,7 +12,7 @@ import (
 type TagMetadataPipelineContext struct {
 	Name        string
 	Description string
-	Embedding   *entity.ElasticEmbeddingV1
+	Embedding   *entity.EmbeddingItem
 }
 
 type TagMetadataExtractService interface {
@@ -29,7 +29,7 @@ func (s *TagMetadataExtractServiceImpl) ProcessTagMetadata(ctx context.Context, 
 
 	s.slogger.InfoContext(ctx, "ProcessTagMetadata: computing embedding", "name", name)
 
-	embedding, err := s.embedder.GetTextEmbeddingV1(ctx, text)
+	embedding, err := s.embedder.GetTextEmbedding(ctx, text)
 	if err != nil {
 		return nil, fmt.Errorf("get text embedding failed: %w", err)
 	}

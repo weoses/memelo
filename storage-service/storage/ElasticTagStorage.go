@@ -2,10 +2,12 @@ package storage
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 	"time"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
@@ -18,21 +20,28 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
+//go:embed migrations/tags
+var tagMigrationFS embed.FS
+
 type ElasticTagStorage interface {
 	SaveTag(ctx context.Context, tag entity.ElasticTag) error
 	ListTag(ctx context.Context, accountId uuid.UUID, queryName *string, queryDescription *string) ([]entity.ElasticTag, error)
 	DeleteTag(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAllTags(ctx context.Context, accountId uuid.UUID) error
-	SearchTagsByEmbedding(ctx context.Context, accountId uuid.UUID, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
+	SearchTagsByEmbedding(ctx context.Context, accountId uuid.UUID, tag entity.EmbeddingItem, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error)
 }
 
 type ElasticTagStorageImpl struct {
+	*ElasticMigrator
+
 	client  *elasticsearch8.TypedClient
 	index   string
 	slogger *slog.Logger
 }
 
-func NewElasticTagStorage(config *conf.ElasticTagConfig) (ElasticTagStorage, error) {
+func NewElasticTagStorage(cfg *conf.Config) (ElasticTagStorage, error) {
+	config := cfg.TagDb
+	configEmbeddings := cfg.Embeddings
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 	logger := slog.With("service", "ElasticTagStorage")
 	indexExists, err := es8.Indices.
@@ -54,30 +63,25 @@ func NewElasticTagStorage(config *conf.ElasticTagConfig) (ElasticTagStorage, err
 			"error", err)
 	}
 
-	indexTypeMapping := types.NewTypeMapping()
-	indexTypeMapping.Properties["Created"] = types.NewLongNumberProperty()
-	indexTypeMapping.Properties["Updated"] = types.NewLongNumberProperty()
-	indexTypeMapping.Properties["AccountId"] = types.NewKeywordProperty()
-	indexTypeMapping.Properties["Tag"] = types.NewKeywordProperty()
-
-	denseProp := types.NewDenseVectorProperty()
-	denseProp.Index = helper.Addr(true)
-	denseProp.Dims = helper.Addr(config.EmbeddingV1Dimensions)
-	denseProp.Similarity = helper.Addr("cosine")
-	indexTypeMapping.Properties["EmbeddingV1.Data"] = denseProp
-
-	responseMapping, err := es8.Indices.PutMapping(config.Index).
-		Properties(indexTypeMapping.Properties).
-		Do(context.Background())
-
-	logger.InfoContext(context.Background(), "Elastic create mapping index",
-		"response", render.Render(responseMapping),
-		"error", err)
+	migrator, err := NewElasticMigrator(
+		config.Elastic,
+		tagMigrationFS, "migrations/tags",
+		config.Index, MigrationHistoryIndex,
+		map[string]string{
+			"index": config.Index,
+			"dims":  strconv.Itoa(configEmbeddings.Dimensions),
+		},
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create tag migrator failed: %w", err)
+	}
 
 	return &ElasticTagStorageImpl{
-		client:  es8,
-		index:   config.Index,
-		slogger: logger,
+		ElasticMigrator: migrator,
+		client:          es8,
+		index:           config.Index,
+		slogger:         logger,
 	}, nil
 }
 
@@ -190,9 +194,9 @@ func (s *ElasticTagStorageImpl) DeleteAllTags(ctx context.Context, accountId uui
 	return nil
 }
 
-func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, accountId uuid.UUID, tag entity.ElasticEmbeddingV1, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error) {
+func (s *ElasticTagStorageImpl) SearchTagsByEmbedding(ctx context.Context, accountId uuid.UUID, tag entity.EmbeddingItem, percentileMatch float32, threshold float32) ([]entity.ElasticTag, error) {
 	script := types.NewScript()
-	script.Source = helper.Addr("cosineSimilarity(params.queryVector, 'EmbeddingV1.Data') + 1.0")
+	script.Source = helper.Addr("cosineSimilarity(params.queryVector, 'Embedding.Data') + 1.0")
 
 	items, err := json.Marshal(tag.Data)
 	if err != nil {

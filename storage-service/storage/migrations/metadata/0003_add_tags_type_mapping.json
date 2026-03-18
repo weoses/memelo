@@ -1,0 +1,11 @@
+{
+  "method": "PUT",
+  "url": "/{index}/_mapping",
+  "body": {
+    "properties": {
+      "Tags": { "type": "keyword" },
+      "Type": { "type": "keyword" }
+    }
+  },
+  "timeout": "160s"
+}

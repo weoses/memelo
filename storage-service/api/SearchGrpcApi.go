@@ -9,15 +9,20 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
+	commonservice "github.com/weoses/memelo/common/service"
+	"github.com/weoses/memelo/common/temp"
+
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/key"
 	"github.com/weoses/memelo/storage-service/service"
 )
 
 type SearchServiceApi struct {
-	crud    service.MemeCrudService
-	slogger *slog.Logger
+	crud        service.MemeCrudService
+	dataService commonservice.TmpDataService
+	slogger     *slog.Logger
 }
 
 func (api *SearchServiceApi) DeleteAll(ctx context.Context, request *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
@@ -69,20 +74,21 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 	dto := &v1.MemeDto{
 		Id:        urls.Metadata.ImageId.String(),
 		OcrResult: urls.Metadata.Result,
-		ImageOriginal: &v1.ImageDto{
+		MediaOriginal: &v1.ImageDto{
 			Url: urls.UrlOriginal,
 		},
 		ImageThumbnail: &v1.ImageDto{
-			Url:    urls.UrlThumb,
-			Width:  int32(urls.Metadata.ThumbSize.Width),
-			Height: int32(urls.Metadata.ThumbSize.Height),
+			Url:         urls.UrlThumb,
+			ImageWidth:  helper.Addr(int32(urls.Metadata.ThumbSize.Width)),
+			ImageHeight: helper.Addr(int32(urls.Metadata.ThumbSize.Height)),
 		},
 		Tags: urls.Metadata.Tags,
+		Type: string(urls.Metadata.Type),
 	}
 
 	if urls.Metadata.ImageSize != nil {
-		dto.ImageOriginal.Width = int32(urls.Metadata.ImageSize.Width)
-		dto.ImageOriginal.Height = int32(urls.Metadata.ImageSize.Height)
+		dto.MediaOriginal.ImageWidth = helper.Addr(int32(urls.Metadata.ImageSize.Width))
+		dto.MediaOriginal.ImageHeight = helper.Addr(int32(urls.Metadata.ImageSize.Height))
 	}
 
 	return dto
@@ -141,8 +147,28 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 		return nil, fmt.Errorf("error parsing AccountId: %w", err)
 	}
 
-	meme, err := api.crud.CreateMeme(ctx, accountIdUuid, req.RawImage)
-	if err != nil {
+	var meme *service.CreateResult
+	var data temp.S3BackedData
+	var metadataType entity.MetadataType
+	if req.GetImage() != nil {
+		metadataType = entity.ImageMetadataType
+		data, err = api.toData(ctx, req.GetImage())
+		if err != nil {
+			return nil, fmt.Errorf("error reading image: %w", err)
+		}
+	} else if req.GetVideo() != nil {
+		metadataType = entity.VideoMetadataType
+		data, err = api.toData(ctx, req.GetVideo())
+		if err != nil {
+			return nil, fmt.Errorf("error reading video: %w", err)
+		}
+	}
+
+	defer helper.QuietClose(data, api.slogger)
+	meme, err = api.crud.CreateMeme(ctx, accountIdUuid, metadataType, data)
+
+	defer helper.QuietClose(data, api.slogger)
+	if err != nil || meme == nil {
 		api.slogger.ErrorContext(ctx, "CreateMeme error", "err", err)
 		return nil, err
 	}
@@ -161,9 +187,31 @@ func (api *SearchServiceApi) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.G
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetMeme is not implemented"))
 }
 
-func NewSearchServiceApi(crud service.MemeCrudService) v1connect.SearchServiceHandler {
+func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto) (temp.S3BackedData, error) {
+	if media.GetS3Path() != "" {
+		result, err := api.dataService.WrapS3Path(ctx, media.GetS3Path())
+		if err != nil {
+			return nil, fmt.Errorf("failed to create backed temp by s3 path: %w", err)
+		}
+		return result, nil
+	}
+
+	if media.GetData() != nil {
+		data, err := api.dataService.ByBytes(ctx, media.GetData())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get data from bytes: %w", err)
+		}
+		return data, nil
+	}
+
+	return nil, errors.New("media temp is empty")
+}
+
+func NewSearchServiceApi(crud service.MemeCrudService, dataService commonservice.TmpDataService) v1connect.SearchServiceHandler {
 	return &SearchServiceApi{
-		crud:    crud,
+		crud:        crud,
+		dataService: dataService,
+
 		slogger: slog.With("service", "SearchServiceApi"),
 	}
 }

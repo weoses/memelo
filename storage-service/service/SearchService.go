@@ -24,7 +24,13 @@ type SearchServiceImpl struct {
 	slogger   *slog.Logger
 }
 
-func (m *SearchServiceImpl) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchServiceResponse, error) {
+func (m *SearchServiceImpl) Search(
+	ctx context.Context,
+	accountId uuid.UUID,
+	query string,
+	afterId *uuid.UUID,
+	size *int,
+) (*SearchServiceResponse, error) {
 	selectedSearcherName := ""
 	selectedElasticData := make([]*entity.ElasticImageMetaData, 0)
 	for _, searcher := range m.searchers {
