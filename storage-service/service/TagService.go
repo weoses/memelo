@@ -40,7 +40,7 @@ func (s *TagServiceImpl) CreateTag(ctx context.Context, accountId uuid.UUID, tag
 
 	metadata, err := s.tagMetadataExtractService.ProcessTagMetadata(ctx, tag, description)
 	if err != nil {
-		return nil, fmt.Errorf("process tag metadata failed: %w", err)
+		return nil, fmt.Errorf("process tag metadataService failed: %w", err)
 	}
 
 	tagEntity := entity.ElasticTag{
@@ -48,7 +48,7 @@ func (s *TagServiceImpl) CreateTag(ctx context.Context, accountId uuid.UUID, tag
 		AccountId:   accountId,
 		Tag:         tag,
 		Description: description,
-		EmbeddingV1: metadata.Embedding,
+		Embedding:   metadata.Embedding,
 		Created:     time.Now().UnixMicro(),
 	}
 

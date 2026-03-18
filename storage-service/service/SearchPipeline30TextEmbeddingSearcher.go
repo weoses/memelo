@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/storage"
@@ -13,8 +14,9 @@ import (
 type TextEmbeddingSearcher struct {
 	SearcherBase
 
-	metadata storage.MetadataStorageService
-	embedder ocr.EmbeddingExtractor
+	metadata     storage.MetadataStorageService
+	embedder     ocr.EmbeddingExtractor
+	searchConfig *conf.SearchConfig
 }
 
 func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
@@ -25,14 +27,12 @@ func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, 
 		return make([]*entity.ElasticImageMetaData, 0), nil
 	}
 
-	embedding, err := s.embedder.GetTextEmbeddingV1(ctx, query)
+	embedding, err := s.embedder.GetTextEmbedding(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("searcher %s: GetTextEmbeddingV1 failed: %w", s.GetName(), err)
+		return nil, fmt.Errorf("searcher %s: GetTextEmbedding failed: %w", s.GetName(), err)
 	}
 
-	count := 5
-
-	results, err := s.metadata.SearchByEmbeddingV1(ctx, accountId, *embedding, count, false)
+	results, err := s.metadata.SearchByEmbeddingV1(ctx, accountId, *embedding, size, s.searchConfig.SemanticTextSearchThreshold)
 	if err != nil {
 		return nil, fmt.Errorf("searcher %s: SearchByEmbeddingV1 failed: %w", s.GetName(), err)
 	}
@@ -40,10 +40,11 @@ func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, 
 	return results, nil
 }
 
-func NewTextEmbeddingSearcher(m storage.MetadataStorageService, e ocr.EmbeddingExtractor) SearchPipelineStep {
+func NewTextEmbeddingSearcher(m storage.MetadataStorageService, e ocr.EmbeddingExtractor, cfg *conf.Config) SearchPipelineStep {
 	return &TextEmbeddingSearcher{
 		SearcherBase: SearcherBase{Name: "text_embedding_searcher", Index: 30},
 		metadata:     m,
 		embedder:     e,
+		searchConfig: cfg.Search,
 	}
 }

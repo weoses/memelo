@@ -1,26 +1,47 @@
 package gapi
 
 import (
-	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
 
 	vision "cloud.google.com/go/vision/apiv1"
+	"github.com/weoses/memelo/common/helper"
+	"github.com/weoses/memelo/common/temp"
+
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
 )
 
+const ocrRatePerSecond = 25
+
 type GcloudTextExtractorImpl struct {
-	client *vision.ImageAnnotatorClient
+	client  *vision.ImageAnnotatorClient
+	limiter *rate.Limiter
+	slogger *slog.Logger
 }
 
-// GetName implements TextExtractor.
+// GetName implements Image2TextExtractor.
 func (m *GcloudTextExtractorImpl) GetName() string {
 	return "GCloud"
 }
 
-func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image []byte) (string, error) {
-	img, err := vision.NewImageFromReader(bytes.NewReader(image))
+func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image temp.Data) (string, error) {
+	m.slogger.InfoContext(ctx, "DoOcr start")
+
+	if err := m.limiter.Wait(ctx); err != nil {
+		return "", fmt.Errorf("rate limiter: %w", err)
+	}
+
+	reader, err := image.Reader()
+	if err != nil {
+		return "", err
+	}
+	defer helper.QuietClose(reader, m.slogger)
+
+	img, err := vision.NewImageFromReader(reader)
 	if err != nil {
 		return "", err
 	}
@@ -31,21 +52,26 @@ func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image []byte) (stri
 	}
 
 	if len(texts) > 0 {
+		m.slogger.InfoContext(ctx, "DoOcr done", "chars", len(texts[0].Description))
 		return texts[0].Description, nil
 	}
+
+	m.slogger.InfoContext(ctx, "DoOcr done", "chars", 0)
 	return "", nil
 }
 
-func NewOcrProcessor(ocrConf *conf.ImageOcrConfig) (ocr.TextExtractor, error) {
+func NewOcrProcessor(cfg *conf.Config) (ocr.Image2TextExtractor, error) {
 	visionClient, err := vision.NewImageAnnotatorClient(
 		context.Background(),
-		option.WithEndpoint(ocrConf.ApiEndpoint),
+		option.WithEndpoint(cfg.ImageOcr.ApiEndpoint),
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &GcloudTextExtractorImpl{
-		client: visionClient,
+		client:  visionClient,
+		limiter: rate.NewLimiter(ocrRatePerSecond, ocrRatePerSecond/2),
+		slogger: slog.With("service", "GcloudTextExtractor"),
 	}, nil
 }

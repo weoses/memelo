@@ -12,6 +12,7 @@ import (
 
 type MessageHandlerService interface {
 	ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
+	ProcessVideoMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 	ProcessCommandAddTag(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
@@ -58,7 +59,7 @@ func (m MessageHandlerServiceImpl) ProcessCommandAddTag(ctx context.Context, mes
 	}, nil
 }
 
-// ProcessMessage implements MessageHandlerService.
+// ProcessImageMessage implements MessageHandlerService.
 func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
 	var fileId string
 	if len(message.Photo) >= 1 {
@@ -86,6 +87,41 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 
 	m.log.InfoContext(ctx, "meme created",
 		"imageId", result.Id,
+		"duplicate", result.DuplicateStatus)
+
+	return &MessageHandlerResponse{
+		Message: fmt.Sprintf(
+			"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+			result.Text,
+			result.Id,
+			result.DuplicateStatus,
+			strings.Join(result.Tags, ", ")),
+		ParseMode: "Markdown",
+	}, nil
+}
+
+func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
+	if message.Video == nil {
+		return nil, errors.New("messageHandlerService: message does not contain a video")
+	}
+
+	file, err := m.fileResolver.GetFile(ctx, message.Video.FileID)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: GetFile failed, fileId: %s : %w", message.Video.FileID, err)
+	}
+
+	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
+	}
+
+	result, err := m.storage.CreateVideo(ctx, file, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: CreateVideo failed : %w", err)
+	}
+
+	m.log.InfoContext(ctx, "video meme created",
+		"memeId", result.Id,
 		"duplicate", result.DuplicateStatus)
 
 	return &MessageHandlerResponse{

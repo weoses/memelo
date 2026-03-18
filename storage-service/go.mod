@@ -1,11 +1,13 @@
 module github.com/weoses/memelo/storage-service
 
-go 1.24.10
+go 1.25.0
 
 require (
 	cloud.google.com/go/aiplatform v1.117.0
+	cloud.google.com/go/speech v1.30.0
 	cloud.google.com/go/vision v1.2.0
 	connectrpc.com/connect v1.19.1
+	github.com/agnivade/levenshtein v1.2.1
 	github.com/google/uuid v1.6.0
 	github.com/h2non/bimg v1.1.9
 	github.com/pkg/errors v0.9.1

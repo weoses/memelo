@@ -1,22 +1,23 @@
 syntax = "proto3";
 
 
-option go_package="github.com/weoses/memelo/gen/proto/v1";
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
 package proto.memelo.v1;
 
 
 message ImageDto {
   string url = 1;
-  int32 width = 2 ;
-  int32 height = 3;
+  optional int32 image_width = 2;
+  optional int32 image_height = 3;
 }
 
 message MemeDto {
   string id = 1;
   string ocr_result = 2;
   ImageDto image_thumbnail = 3;
-  ImageDto image_original = 4;
+  ImageDto media_original = 4;
   repeated string tags = 5;
+  string type = 6;
 }
 
 message DeleteAllRequest {

@@ -1,3 +1,28 @@
+
+### GET index (img)
+GET http://localhost:9200/melo-image-metadata
+Accept: application/json
+Authorization: basic ZWxhc3RpYzplbGFzdGlj
+
+
+### Search index (img)
+GET http://localhost:9200/melo-image-metadata/_search
+Accept: application/json
+Authorization: basic ZWxhc3RpYzplbGFzdGlj
+
+
+### GET index (tags)
+GET http://localhost:9200/melo-tags
+Accept: application/json
+Authorization: basic ZWxhc3RpYzplbGFzdGlj
+
+
+### Search index (tags)
+GET http://localhost:9200/melo-tags/_search
+Accept: application/json
+Authorization: basic ZWxhc3RpYzplbGFzdGlj
+
+
 ### Search by text query
 GRPC localhost:7001/proto.memelo.v1.SearchService/SearchMeme
 
@@ -53,4 +78,11 @@ GRPC localhost:7001/proto.memelo.v1.TagsService/CreateTag
 GRPC localhost:7001/proto.memelo.v1.RecomputeService/RecomputeOcrData
 
 {
+}
+
+###
+GRPC localhost:7001/proto.memelo.v1.SearchService/DeleteAll
+
+{
+"account_id": "00000000-0000-0000-0000-000000000000"
 }

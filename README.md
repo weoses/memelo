@@ -84,7 +84,7 @@ Integration services  ──(gRPC)─►  storage-service
 
 **Start dependencies:**
 ```sh
- docker compose up elasticsearch minio -d
+ docker compose up elasticsearch service -d
 ```
 
 This starts Elasticsearch (`:9200`),  MinIO (`:9000`).

@@ -18,13 +18,16 @@ message ExportImageDto {
 message ExportImageEmbedding {
   string model = 1;
   repeated float data = 2;
+  int32 time_start = 3;
+  int32  time_end = 4;
+  string type = 5;
 }
 
 message ExportResponseChunk {
-    string ocr_result = 1;
-    ExportImageEmbedding embedding = 2;
-    ExportImageDto original_image = 3;
-    ExportImageDto thumbnail_image = 4;
+  string ocr_result = 1;
+  repeated ExportImageEmbedding embedding = 2;
+  ExportImageDto original_image = 3;
+  ExportImageDto thumbnail_image = 4;
 }
 
 

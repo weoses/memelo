@@ -6,21 +6,28 @@ import (
 
 	"github.com/h2non/bimg"
 	"github.com/pkg/errors"
+
+	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 )
 
 type ImageConveter interface {
-	ProcessOriginalImage(ctx context.Context, rawImage []byte) ([]byte, error)
-	MakeThumbnail(ctx context.Context, rawImage []byte) ([]byte, error)
-	GetSize(ctx context.Context, rawImage []byte) (int, int, error)
+	Convert2Jpeg(ctx context.Context, rawImage temp.Data) (temp.Data, error)
+	MakeThumbnail(ctx context.Context, rawImage temp.Data) (temp.Data, error)
+	GetSize(ctx context.Context, rawImage temp.Data) (int, int, error)
 }
 
 type ImageConveterImpl struct {
 	config *conf.ImageConverterConfig
 }
 
-func (i *ImageConveterImpl) GetSize(ctx context.Context, rawImage []byte) (int, int, error) {
-	img := bimg.NewImage(rawImage)
+func (i *ImageConveterImpl) GetSize(ctx context.Context, rawImage temp.Data) (int, int, error) {
+	imgData, err := rawImage.ReadAll()
+	if err != nil {
+		return 0, 0, fmt.Errorf("error reading image bytes: %w", err)
+	}
+
+	img := bimg.NewImage(imgData)
 	size, err := img.Size()
 	if err != nil {
 		return 0, 0, fmt.Errorf("error getting size of image: %w", err)
@@ -28,18 +35,27 @@ func (i *ImageConveterImpl) GetSize(ctx context.Context, rawImage []byte) (int, 
 	return size.Width, size.Height, nil
 }
 
-func (i *ImageConveterImpl) ProcessOriginalImage(ctx context.Context, rawImage []byte) ([]byte, error) {
-	img := bimg.NewImage(rawImage)
+func (i *ImageConveterImpl) Convert2Jpeg(ctx context.Context, rawImage temp.Data) (temp.Data, error) {
+	imgData, err := rawImage.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error reading image bytes: %w", err)
+	}
+
+	img := bimg.NewImage(imgData)
 
 	bytesData, err := img.Convert(bimg.JPEG)
 	if err != nil {
 		return nil, errors.Wrap(err, "Image Convert() to JPEG failed")
 	}
-	return bytesData, nil
+	return temp.DataBytes(bytesData), nil
 }
 
-func (i *ImageConveterImpl) MakeThumbnail(ctx context.Context, rawImage []byte) ([]byte, error) {
-	img := bimg.NewImage(rawImage)
+func (i *ImageConveterImpl) MakeThumbnail(ctx context.Context, rawImage temp.Data) (temp.Data, error) {
+	imgData, err := rawImage.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error reading image bytes: %w", err)
+	}
+	img := bimg.NewImage(imgData)
 	size, err := img.Size()
 	if err != nil {
 		return nil, fmt.Errorf("error getting size of image: %w", err)
@@ -53,11 +69,11 @@ func (i *ImageConveterImpl) MakeThumbnail(ctx context.Context, rawImage []byte) 
 		return nil, errors.Wrap(err, "Image Resize() failed")
 	}
 
-	return bytesData, nil
+	return temp.DataBytes(bytesData), nil
 }
 
-func NewImageConverter(config *conf.ImageConverterConfig) (ImageConveter, error) {
+func NewImageConverter(cfg *conf.Config) (ImageConveter, error) {
 	return &ImageConveterImpl{
-		config: config,
+		config: cfg.ImageConverter,
 	}, nil
 }

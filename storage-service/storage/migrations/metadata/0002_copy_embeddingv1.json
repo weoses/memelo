@@ -1,0 +1,16 @@
+{
+  "method": "POST",
+  "url": "/{index}/_update_by_query",
+  "body": {
+    "script": {
+      "lang": "painless",
+      "source": "if (ctx._source.EmbeddingV1 != null && ctx._source.EmbeddingV1.Data != null) { if (ctx._source.EmbeddingList == null) { ctx._source.EmbeddingList = new ArrayList(); } boolean alreadyMigrated = false; for (def item : ctx._source.EmbeddingList) { if ('image'.equals(item.get('Type'))) { alreadyMigrated = true; break; } } if (!alreadyMigrated) { Map newItem = new HashMap(); newItem.put('Data', ctx._source.EmbeddingV1.Data); newItem.put('Model', ctx._source.EmbeddingV1.Model); newItem.put('Type', 'image'); newItem.put('TimeStart', 0); newItem.put('TimeEnd', 0); ctx._source.EmbeddingList.add(newItem); } }"
+    },
+    "query": {
+      "exists": {
+        "field": "EmbeddingV1.Data"
+      }
+    }
+  },
+  "timeout": "160s"
+}

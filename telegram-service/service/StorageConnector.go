@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -25,6 +26,7 @@ type StorageConnector interface {
 	) ([]*entity.MemeSearchResult, error)
 
 	CreateMeme(ctx context.Context, file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
+	CreateVideo(ctx context.Context, file []byte, accountId uuid.UUID) (*entity.MemeCreateResult, error)
 
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
 
@@ -82,33 +84,35 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		return nil, fmt.Errorf("storageService: search_pipeline meme query failed query: %s : %w", query, err)
 	}
 
-	entityResult := make([]*entity.MemeSearchResult, len(response.Results))
-	for i, dto := range response.Results {
-		id, err := uuid.Parse(dto.GetId())
-		if err != nil {
-			return nil, fmt.Errorf("storageService: failed to parse meme id: %s: %w", dto.GetId(), err)
-		}
-		result := &entity.MemeSearchResult{
-			Id:     id,
-			SortId: dto.GetId(),
-		}
-		if dto.GetImageOriginal() != nil {
-			result.ImageUrl = dto.GetImageOriginal().GetUrl()
-		}
-		if dto.GetImageThumbnail() != nil {
-			result.ThumbUrl = dto.GetImageThumbnail().GetUrl()
-			result.ThumbWidth = int(dto.GetImageThumbnail().GetWidth())
-			result.ThumbHeight = int(dto.GetImageThumbnail().GetHeight())
-		}
-		entityResult[i] = result
-	}
+	entityResult := helper.TransformSlice(
+		response.Results,
+		make([]*entity.MemeSearchResult, len(response.Results)),
+		func(dto *v1.MemeDto) *entity.MemeSearchResult {
+			result := &entity.MemeSearchResult{
+				Id: dto.GetId(),
+			}
+
+			if dto.GetMediaOriginal() != nil {
+				result.MediaUrl = dto.GetMediaOriginal().GetUrl()
+				result.MediaWidth = int(dto.GetMediaOriginal().GetImageWidth())
+				result.MediaHeight = int(dto.GetMediaOriginal().GetImageHeight())
+			}
+
+			if dto.GetImageThumbnail() != nil {
+				result.ThumbUrl = dto.GetImageThumbnail().GetUrl()
+				result.ThumbWidth = int(dto.GetImageThumbnail().GetImageWidth())
+				result.ThumbHeight = int(dto.GetImageThumbnail().GetImageHeight())
+			}
+			result.Type = dto.GetType()
+			return result
+		})
 	return entityResult, nil
 }
 
 func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
 	response, err := s.cl.CreateMeme(ctx, &v1.CreateMemeRequest{
 		AccountId: accountId.String(),
-		RawImage:  file,
+		Image:     &v1.MediaDataDto{Data: file},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("storageService: create meme failed: %w", err)
@@ -126,9 +130,30 @@ func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, file []byte, mime
 	}, nil
 }
 
-func NewStorageConnector(config *conf.StorageServiceConfig) (StorageConnector, error) {
-	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.Uri)
-	tagsCl := v1connect.NewTagsServiceClient(http.DefaultClient, config.Uri)
+func (s *StorageConnectorImpl) CreateVideo(ctx context.Context, file []byte, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
+	response, err := s.cl.CreateMeme(ctx, &v1.CreateMemeRequest{
+		AccountId: accountId.String(),
+		Video:     &v1.MediaDataDto{Data: file},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("storageService: create video meme failed: %w", err)
+	}
+
+	memeId, err := uuid.Parse(response.Result.GetId())
+	if err != nil {
+		return nil, fmt.Errorf("storageService: failed to parse created meme id: %s: %w", response.Result.GetId(), err)
+	}
+	return &entity.MemeCreateResult{
+		Id:              memeId,
+		Text:            response.Result.GetOcrResult(),
+		DuplicateStatus: response.Status.String(),
+		Tags:            response.Result.GetTags(),
+	}, nil
+}
+
+func NewStorageConnector(config *conf.Config) (StorageConnector, error) {
+	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.StorageService.Uri)
+	tagsCl := v1connect.NewTagsServiceClient(http.DefaultClient, config.StorageService.Uri)
 	return &StorageConnectorImpl{
 		cl:     cl,
 		tagsCl: tagsCl,

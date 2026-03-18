@@ -3,10 +3,12 @@ package ocr
 import (
 	"context"
 
+	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
 type EmbeddingExtractor interface {
-	GetImageEmbeddingV1(ctx context.Context, image []byte) (*entity.ElasticEmbeddingV1, error)
-	GetTextEmbeddingV1(ctx context.Context, text string) (*entity.ElasticEmbeddingV1, error)
+	GetImageEmbedding(ctx context.Context, image temp.Data) (*entity.EmbeddingItem, error)
+	GetTextEmbedding(ctx context.Context, text string) (*entity.EmbeddingItem, error)
+	GetVideoEmbedding(ctx context.Context, video temp.Data) ([]*entity.EmbeddingItem, error)
 }

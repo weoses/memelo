@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/weoses/memelo/common/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"github.com/weoses/memelo/storage-service/ocr/ffmpeg"
 	"github.com/weoses/memelo/storage-service/ocr/gapi"
 	"github.com/weoses/memelo/storage-service/service"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
@@ -24,37 +26,54 @@ import (
 
 func main() {
 	config.InitConfig()
-	loggingConfig, err := config.NewLoggingConfig()
+	cfg, err := conf.NewConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
-	config.InitLogs(loggingConfig)
+	config.InitLogs(cfg.Log)
 
 	fx.New(
 		fx.WithLogger(func() fxevent.Logger {
 			return &fxevent.SlogLogger{Logger: slog.With()}
 		}),
 		fx.Provide(NewValidator),
-		fx.Provide(config.NewServerConfig),
-
-		fx.Provide(conf.NewImageEmbeddingConfig),
-		fx.Provide(conf.NewImageConverterConfig),
-		fx.Provide(conf.NewImageStorageConfig),
-		fx.Provide(conf.NewMetadataStorageConfig),
-		fx.Provide(conf.NewImageOcrConfig),
-		fx.Provide(conf.NewElasticTagConfig),
+		fx.Supply(cfg),
 
 		fx.Provide(gapi.NewOcrProcessor),
 		fx.Provide(ocr.NewImageConverter),
 		fx.Provide(gapi.NewImageEmbeddingExtractor),
+		fx.Provide(gapi.NewAudio2TextExtractor),
+		fx.Provide(ffmpeg.NewVideo2Mp4Converter),
+		fx.Provide(ffmpeg.NewVideo2FrameExtractor),
+		fx.Provide(ffmpeg.NewVideo2AudioExtractor),
 
 		fx.Provide(storage2.NewElasticTagStorage),
+		fx.Provide(
+			fx.Annotate(
+				func(s storage2.ElasticTagStorage) storage2.ElasticMigrating {
+					return s.(storage2.ElasticMigrating)
+				},
+				fx.ResultTags(`group:"migrators"`),
+			),
+		),
 		fx.Provide(service.NewTagMetadataExtractService),
 		fx.Provide(service.NewTagService),
 		fx.Provide(api.NewTagsGrpcApi),
 
 		fx.Provide(storage2.NewMetadataStorageService),
-		fx.Provide(storage2.NewImageStorageService),
+		fx.Provide(
+			fx.Annotate(
+				func(s storage2.MetadataStorageService) storage2.ElasticMigrating {
+					return s.(storage2.ElasticMigrating)
+				},
+				fx.ResultTags(`group:"migrators"`),
+			),
+		),
+
+		fx.Provide(storage2.NewMediaStorageServiceS3Adapter),
+		fx.Provide(storage2.NewMediaStorageService),
+		fx.Provide(storage2.NewTmpDataServiceS3Adapter),
+		fx.Provide(storage2.NewTmpDataService),
 		fx.Provide(service.NewExportService),
 		fx.Provide(service.NewMemeCrudService),
 
@@ -70,19 +89,19 @@ func main() {
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewCheckDuplicateByHashPipelineStep,
+				service.NewImageCheckDuplicateByHashPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewToJpegPipelineStep,
+				service.NewImageToJpegPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewCalcEmbeddingPipelineStep,
+				service.NewImageCalcEmbeddingPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
@@ -94,25 +113,67 @@ func main() {
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewOcrImagePipelineStep,
+				service.NewImageOcrImagePipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewCreateThumbnailPipelineStep,
+				service.NewImageCreateThumbnailPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewCalcSizesPipelineStep,
+				service.NewImageCalcSizesPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
 				service.NewCalcTagsPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidToMp4PipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidExtractFramesPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidExtractAudioPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidCalcEmbeddingsPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidSttPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidOcrFramesPipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidCreateThumbnailPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
@@ -163,6 +224,12 @@ func main() {
 		fx.Provide(api.NewSearchServiceApi),
 		fx.Provide(api.NewExportServiceApi),
 		fx.Provide(NewHealthCheck),
+		fx.Invoke(
+			fx.Annotate(
+				storage2.RunMigrations,
+				fx.ParamTags(`group:"migrators"`),
+			),
+		),
 		fx.Invoke(Startup),
 	).Run()
 }
@@ -174,7 +241,7 @@ func Startup(
 	tagsApi v1connect.TagsServiceHandler,
 	recomputeApi v1connect.RecomputeServiceHandler,
 	check *HealthCheck,
-	cfg *config.ServerConfig,
+	cfg *conf.Config,
 ) {
 	mux := http.NewServeMux()
 	pathSearch, handlerSearch := v1connect.NewSearchServiceHandler(searchApi)
@@ -189,8 +256,9 @@ func Startup(
 	mux.Handle("/health", check)
 
 	srv := &http.Server{
-		Addr:    cfg.ListenAddress,
-		Handler: h2c.NewHandler(mux, &http2.Server{}),
+		Addr:         cfg.Server.ListenAddress,
+		Handler:      h2c.NewHandler(mux, &http2.Server{}),
+		WriteTimeout: time.Second * 300,
 	}
 
 	lc.Append(fx.Hook{

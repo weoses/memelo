@@ -20,7 +20,7 @@ services:
       retries: 5
       start_period: 90s
     volumes:
-      - "elastic_data:/usr/share/elasticsearch/data"
+      - "elastic_data:/usr/share/elasticsearch/temp"
 
   minio:
     image: minio/minio:latest
@@ -29,7 +29,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio123}
     ports:
       - "127.0.0.1:9000:9000"
-    command: server /data
+    command: server /temp
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
@@ -39,27 +39,33 @@ services:
     networks:
       - env
     volumes:
-      - "minio_data:/data"
+      - "minio_data:/temp"
 
   storage-service:
     build:
       dockerfile: Dockerfile-storage-service
     image: ghcr.io/weoses/storage-service:${RELEASE_VERSION:-latest}
     environment:
-      METADATA_STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
-      METADATA_STORAGE_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
-      METADATA_STORAGE_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+      METADATA_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
+      METADATA_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      METADATA_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
 
-      TAG_STORAGE_ELASTIC_ADDRESSES: http://elasticsearch:9200
-      TAG_STORAGE_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
-      TAG_STORAGE_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+      TAG_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
+      TAG_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      TAG_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
 
-      IMAGE_STORAGE_S3_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
-      IMAGE_STORAGE_S3_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
-      IMAGE_STORAGE_S3_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
-      IMAGE_STORAGE_S3_SECURE: ${MINIO_SECURE:-false}
+      MEDIA_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
+      MEDIA_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
+      MEDIA_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
+      MEDIA_STORAGE_SECURE: ${MINIO_SECURE:-false}
 
-      IMAGE_EMBEDDING_PROJECTNAME: ${IMAGE_EMBEDDING_PROJECTNAME}
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
+      TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
+      TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
+      TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
+
+      MEDIA_EMBEDDING_PROJECTNAME: ${EMBEDDING_PROJECTNAME}
+      AUDIO_STT_PROJECTNAME: ${EMBEDDING_PROJECTNAME}
 
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
     restart: unless-stopped
@@ -79,8 +85,8 @@ services:
       test: [ "CMD", "curl", "-f", "http://localhost:7001/health" ]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 10s
+      retries: 6
+      start_period: 20s
 
   postgres:
     image: postgres:16-alpine
@@ -93,7 +99,7 @@ services:
     networks:
       - env
     volumes:
-      - "postgres_data:/var/lib/postgresql/data"
+      - "postgres_data:/var/lib/postgresql/temp"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}"]
       interval: 10s
@@ -106,9 +112,12 @@ services:
     image: ghcr.io/weoses/telegram-service:${RELEASE_VERSION:-latest}
     environment:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      WEBHOOK_EXTERNALURL: ${TELEGRAM_WEBHOOK_EXTERNALURL}
       STORAGE_SERVICE_URI: http://storage-service:7001
       POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:7002:7002"
     volumes:
       - "./telegram-service/config.yaml:/app/config/config.yaml"
     networks:

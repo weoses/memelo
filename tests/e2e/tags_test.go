@@ -16,6 +16,7 @@ func uniqueTagName() string {
 }
 
 func TestCreateTag(t *testing.T) {
+	defer cleanup()
 	resp, err := tagsClient.CreateTag(context.Background(), &v1.CreateTagRequest{
 		AccountId:   testAccountId,
 		Tag:         uniqueTagName(),
@@ -30,18 +31,38 @@ func TestCreateTag(t *testing.T) {
 }
 
 func TestListTags(t *testing.T) {
-	resp, err := tagsClient.ListTags(context.Background(), &v1.ListTagRequest{
+	defer cleanup()
+
+	createResp, err := tagsClient.CreateTag(context.Background(), &v1.CreateTagRequest{
+		AccountId:   testAccountId,
+		Tag:         uniqueTagName(),
+		Description: "e2e test tag",
+	})
+	if err != nil {
+		t.Fatalf("CreateTag failed: %v", err)
+	}
+
+	resp2, err := tagsClient.ListTags(context.Background(), &v1.ListTagRequest{
 		AccountId: testAccountId,
 	})
 	if err != nil {
 		t.Fatalf("ListTags failed: %v", err)
 	}
-	if resp.GetResult() == nil {
+	if resp2.GetResult() == nil {
 		t.Fatal("expected non-nil result slice from ListTags")
+	}
+
+	if len(resp2.Result) != 1 {
+		t.Fatal("expected 1 result from ListTags")
+	}
+
+	if createResp.Result.Id != resp2.Result[0].Id {
+		t.Fatal("expected same ID in ListTags response")
 	}
 }
 
 func TestDeleteTag(t *testing.T) {
+	defer cleanup()
 	name := uniqueTagName()
 
 	created, err := tagsClient.CreateTag(context.Background(), &v1.CreateTagRequest{
@@ -76,6 +97,7 @@ func TestDeleteTag(t *testing.T) {
 }
 
 func TestCreateTag_Duplicate(t *testing.T) {
+	defer cleanup()
 	name := uniqueTagName()
 	req := &v1.CreateTagRequest{
 		AccountId:   testAccountId,

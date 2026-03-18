@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	connect "connectrpc.com/connect"
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
@@ -49,10 +49,14 @@ func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRe
 				},
 			}
 
-			if item.Metadata.EmbeddingV1 != nil {
-				chunk.Embedding = &v1.ExportImageEmbedding{
-					Data:  *item.Metadata.EmbeddingV1.Data,
-					Model: item.Metadata.EmbeddingV1.Model,
+			chunk.Embedding = make([]*v1.ExportImageEmbedding, len(item.Metadata.EmbeddingList))
+			for i, emb := range item.Metadata.EmbeddingList {
+				chunk.Embedding[i] = &v1.ExportImageEmbedding{
+					Data:      emb.Data,
+					Model:     emb.Model,
+					Type:      emb.Type,
+					TimeStart: int32(emb.TimeStart),
+					TimeEnd:   int32(emb.TimeEnd),
 				}
 			}
 

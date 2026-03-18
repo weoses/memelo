@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/helper"
+	"github.com/weoses/memelo/telegram-service/entity"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -29,7 +31,7 @@ type InlineHandlerService interface {
 type InineHandlerServiceImpl struct {
 	userAccount UserAccountService
 	storage     StorageConnector
-	config      *conf.InlineConfig
+	config      *conf.Config
 	log         *slog.Logger
 }
 
@@ -75,9 +77,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	query := request.Query
 	delQuery := false
 
-	i.log.InfoContext(ctx, "Inline query:",
-		"userId", userId,
-		"requestId", request.ID,
+	i.log.InfoContext(ctx, "ProcessQuery start:",
 		"query", request.Query,
 		"offset", request.Offset)
 
@@ -102,7 +102,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		ctx,
 		accountId,
 		query,
-		i.config.PageSize,
+		i.config.Inline.PageSize,
 		searchAfter,
 	)
 	if err != nil {
@@ -123,36 +123,50 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		return &retval, nil
 	}
 
-	photos := make([]interface{}, len(results))
-	for index, item := range results {
-		i.log.DebugContext(ctx, "SearchResultItem",
-			"userId", userId,
-			"requestId", request.ID,
-			"index", index,
-			"id", item.Id,
-			"sortId", item.SortId,
-			"url", item.ImageUrl,
-		)
+	photos := helper.TransformSlice(
+		results,
+		make([]interface{}, len(results)),
+		func(item *entity.MemeSearchResult) interface{} {
+			i.log.DebugContext(ctx, "SearchResultItem",
+				"id", item.Id,
+				"url", item.MediaUrl,
+			)
 
-		inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
-			item.Id.String(),
-			item.ImageUrl,
-			item.ThumbUrl,
-		)
-		inlineChoice.MimeType = "image/jpeg"
-		inlineChoice.Height = item.ThumbHeight
-		inlineChoice.Width = item.ThumbWidth
+			if item.Type == entity.ResultTypeImage {
+				inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
+					item.Id,
+					item.MediaUrl,
+					item.ThumbUrl,
+				)
+				inlineChoice.MimeType = "image/jpeg"
+				inlineChoice.Height = item.ThumbHeight
+				inlineChoice.Width = item.ThumbWidth
 
-		if delQuery {
-			inlineChoice.Caption = "Deleted"
-		}
+				if delQuery {
+					inlineChoice.Caption = "Deleted"
+				}
+				return inlineChoice
+			} else if item.Type == entity.ResultTypeVideo {
+				inlineChoice := tgbotapi.NewInlineQueryResultVideo(
+					item.Id,
+					item.MediaUrl)
+				inlineChoice.MimeType = "video/mp4"
+				inlineChoice.ThumbURL = item.ThumbUrl
+				inlineChoice.Width = item.ThumbWidth
+				inlineChoice.Height = item.ThumbHeight
+				inlineChoice.Title = "memelo-video"
 
-		photos[index] = inlineChoice
-	}
+				if delQuery {
+					inlineChoice.Caption = "Deleted"
+				}
+				return inlineChoice
+			}
+			panic("unknown result type")
+		})
 
 	nextOffset := ""
-	if len(results) == i.config.PageSize && i.config.PageSize > 0 {
-		nextOffset = results[i.config.PageSize-1].SortId
+	if len(results) == i.config.Inline.PageSize && i.config.Inline.PageSize > 0 {
+		nextOffset = results[i.config.Inline.PageSize-1].Id
 	}
 
 	i.log.InfoContext(ctx, "Search next offset",
@@ -162,7 +176,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	retval := tgbotapi.InlineConfig{
 		InlineQueryID: request.ID,
-		CacheTime:     5,
+		CacheTime:     50,
 		IsPersonal:    true,
 		NextOffset:    nextOffset,
 	}
@@ -174,7 +188,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 func NewInlineService(
 	userAccount UserAccountService,
 	storage StorageConnector,
-	config *conf.InlineConfig,
+	config *conf.Config,
 ) InlineHandlerService {
 
 	return &InineHandlerServiceImpl{
