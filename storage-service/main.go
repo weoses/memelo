@@ -38,6 +38,7 @@ func main() {
 		}),
 		fx.Provide(NewValidator),
 		fx.Supply(cfg),
+		fx.Provide(func(c *conf.Config) *conf.FfmpegConfig { return c.Ffmpeg }),
 
 		fx.Provide(gapi.NewOcrProcessor),
 		fx.Provide(ocr.NewImageConverter),

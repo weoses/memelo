@@ -6,17 +6,17 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/weoses/memelo/common/helper"
-
 	"github.com/weoses/memelo/common/temp"
+	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
 type Video2Mp4ConverterImpl struct {
 	slogger *slog.Logger
+	cfg     *conf.FfmpegConfig
 }
 
 var _ ocr.Video2Mp4Converter = (*Video2Mp4ConverterImpl)(nil)
@@ -55,13 +55,14 @@ func (f *Video2Mp4ConverterImpl) ConvertToMp4(ctx context.Context, video temp.Da
 	}
 
 	outputPath := filepath.Join(dir, "output.mp4")
-	cmd := exec.CommandContext(ctx, "ffmpeg",
+	cmd := buildCmd(ctx, f.cfg,
 		"-i", ffmpegInputPath,
 		"-c:v", "libx264",
 		"-c:a", "aac",
 		"-movflags", "+faststart",
 		outputPath,
 	)
+	f.slogger.InfoContext(ctx, "ConvertToMp4: running ffmpeg", "cmd", cmd.String())
 	out, err := cmd.CombinedOutput()
 	f.slogger.DebugContext(ctx, "ConvertToMp4: ffmpeg output", "output", string(out))
 	if err != nil {
@@ -83,8 +84,9 @@ func (f *Video2Mp4ConverterImpl) ConvertToMp4(ctx context.Context, video temp.Da
 	return data, nil
 }
 
-func NewVideo2Mp4Converter() ocr.Video2Mp4Converter {
+func NewVideo2Mp4Converter(cfg *conf.FfmpegConfig) ocr.Video2Mp4Converter {
 	return &Video2Mp4ConverterImpl{
 		slogger: slog.With("service", "Video2Mp4Converter"),
+		cfg:     cfg,
 	}
 }

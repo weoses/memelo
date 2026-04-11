@@ -56,6 +56,12 @@ type AudioSttConfig struct {
 	LanguageCodes []string
 }
 
+type FfmpegConfig struct {
+	Binary       string
+	CpuLimit     int
+	ThreadsLimit int
+}
+
 type Config struct {
 	Server            *commonconfig.ServerConfig       `mapstructure:"server"`
 	Log               *commonconfig.LoggingConfig      `mapstructure:"log"`
@@ -70,6 +76,7 @@ type Config struct {
 	ImageConverter    *ImageConverterConfig            `mapstructure:"image-converter"`
 	ImageOcr          *ImageOcrConfig                  `mapstructure:"image-ocr"`
 	AudioStt          *AudioSttConfig                  `mapstructure:"audio-stt"`
+	Ffmpeg            *FfmpegConfig                    `mapstructure:"ffmpeg"`
 }
 
 func NewConfig() (*Config, error) {
