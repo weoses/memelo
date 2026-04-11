@@ -28,9 +28,14 @@ type UserAccountConfig struct {
 	StaticUuid string
 }
 
+type WebhookConfig struct {
+	ExternalUrl string
+}
+
 type Config struct {
 	Server         *commonconfig.ServerConfig  `mapstructure:"server"`
 	Log            *commonconfig.LoggingConfig `mapstructure:"log"`
+	Webhook        *WebhookConfig              `mapstructure:"webhook"`
 	Telegram       *TelegramConfig             `mapstructure:"telegram"`
 	Postgres       *PostgresConfig             `mapstructure:"postgres"`
 	Inline         *InlineConfig               `mapstructure:"inline"`
@@ -44,14 +49,4 @@ func NewConfig() (*Config, error) {
 		return nil, fmt.Errorf("error reading config: %w", err)
 	}
 	return cfg, nil
-}
-
-type WebhookConfig struct {
-	ExternalUrl string
-}
-
-func NewWebhookConfig() (*WebhookConfig, error) {
-	conf := &WebhookConfig{}
-	err := viper.UnmarshalKey("webhook", conf)
-	return conf, err
 }

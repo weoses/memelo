@@ -197,13 +197,13 @@ func NewTelegramBotService(
 	bot *tgbotapi.BotAPI,
 	inline InlineHandlerService,
 	message MessageHandlerService,
-	webhookCfg *conf.WebhookConfig,
+	cfg *conf.Config,
 ) TelegramBotService {
 	return &TelegramBotServiceImpl{
 		bot:        bot,
 		inline:     inline,
 		message:    message,
-		webhookCfg: webhookCfg,
+		webhookCfg: cfg.Webhook,
 		log:        slog.With("service", "TelegramBotService"),
 	}
 }
