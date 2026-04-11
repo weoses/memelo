@@ -2,7 +2,7 @@ log:
   Level: info
 
 server:
-  ListenAddress: :7001
+  ListenAddress: :7002
 
 telegram:
   Token:
