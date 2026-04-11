@@ -65,3 +65,8 @@ image-converter:
 
 image-ocr:
   ApiEndpoint: vision.googleapis.com:443
+
+ffmpeg:
+  Binary: ffmpeg
+  CpuLimit: 0
+  ThreadsLimit: 0

@@ -2,13 +2,13 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.16.2
     environment:
-        ES_JAVA_OPTS: ${ELASTIC_JAVA_OPTS:--Xmx1g}
-        bootstrap.memory_lock: true
-        discovery.type: single-node
-        xpack.security.enabled: true
-        xpack.security.enrollment.enabled: false
-        ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
-        ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+      ES_JAVA_OPTS: ${ELASTIC_JAVA_OPTS:--Xmx1g}
+      bootstrap.memory_lock: true
+      discovery.type: single-node
+      xpack.security.enabled: true
+      xpack.security.enrollment.enabled: false
+      ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
     ports:
       - "127.0.0.1:9200:9200"
     networks:
@@ -68,6 +68,11 @@ services:
       AUDIO_STT_PROJECTNAME: ${EMBEDDING_PROJECTNAME}
 
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
+
+      FFMPEG_BINARY: ${FFMPEG_BINARY}
+      FFMPEG_CPULIMIT: ${FFMPEG_CPULIMIT}
+      FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT}
+
     restart: unless-stopped
     ports:
       - "127.0.0.1:7001:7001"
@@ -101,7 +106,7 @@ services:
     volumes:
       - "postgres_data:/var/lib/postgresql/temp"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}" ]
       interval: 10s
       timeout: 5s
       retries: 5

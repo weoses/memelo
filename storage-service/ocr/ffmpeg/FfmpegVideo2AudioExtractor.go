@@ -6,17 +6,17 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/weoses/memelo/common/helper"
-
 	"github.com/weoses/memelo/common/temp"
+	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
 type Video2AudioExtractorImpl struct {
 	slogger *slog.Logger
+	cfg     *conf.FfmpegConfig
 }
 
 var _ ocr.Video2AudioExtractor = (*Video2AudioExtractorImpl)(nil)
@@ -55,7 +55,7 @@ func (f *Video2AudioExtractorImpl) ExtractAudio(ctx context.Context, video temp.
 	}
 
 	outputPath := filepath.Join(dir, "audio.wav")
-	cmd := exec.CommandContext(ctx, "ffmpeg",
+	cmd := buildCmd(ctx, f.cfg,
 		"-i", ffmpegInputPath,
 		"-vn",
 		"-acodec", "pcm_s16le",
@@ -63,6 +63,7 @@ func (f *Video2AudioExtractorImpl) ExtractAudio(ctx context.Context, video temp.
 		"-ac", "1",
 		outputPath,
 	)
+	f.slogger.InfoContext(ctx, "ExtractAudio: running ffmpeg", "cmd", cmd.String())
 	out, err := cmd.CombinedOutput()
 	f.slogger.DebugContext(ctx, "ExtractAudio: ffmpeg output", "output", string(out))
 	if err != nil {
@@ -84,8 +85,9 @@ func (f *Video2AudioExtractorImpl) ExtractAudio(ctx context.Context, video temp.
 	return data, nil
 }
 
-func NewVideo2AudioExtractor() ocr.Video2AudioExtractor {
+func NewVideo2AudioExtractor(cfg *conf.FfmpegConfig) ocr.Video2AudioExtractor {
 	return &Video2AudioExtractorImpl{
 		slogger: slog.With("service", "Video2AudioExtractor"),
+		cfg:     cfg,
 	}
 }

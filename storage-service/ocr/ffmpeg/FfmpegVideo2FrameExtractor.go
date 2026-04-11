@@ -6,17 +6,17 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/weoses/memelo/common/helper"
-
 	"github.com/weoses/memelo/common/temp"
+	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
 type Video2FrameExtractorImpl struct {
 	slogger *slog.Logger
+	cfg     *conf.FfmpegConfig
 }
 
 var _ ocr.Video2FrameExtractor = (*Video2FrameExtractorImpl)(nil)
@@ -55,12 +55,13 @@ func (f *Video2FrameExtractorImpl) ExtractFrames(ctx context.Context, video temp
 	}
 
 	outputPattern := filepath.Join(dir, "frame%06d.jpg")
-	cmd := exec.CommandContext(ctx, "ffmpeg",
+	cmd := buildCmd(ctx, f.cfg,
 		"-i", ffmpegInputPath,
 		"-vf", "fps=1",
 		"-f", "image2",
 		outputPattern,
 	)
+	f.slogger.InfoContext(ctx, "ExtractFrames: running ffmpeg", "cmd", cmd.String())
 	out, err := cmd.CombinedOutput()
 	if out != nil {
 		f.slogger.DebugContext(ctx, "ExtractFrames: ffmpeg output", "output", string(out))
@@ -105,8 +106,9 @@ func (f *Video2FrameExtractorImpl) processExtractedFrame(path string) (temp.Data
 	return data, nil
 }
 
-func NewVideo2FrameExtractor() ocr.Video2FrameExtractor {
+func NewVideo2FrameExtractor(cfg *conf.FfmpegConfig) ocr.Video2FrameExtractor {
 	return &Video2FrameExtractorImpl{
 		slogger: slog.With("service", "Video2FrameExtractor"),
+		cfg:     cfg,
 	}
 }
