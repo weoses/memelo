@@ -77,7 +77,7 @@ func NewS3OperationsAdapter(cfg *config.MediaStorageConfig) (S3OperationsAdapter
 		BucketName: cfg.Bucket,
 		Endpoint:   cfg.Endpoint,
 		Secure:     cfg.Secure,
-		slogger:    slog.With("service", "S3OperationsAdapterService"),
+		slogger:    slog.With("service", "S3OperationsAdapterService", "endpoint", cfg.Endpoint, "bucket", cfg.Bucket),
 	}, nil
 }
 
