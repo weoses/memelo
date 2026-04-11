@@ -8,6 +8,7 @@ import (
 	vision "cloud.google.com/go/vision/apiv1"
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
+	pb "google.golang.org/genproto/googleapis/cloud/vision/v1"
 
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
@@ -35,15 +36,25 @@ func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image temp.Data) (s
 		return "", fmt.Errorf("rate limiter: %w", err)
 	}
 
-	reader, err := image.Reader()
-	if err != nil {
-		return "", err
+	var img *pb.Image
+	if s3data, ok := image.(temp.S3BackedData); ok {
+		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+			if gcsUri, ok := toGcsUri(s3path); ok {
+				m.slogger.InfoContext(ctx, "DoOcr using gcsUri", "uri", gcsUri)
+				img = vision.NewImageFromURI(gcsUri)
+			}
+		}
 	}
-	defer helper.QuietClose(reader, m.slogger)
-
-	img, err := vision.NewImageFromReader(reader)
-	if err != nil {
-		return "", err
+	if img == nil {
+		reader, err := image.Reader()
+		if err != nil {
+			return "", err
+		}
+		defer helper.QuietClose(reader, m.slogger)
+		img, err = vision.NewImageFromReader(reader)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	texts, err := m.client.DetectTexts(ctx, img, nil, 100)

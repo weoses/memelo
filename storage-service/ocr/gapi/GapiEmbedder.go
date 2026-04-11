@@ -71,11 +71,21 @@ func (i *GcloudImageEmbeddingExtractorImpl) GetImageEmbedding(ctx context.Contex
 
 	var embeddingItem *entity.EmbeddingItem
 	var err error
-	// TODO
-	if gcsURI, ok := toGcsUri(""); ok {
-		i.slogger.InfoContext(ctx, "GetImageEmbedding using gcsUri", "uri", gcsURI)
-		embeddingItem, err = i.generateWithLowerDimension(nil, &gcsURI)
-	} else {
+	if s3data, ok := rawImage.(temp.S3BackedData); ok {
+		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+			if gcsURI, ok := toGcsUri(s3path); ok {
+				i.slogger.InfoContext(ctx, "GetImageEmbedding using gcsUri", "uri", gcsURI)
+				embeddingItem, err = i.generateWithLowerDimension(nil, &gcsURI)
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate embedding: %w", err)
+				}
+				i.slogger.InfoContext(ctx, "GetImageEmbedding done")
+				return embeddingItem, nil
+			}
+		}
+	}
+	{
+		i.slogger.InfoContext(ctx, "GetImageEmbedding using base64")
 		bufBase64 := bytes.NewBufferString("")
 		base64encoder := base64.NewEncoder(base64.RawStdEncoding, bufBase64)
 		var reader io.ReadCloser
@@ -175,13 +185,18 @@ func (i *GcloudImageEmbeddingExtractorImpl) GetVideoEmbedding(ctx context.Contex
 	}
 
 	videoPayload := map[string]any{}
-	// TODO
-	if gcsUri, ok := toGcsUri(""); ok {
-		videoPayload["gcsUri"] = gcsUri
-	} else {
+	if s3data, ok := video.(temp.S3BackedData); ok {
+		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+			if gcsUri, ok := toGcsUri(s3path); ok {
+				i.slogger.InfoContext(ctx, "GetVideoEmbedding using gcsUri", "uri", gcsUri)
+				videoPayload["gcsUri"] = gcsUri
+			}
+		}
+	}
+	if _, hasGcs := videoPayload["gcsUri"]; !hasGcs {
+		i.slogger.InfoContext(ctx, "GetVideoEmbedding using base64")
 		bufBase64 := bytes.NewBufferString("")
 		base64encoder := base64.NewEncoder(base64.RawStdEncoding, bufBase64)
-		var reader io.ReadCloser
 		reader, err := video.Reader()
 		if err != nil {
 			return nil, fmt.Errorf("error reading temp: %w", err)

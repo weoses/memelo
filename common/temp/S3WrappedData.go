@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -16,12 +17,14 @@ type s3wrappedData struct {
 	download func(ctx context.Context, s3path string) (Data, error)
 	delete   func(ctx context.Context, s3path string) error
 	closed   bool
+	slogger  *slog.Logger
 }
 
 func (m *s3wrappedData) Reader() (io.ReadCloser, error) {
 	if m.physical == nil {
 		var err error
 		m.once.Do(func() {
+			m.slogger.Info("s3wrappedData: downloaded object from s3", "uri", m.s3path)
 			m.physical, err = m.download(context.Background(), m.s3path)
 		})
 
@@ -46,6 +49,7 @@ func (m *s3wrappedData) GetS3Path(ctx context.Context) (string, error) {
 	if m.s3path == "" {
 		m.once.Do(func() {
 			m.s3path, err = m.upload(ctx, m.physical)
+			m.slogger.InfoContext(ctx, "s3wrappedData: uploaded object to s3", "uri", m.s3path)
 		})
 	}
 	return m.s3path, err
@@ -82,6 +86,7 @@ func NewS3BackedDataFromLocal(
 		physical: physical,
 		upload:   upload,
 		delete:   delete,
+		slogger:  slog.With(slog.String("component", "s3wrappedData")),
 	}
 }
 
@@ -94,5 +99,6 @@ func NewS3BackedDataFromPath(
 		s3path:   s3path,
 		download: download,
 		delete:   delete,
+		slogger:  slog.With(slog.String("component", "s3wrappedData")),
 	}
 }
