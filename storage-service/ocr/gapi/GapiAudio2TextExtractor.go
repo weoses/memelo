@@ -25,22 +25,36 @@ type GcloudAudio2TextExtractorImpl struct {
 
 func (g *GcloudAudio2TextExtractorImpl) Transcript(ctx context.Context, audio temp.Data) (string, error) {
 	g.slogger.InfoContext(ctx, "Transcript start")
-	audioBytes, err := audio.ReadAll()
-	if err != nil {
-		return "", fmt.Errorf("transcript: read audio: %w", err)
-	}
 
-	resp, err := g.client.Recognize(ctx, &speechpb.RecognizeRequest{
+	req := &speechpb.RecognizeRequest{
 		Recognizer: g.recognizer,
 		Config: &speechpb.RecognitionConfig{
 			DecodingConfig: &speechpb.RecognitionConfig_AutoDecodingConfig{},
 			LanguageCodes:  g.languageCodes,
 			Model:          g.model,
 		},
-		AudioSource: &speechpb.RecognizeRequest_Content{
-			Content: audioBytes,
-		},
-	})
+	}
+
+	usedGcs := false
+	if s3data, ok := audio.(temp.S3BackedData); ok {
+		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+			if gcsUri, ok := toGcsUri(s3path); ok {
+				g.slogger.InfoContext(ctx, "Transcript using gcsUri", "uri", gcsUri)
+				req.AudioSource = &speechpb.RecognizeRequest_Uri{Uri: gcsUri}
+				usedGcs = true
+			}
+		}
+	}
+	if !usedGcs {
+		g.slogger.InfoContext(ctx, "Transcript using base64")
+		audioBytes, err := audio.ReadAll()
+		if err != nil {
+			return "", fmt.Errorf("transcript: read audio: %w", err)
+		}
+		req.AudioSource = &speechpb.RecognizeRequest_Content{Content: audioBytes}
+	}
+
+	resp, err := g.client.Recognize(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("transcript: recognize failed: %w", err)
 	}
