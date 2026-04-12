@@ -22,25 +22,6 @@ services:
     volumes:
       - "elastic_data:/usr/share/elasticsearch/temp"
 
-  minio:
-    image: minio/minio:latest
-    environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio123}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio123}
-    ports:
-      - "127.0.0.1:9000:9000"
-    command: server /temp
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    networks:
-      - env
-    volumes:
-      - "minio_data:/temp"
-
   storage-service:
     build:
       dockerfile: Dockerfile-storage-service
