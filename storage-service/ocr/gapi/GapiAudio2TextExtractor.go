@@ -36,8 +36,8 @@ func (g *GcloudAudio2TextExtractorImpl) Transcript(ctx context.Context, audio te
 	}
 
 	usedGcs := false
-	if s3data, ok := audio.(temp.S3BackedData); ok {
-		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+	if s3data, ok := audio.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+		if s3path, pathErr := s3data.GetS3Url(ctx); pathErr == nil {
 			if gcsUri, ok := toGcsUri(s3path); ok {
 				g.slogger.InfoContext(ctx, "Transcript using gcsUri", "uri", gcsUri)
 				req.AudioSource = &speechpb.RecognizeRequest_Uri{Uri: gcsUri}

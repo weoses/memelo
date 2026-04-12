@@ -37,8 +37,8 @@ func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image temp.Data) (s
 	}
 
 	var img *pb.Image
-	if s3data, ok := image.(temp.S3BackedData); ok {
-		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+	if s3data, ok := image.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+		if s3path, pathErr := s3data.GetS3Url(ctx); pathErr == nil {
 			if gcsUri, ok := toGcsUri(s3path); ok {
 				m.slogger.InfoContext(ctx, "DoOcr using gcsUri", "uri", gcsUri)
 				img = vision.NewImageFromURI(gcsUri)
