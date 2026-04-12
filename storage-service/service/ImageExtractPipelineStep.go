@@ -79,7 +79,7 @@ func (m *MetadataPipelineContext) Close() error {
 	helper.QuietClose(m.ImageThumbnail, tmpLogger)
 
 	if m.VideoFrames != nil {
-		for i := range m.StorageArtifacts {
+		for i := range m.VideoFrames {
 			helper.QuietClose(m.VideoFrames[i], tmpLogger)
 		}
 	}
