@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	vision "cloud.google.com/go/vision/apiv1"
+	pb "cloud.google.com/go/vision/v2/apiv1/visionpb"
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
-	pb "google.golang.org/genproto/googleapis/cloud/vision/v1"
 
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
