@@ -46,6 +46,7 @@ func (m *GcloudTextExtractorImpl) DoOcr(ctx context.Context, image temp.Data) (s
 		}
 	}
 	if img == nil {
+		m.slogger.InfoContext(ctx, "DoOcr using base64")
 		reader, err := image.Reader()
 		if err != nil {
 			return "", err

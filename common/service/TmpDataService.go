@@ -39,7 +39,7 @@ func (s *TmpDataServiceImpl) WrapData(ctx context.Context, data temp.Data) (temp
 		data,
 		func(ctx context.Context, d temp.Data) (string, error) {
 			path := uuid.NewString()
-			if err := s.ops.Save(ctx, path, d); err != nil {
+			if err := s.ops.Save(ctx, path, d, storage.WithContentType("application/octet-stream")); err != nil {
 				return "", fmt.Errorf("upload failed: %w", err)
 			}
 			return path, nil
