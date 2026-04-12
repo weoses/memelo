@@ -132,34 +132,40 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 				"url", item.MediaUrl,
 			)
 
-			if item.Type == entity.ResultTypeImage {
-				inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
-					item.Id,
-					item.MediaUrl,
-					item.ThumbUrl,
-				)
-				inlineChoice.MimeType = "image/jpeg"
-				inlineChoice.Height = item.ThumbHeight
-				inlineChoice.Width = item.ThumbWidth
+			switch item.Type {
+			case entity.ResultTypeImage:
+				{
+					inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
+						item.Id,
+						item.MediaUrl,
+						item.ThumbUrl,
+					)
+					inlineChoice.MimeType = "image/jpeg"
+					inlineChoice.Height = item.ThumbHeight
+					inlineChoice.Width = item.ThumbWidth
 
-				if delQuery {
-					inlineChoice.Caption = "Deleted"
+					if delQuery {
+						inlineChoice.Caption = "Deleted"
+					}
+					return inlineChoice
 				}
-				return inlineChoice
-			} else if item.Type == entity.ResultTypeVideo {
-				inlineChoice := tgbotapi.NewInlineQueryResultVideo(
-					item.Id,
-					item.MediaUrl)
-				inlineChoice.MimeType = "video/mp4"
-				inlineChoice.ThumbURL = item.ThumbUrl
-				inlineChoice.Width = item.ThumbWidth
-				inlineChoice.Height = item.ThumbHeight
-				inlineChoice.Title = "memelo-video"
 
-				if delQuery {
-					inlineChoice.Caption = "Deleted"
+			case entity.ResultTypeVideo:
+				{
+					inlineChoice := tgbotapi.NewInlineQueryResultVideo(
+						item.Id,
+						item.MediaUrl)
+					inlineChoice.MimeType = "video/mp4"
+					inlineChoice.ThumbURL = item.ThumbUrl
+					inlineChoice.Width = item.ThumbWidth
+					inlineChoice.Height = item.ThumbHeight
+					inlineChoice.Title = "memelo-video"
+
+					if delQuery {
+						inlineChoice.Caption = "Deleted"
+					}
+					return inlineChoice
 				}
-				return inlineChoice
 			}
 			panic("unknown result type")
 		})

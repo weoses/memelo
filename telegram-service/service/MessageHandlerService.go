@@ -161,7 +161,7 @@ func (m MessageHandlerServiceImpl) downloadToS3(ctx context.Context, fileURL str
 	if err != nil {
 		return nil, fmt.Errorf("downloadToS3: http get: %w", err)
 	}
-	defer resp.Body.Close()
+	defer helper.QuietClose(resp.Body, m.slogger)
 
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("downloadToS3: non-2xx status: %d", resp.StatusCode)
