@@ -5,9 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/weoses/memelo/common/helper"
+	commonservice "github.com/weoses/memelo/common/service"
+	"github.com/weoses/memelo/common/temp"
 )
 
 type MessageHandlerService interface {
@@ -25,7 +29,8 @@ type MessageHandlerServiceImpl struct {
 	storage            StorageConnector
 	fileResolver       TelegramFileResolverService
 	userAccountService UserAccountService
-	log                *slog.Logger
+	tmpDataService     commonservice.TmpDataService
+	slogger            *slog.Logger
 }
 
 func (m MessageHandlerServiceImpl) ProcessCommandAddTag(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
@@ -59,7 +64,6 @@ func (m MessageHandlerServiceImpl) ProcessCommandAddTag(ctx context.Context, mes
 	}, nil
 }
 
-// ProcessImageMessage implements MessageHandlerService.
 func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
 	var fileId string
 	if len(message.Photo) >= 1 {
@@ -70,22 +74,28 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 		return nil, errors.New("messageHandlerService: message dont contain image")
 	}
 
-	file, err := m.fileResolver.GetFile(ctx, fileId)
+	fileURL, err := m.fileResolver.GetFileURL(ctx, fileId)
 	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: GetFile failed, fileId: %s : %w", fileId, err)
+		return nil, fmt.Errorf("messageHandlerService: GetFileURL failed, fileId: %s : %w", fileId, err)
 	}
+
+	s3data, err := m.downloadToS3(ctx, fileURL)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: downloadToS3 failed: %w", err)
+	}
+	defer helper.QuietClose(s3data, m.slogger)
 
 	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
 	}
 
-	result, err := m.storage.CreateMeme(ctx, file, "image/jpeg", accountId)
+	result, err := m.storage.CreateMeme(ctx, s3data, "image/jpeg", accountId)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: CreateMeme failed : %w", err)
 	}
 
-	m.log.InfoContext(ctx, "meme created",
+	m.slogger.InfoContext(ctx, "meme created",
 		"imageId", result.Id,
 		"duplicate", result.DuplicateStatus)
 
@@ -105,22 +115,28 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 		return nil, errors.New("messageHandlerService: message does not contain a video")
 	}
 
-	file, err := m.fileResolver.GetFile(ctx, message.Video.FileID)
+	fileURL, err := m.fileResolver.GetFileURL(ctx, message.Video.FileID)
 	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: GetFile failed, fileId: %s : %w", message.Video.FileID, err)
+		return nil, fmt.Errorf("messageHandlerService: GetFileURL failed, fileId: %s : %w", message.Video.FileID, err)
 	}
+
+	s3data, err := m.downloadToS3(ctx, fileURL)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: downloadToS3 failed: %w", err)
+	}
+	defer helper.QuietClose(s3data, m.slogger)
 
 	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
 	}
 
-	result, err := m.storage.CreateVideo(ctx, file, accountId)
+	result, err := m.storage.CreateVideo(ctx, s3data, accountId)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: CreateVideo failed : %w", err)
 	}
 
-	m.log.InfoContext(ctx, "video meme created",
+	m.slogger.InfoContext(ctx, "video meme created",
 		"memeId", result.Id,
 		"duplicate", result.DuplicateStatus)
 
@@ -135,15 +151,41 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 	}, nil
 }
 
+func (m MessageHandlerServiceImpl) downloadToS3(ctx context.Context, fileURL string) (temp.S3BackedData, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("downloadToS3: create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("downloadToS3: http get: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("downloadToS3: non-2xx status: %d", resp.StatusCode)
+	}
+
+	s3data, err := m.tmpDataService.ByReader(ctx, resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("downloadToS3: upload to s3: %w", err)
+	}
+
+	return s3data, nil
+}
+
 func NewMessageHandlerService(
 	storage StorageConnector,
 	fileResolver TelegramFileResolverService,
 	userAccountService UserAccountService,
+	tmpDataService commonservice.TmpDataService,
 ) MessageHandlerService {
 	return &MessageHandlerServiceImpl{
 		storage:            storage,
 		fileResolver:       fileResolver,
 		userAccountService: userAccountService,
-		log:                slog.With("service", "MessageHandlerService"),
+		tmpDataService:     tmpDataService,
+		slogger:            slog.With("service", "MessageHandlerService"),
 	}
 }

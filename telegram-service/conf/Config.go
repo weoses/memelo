@@ -33,14 +33,15 @@ type WebhookConfig struct {
 }
 
 type Config struct {
-	Server         *commonconfig.ServerConfig  `mapstructure:"server"`
-	Log            *commonconfig.LoggingConfig `mapstructure:"log"`
-	Webhook        *WebhookConfig              `mapstructure:"webhook"`
-	Telegram       *TelegramConfig             `mapstructure:"telegram"`
-	Postgres       *PostgresConfig             `mapstructure:"postgres"`
-	Inline         *InlineConfig               `mapstructure:"inline"`
-	StorageService *StorageServiceConfig       `mapstructure:"storage-service"`
-	UserAccount    *UserAccountConfig          `mapstructure:"user-account"`
+	Server         *commonconfig.ServerConfig       `mapstructure:"server"`
+	Log            *commonconfig.LoggingConfig      `mapstructure:"log"`
+	Webhook        *WebhookConfig                   `mapstructure:"webhook"`
+	Telegram       *TelegramConfig                  `mapstructure:"telegram"`
+	Postgres       *PostgresConfig                  `mapstructure:"postgres"`
+	Inline         *InlineConfig                    `mapstructure:"inline"`
+	StorageService *StorageServiceConfig            `mapstructure:"storage-service"`
+	UserAccount    *UserAccountConfig               `mapstructure:"user-account"`
+	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
 }
 
 func NewConfig() (*Config, error) {

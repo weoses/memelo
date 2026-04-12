@@ -11,6 +11,7 @@ import (
 	"github.com/weoses/memelo/common/config"
 	"github.com/weoses/memelo/telegram-service/conf"
 	"github.com/weoses/memelo/telegram-service/service"
+	tgstorage "github.com/weoses/memelo/telegram-service/storage"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 )
@@ -60,6 +61,8 @@ func main() {
 		}),
 		fx.Supply(cfg),
 		fx.Provide(service.NewTelegramBot),
+		fx.Provide(tgstorage.NewTmpDataServiceS3Adapter),
+		fx.Provide(tgstorage.NewTmpDataService),
 		fx.Provide(service.NewStorageConnector),
 		fx.Provide(fx.Annotate(service.NewTelegramFileResolverService, fx.From(new(*tgbotapi.BotAPI)))),
 		fx.Provide(service.NewUserAccountService),

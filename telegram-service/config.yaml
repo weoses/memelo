@@ -23,3 +23,10 @@ user-account:
 
 webhook:
   ExternalUrl: ""
+
+temp-storage:
+  Endpoint:
+  AccessKey:
+  SecretKey:
+  Bucket: melo-temp
+  Secure: false
