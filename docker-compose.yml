@@ -67,8 +67,6 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-      minio:
-        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:7001/health" ]
       interval: 30s

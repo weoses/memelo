@@ -12,6 +12,14 @@ type tempBasedData struct {
 	closed bool
 }
 
+func (m *tempBasedData) Size() (int64, error) {
+	info, err := os.Stat(m.path)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
 func (m *tempBasedData) Reader() (io.ReadCloser, error) {
 	return os.Open(m.path)
 }

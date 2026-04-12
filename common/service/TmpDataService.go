@@ -37,6 +37,7 @@ func (s *TmpDataServiceImpl) ByReader(ctx context.Context, reader io.Reader) (te
 func (s *TmpDataServiceImpl) WrapData(ctx context.Context, data temp.Data) (temp.S3BackedData, error) {
 	return temp.NewS3BackedDataFromLocal(
 		data,
+		s.ops.IsGs(),
 		func(ctx context.Context, d temp.Data) (string, error) {
 			path := uuid.NewString()
 			if err := s.ops.Save(ctx, path, d, storage.WithContentType("application/octet-stream")); err != nil {
@@ -44,6 +45,7 @@ func (s *TmpDataServiceImpl) WrapData(ctx context.Context, data temp.Data) (temp
 			}
 			return path, nil
 		},
+		s.ops.GetUrl,
 		s.ops.Delete,
 	), nil
 }
@@ -51,7 +53,9 @@ func (s *TmpDataServiceImpl) WrapData(ctx context.Context, data temp.Data) (temp
 func (s *TmpDataServiceImpl) WrapS3Path(ctx context.Context, path string) (temp.S3BackedData, error) {
 	return temp.NewS3BackedDataFromPath(
 		path,
+		s.ops.IsGs(),
 		s.ops.Read,
+		s.ops.GetUrl,
 		s.ops.Delete,
 	), nil
 }

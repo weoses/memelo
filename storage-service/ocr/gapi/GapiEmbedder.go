@@ -71,8 +71,8 @@ func (i *GcloudImageEmbeddingExtractorImpl) GetImageEmbedding(ctx context.Contex
 
 	var embeddingItem *entity.EmbeddingItem
 	var err error
-	if s3data, ok := rawImage.(temp.S3BackedData); ok {
-		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+	if s3data, ok := rawImage.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+		if s3path, pathErr := s3data.GetS3Url(ctx); pathErr == nil {
 			if gcsURI, ok := toGcsUri(s3path); ok {
 				i.slogger.InfoContext(ctx, "GetImageEmbedding using gcsUri", "uri", gcsURI)
 				embeddingItem, err = i.generateWithLowerDimension(nil, &gcsURI)
@@ -185,8 +185,8 @@ func (i *GcloudImageEmbeddingExtractorImpl) GetVideoEmbedding(ctx context.Contex
 	}
 
 	videoPayload := map[string]any{}
-	if s3data, ok := video.(temp.S3BackedData); ok {
-		if s3path, pathErr := s3data.GetS3Path(ctx); pathErr == nil {
+	if s3data, ok := video.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+		if s3path, pathErr := s3data.GetS3Url(ctx); pathErr == nil {
 			if gcsUri, ok := toGcsUri(s3path); ok {
 				i.slogger.InfoContext(ctx, "GetVideoEmbedding using gcsUri", "uri", gcsUri)
 				videoPayload["gcsUri"] = gcsUri

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -23,6 +24,7 @@ type S3OperationsAdapter interface {
 	GetUrl(ctx context.Context, path string) (string, error)
 	GetPresignedUrl(ctx context.Context, path string) (string, error)
 	Delete(ctx context.Context, path string) error
+	IsGs() bool
 }
 
 type SaveOptionsParameter struct {
@@ -81,7 +83,16 @@ func NewS3OperationsAdapter(cfg *config.MediaStorageConfig) (S3OperationsAdapter
 	}, nil
 }
 
+func (m *S3OperationsAdapterService) IsGs() bool {
+	return strings.Contains(m.Endpoint, "googleapis.com")
+}
+
 func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data temp.Data, options ...SaveOptions) error {
+	size, err := data.Size()
+	if err != nil {
+		return fmt.Errorf("failed to get size of data: %w", err)
+	}
+
 	dataReader, err := data.Reader()
 	if err != nil {
 		return fmt.Errorf("failed to get temp reader: %w", err)
@@ -97,6 +108,7 @@ func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data
 	if parameters.Expires != nil {
 		putOptions.Expires = *parameters.Expires
 	}
+
 	if parameters.ContentType != nil {
 		putOptions.ContentType = *parameters.ContentType
 	}
@@ -107,7 +119,7 @@ func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data
 		m.BucketName,
 		path,
 		dataReader,
-		-1,
+		size,
 		putOptions,
 	)
 	if err != nil {
