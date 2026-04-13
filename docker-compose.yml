@@ -1,39 +1,25 @@
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.16.2
-    environment:
-      ES_JAVA_OPTS: ${ELASTIC_JAVA_OPTS:--Xmx1g}
-      bootstrap.memory_lock: true
-      discovery.type: single-node
-      xpack.security.enabled: true
-      xpack.security.enrollment.enabled: false
-      ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
-      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
-    ports:
-      - "127.0.0.1:9200:9200"
-    networks:
-      - env
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9200", "-u", "${ELASTIC_USERNAME:-elastic}:${ELASTIC_PASSWORD:-elastic}" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-    volumes:
-      - "elastic_data:/usr/share/elasticsearch/data"
-
   storage-service:
     build:
       dockerfile: Dockerfile-storage-service
     image: ghcr.io/weoses/storage-service:${RELEASE_VERSION:-latest}
     environment:
-      METADATA_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
-      METADATA_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
-      METADATA_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+#      METADATA_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
+#      METADATA_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+#      METADATA_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
 
-      TAG_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
-      TAG_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
-      TAG_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+#      TAG_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
+#      TAG_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+#      TAG_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+
+      METADATA_DB_ELASTIC_CLOUDID: ${ELASTIC_CLOUDID}
+      METADATA_DB_ELASTIC_APIKEY: ${ELASTIC_APIKEY}
+      METADATA_DB_INDEX:  ${METADATA_ELASTIC_INDEX}
+
+      TAG_DB_ELASTIC_CLOUDID: ${ELASTIC_CLOUDID}
+      TAG_DB_ELASTIC_APIKEY:  ${ELASTIC_APIKEY}
+      TAG_DB_INDEX: ${TAG_ELASTIC_INDEX}
+
 
       MEDIA_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       MEDIA_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
@@ -64,9 +50,6 @@ services:
       - "${GOOGLE_CREDS_PATH:-$HOME/.config/gcloud/application_default_credentials.json}:/app/creds/creds.json"
     networks:
       - env
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:7001/health" ]
       interval: 30s
@@ -123,6 +106,5 @@ networks:
   env:
 
 volumes:
-  elastic_data:
   minio_data:
   postgres_data:
