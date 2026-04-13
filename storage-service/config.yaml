@@ -35,13 +35,17 @@ metadata-db:
     Addresses:
     Username:
     Password:
-  Index: melo-image-metadata
+    CloudID:
+    ApiKey:
+  Index: melo-media-metadata
 
 tag-db:
   Elastic:
     Addresses:
     Username:
     Password:
+    CloudID:
+    ApiKey:
   Index: melo-tags
 
 media-embedding:
