@@ -40,13 +40,11 @@ func main() {
 		fx.Supply(cfg),
 		fx.Provide(func(c *conf.Config) *conf.FfmpegConfig { return c.Ffmpeg }),
 
-		fx.Provide(gapi.NewOcrProcessor),
 		fx.Provide(ocr.NewImageConverter),
 		fx.Provide(gapi.NewImageEmbeddingExtractor),
-		fx.Provide(gapi.NewAudio2TextExtractor),
 		fx.Provide(ffmpeg.NewVideo2Mp4Converter),
 		fx.Provide(ffmpeg.NewVideo2FrameExtractor),
-		fx.Provide(ffmpeg.NewVideo2AudioExtractor),
+		fx.Provide(gapi.NewGeminiExtractor),
 
 		fx.Provide(storage2.NewElasticTagStorage),
 		fx.Provide(
@@ -114,7 +112,7 @@ func main() {
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewImageOcrImagePipelineStep,
+				service.NewImgLlmExtractPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
@@ -144,31 +142,13 @@ func main() {
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewVidExtractFramesPipelineStep,
-				fx.ResultTags(`group:"pipeline_steps"`),
-			),
-		),
-		fx.Provide(
-			fx.Annotate(
-				service.NewVidExtractAudioPipelineStep,
-				fx.ResultTags(`group:"pipeline_steps"`),
-			),
-		),
-		fx.Provide(
-			fx.Annotate(
 				service.NewVidCalcEmbeddingsPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewVidSttPipelineStep,
-				fx.ResultTags(`group:"pipeline_steps"`),
-			),
-		),
-		fx.Provide(
-			fx.Annotate(
-				service.NewVidOcrFramesPipelineStep,
+				service.NewVidLlmExtractPipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),

@@ -23,4 +23,6 @@ type ElasticImageMetaData struct {
 	Tags []string
 
 	Type MetadataType `validator:"required"`
+
+	ResultData *Result
 }

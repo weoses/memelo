@@ -102,7 +102,14 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 	defer helper.QuietClose(pipelineResult, r.slogger)
 
 	data.Hash = pipelineResult.Hash
-	data.Result = pipelineResult.Transcription
+
+	joinedResult := fmt.Sprintf("%s %s %s",
+		pipelineResult.Result.OnScreenText,
+		pipelineResult.Result.AudioTranscript,
+		pipelineResult.Result.AudioTrack)
+	data.Result = joinedResult
+	data.ResultData = pipelineResult.Result
+
 	for i := range pipelineResult.StorageArtifacts {
 		artifact := pipelineResult.StorageArtifacts[i]
 		err = r.imageStorageService.Save(ctx, data.S3Id, storageMediaType(data.Type, artifact.Type), artifact.Data)

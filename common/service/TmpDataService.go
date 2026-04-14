@@ -46,6 +46,7 @@ func (s *TmpDataServiceImpl) WrapData(ctx context.Context, data temp.Data) (temp
 			return path, nil
 		},
 		s.ops.GetUrl,
+		s.ops.GetPresignedUrl,
 		s.ops.Delete,
 	), nil
 }
@@ -56,6 +57,7 @@ func (s *TmpDataServiceImpl) WrapS3Path(ctx context.Context, path string) (temp.
 		s.ops.IsGs(),
 		s.ops.Read,
 		s.ops.GetUrl,
+		s.ops.GetPresignedUrl,
 		s.ops.Delete,
 	), nil
 }

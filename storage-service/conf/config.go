@@ -62,6 +62,18 @@ type FfmpegConfig struct {
 	ThreadsLimit int
 }
 
+type GeminiExtractorConfig struct {
+	ApiKey                      string `mapstructure:"apikey"`
+	ApiEndpoint                 string `mapstructure:"apiendpoint"`
+	Model                       string `mapstructure:"model"`
+	Prompt                      string `mapstructure:"prompt"`
+	OutputToolDescription       string `mapstructure:"output-tool-description"`
+	OutputToolTranscriptionDesc string `mapstructure:"output-tool-transcription-desc"`
+	OutputToolOnScreenTextDesc  string `mapstructure:"output-tool-on-screen-text-desc"`
+	OutputToolAudioTrackDesc    string `mapstructure:"output-tool-audio-track-desc"`
+	OutputToolCaptionDesc       string `mapstructure:"output-tool-caption-desc"`
+}
+
 type Config struct {
 	Server            *commonconfig.ServerConfig       `mapstructure:"server"`
 	Log               *commonconfig.LoggingConfig      `mapstructure:"log"`
@@ -77,6 +89,7 @@ type Config struct {
 	ImageOcr          *ImageOcrConfig                  `mapstructure:"image-ocr"`
 	AudioStt          *AudioSttConfig                  `mapstructure:"audio-stt"`
 	Ffmpeg            *FfmpegConfig                    `mapstructure:"ffmpeg"`
+	GeminiExtractor   *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`
 }
 
 func NewConfig() (*Config, error) {

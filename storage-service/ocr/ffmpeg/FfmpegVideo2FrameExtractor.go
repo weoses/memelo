@@ -91,6 +91,57 @@ func (f *Video2FrameExtractorImpl) ExtractFrames(ctx context.Context, video temp
 	return frames, nil
 }
 
+func (f *Video2FrameExtractorImpl) ExtractThumbnail(ctx context.Context, video temp.Data) (temp.Data, error) {
+	f.slogger.InfoContext(ctx, "ExtractThumbnail: start")
+
+	dir, err := os.MkdirTemp("", "video2thumb-*")
+	if err != nil {
+		return nil, fmt.Errorf("ExtractThumbnail: create temp dir: %w", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			f.slogger.WarnContext(ctx, "ExtractThumbnail: remove temp dir failed", "error", err)
+		}
+	}()
+
+	ffmpegInputPath := filepath.Join(dir, "input.mp4")
+	ffmpegInputFile, err := os.OpenFile(ffmpegInputPath, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("ExtractThumbnail: create input file: %w", err)
+	}
+
+	videoInputReader, err := video.Reader()
+	if err != nil {
+		helper.QuietClose(ffmpegInputFile, f.slogger)
+		return nil, fmt.Errorf("ExtractThumbnail: get reader: %w", err)
+	}
+
+	_, err = io.Copy(ffmpegInputFile, videoInputReader)
+	helper.QuietClose(videoInputReader, f.slogger)
+	helper.QuietClose(ffmpegInputFile, f.slogger)
+	if err != nil {
+		return nil, fmt.Errorf("ExtractThumbnail: write input: %w", err)
+	}
+
+	outputPath := filepath.Join(dir, "thumb.jpg")
+	cmd := buildCmd(ctx, f.cfg,
+		"-i", ffmpegInputPath,
+		"-vframes", "1",
+		"-f", "image2",
+		outputPath,
+	)
+	f.slogger.InfoContext(ctx, "ExtractThumbnail: running ffmpeg", "cmd", cmd.String())
+	out, err := cmd.CombinedOutput()
+	if out != nil {
+		f.slogger.DebugContext(ctx, "ExtractThumbnail: ffmpeg output", "output", string(out))
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ExtractThumbnail: ffmpeg failed: %w\n%s", err, out)
+	}
+
+	return f.processExtractedFrame(outputPath)
+}
+
 func (f *Video2FrameExtractorImpl) processExtractedFrame(path string) (temp.Data, error) {
 	frameFile, err := os.Open(path)
 	defer helper.QuietClose(frameFile, f.slogger)

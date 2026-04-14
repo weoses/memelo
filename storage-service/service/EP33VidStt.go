@@ -22,7 +22,11 @@ func (s *VidSttPipelineStep) Do(ctx context.Context, inputContext MetadataInputC
 	if err != nil {
 		return fmt.Errorf("cannot transcribe video audio: %w", err)
 	}
-	pCtx.Transcription = transcript
+
+	if pCtx.Result == nil {
+		pCtx.Result = &entity.Result{}
+	}
+	pCtx.Result.AudioTranscript = transcript
 	return nil
 }
 

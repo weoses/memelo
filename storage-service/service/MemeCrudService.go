@@ -82,12 +82,17 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		}
 	}
 
+	joinedResult := fmt.Sprintf("%s %s %s",
+		pipelineResult.Result.OnScreenText,
+		pipelineResult.Result.AudioTranscript,
+		pipelineResult.Result.AudioTrack)
 	metadataEntity := &entity.ElasticImageMetaData{
 		ImageId:       imgId,
 		Type:          mediaType,
 		S3Id:          s3id,
 		AccountId:     accountId,
-		Result:        pipelineResult.Transcription,
+		Result:        joinedResult,
+		ResultData:    pipelineResult.Result,
 		Hash:          pipelineResult.Hash,
 		EmbeddingList: pipelineResult.Embedding,
 		ImageSize:     &pipelineResult.ImageOriginalSize,
