@@ -1,0 +1,29 @@
+---
+# Deployment
+deploy_path: /opt/memelo
+
+# S3 / media storage (shared endpoint and access credentials)
+s3_endpoint: "storage.googleapis.com"
+s3_secure: "true"
+
+# Postgres
+postgres_db: telegram
+
+# FFmpeg
+ffmpeg_binary: ffmpeg
+ffmpeg_cpulimit: 50
+ffmpeg_threadslimit:
+
+# Gemini embedding model
+gemini_embedding_model: "gemini-embedding-2-preview"
+gemini_embedding_api_endpoint: ""
+
+# Gemini extractor model
+gemini_extractor_model: "gemini-3-flash-preview"
+gemini_extractor_api_endpoint: ""
+
+
+# filled by runner
+release_version:
+commit_hash:
+repo_url:
