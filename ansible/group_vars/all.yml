@@ -1,6 +1,6 @@
 ---
 # Deployment
-deploy_path: /opt/memelo
+deploy_path: /home/github-runner/application
 
 # S3 / media storage (shared endpoint and access credentials)
 s3_endpoint: "storage.googleapis.com"
