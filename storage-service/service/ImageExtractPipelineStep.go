@@ -55,16 +55,12 @@ type MetadataPipelineContext struct {
 	Duplicate        *entity.ElasticImageMetaData
 	Tags             []entity.ElasticTag
 
-	ImageOriginalJpeg  temp.S3BackedData
-	ImageOriginalSize  entity.Sizes
-	ImageThumbnail     temp.S3BackedData
-	ImageThumbnailSize entity.Sizes
+	ImageOriginalJpeg temp.S3BackedData
+	VideoMp4          temp.S3BackedData
+	ImageThumbnail    temp.S3BackedData
 
-	VideoMp4            temp.S3BackedData
-	VideoFrames         []temp.S3BackedData
-	VideoAudio          temp.S3BackedData
-	VideoThumbnail      temp.S3BackedData
-	VideoThumbnailSizes entity.Sizes
+	OriginalSize  entity.Sizes
+	ThumbnailSize entity.Sizes
 }
 
 func (m *MetadataPipelineContext) Close() error {
@@ -77,14 +73,7 @@ func (m *MetadataPipelineContext) Close() error {
 
 	helper.QuietClose(m.ImageOriginalJpeg, tmpLogger)
 	helper.QuietClose(m.ImageThumbnail, tmpLogger)
-
-	if m.VideoFrames != nil {
-		for i := range m.VideoFrames {
-			helper.QuietClose(m.VideoFrames[i], tmpLogger)
-		}
-	}
 	helper.QuietClose(m.VideoMp4, tmpLogger)
-	helper.QuietClose(m.VideoAudio, tmpLogger)
 
 	return nil
 }

@@ -22,7 +22,7 @@ func (s *VidToMp4PipelineStep) Do(ctx context.Context, inputContext MetadataInpu
 		return fmt.Errorf("VidToMp4PipelineStep: cannot convert video to mp4: %w", err)
 	}
 
-	s3WrappedMp4, err := s.tmpDataService.WrapData(ctx, resultMp4)
+	s3WrappedMp4, err := s.tmpDataService.WrapData(ctx, "video/mp4", resultMp4)
 	if err != nil {
 		return fmt.Errorf("VidToMp4PipelineStep: cannot wrap s3 for image: %w", err)
 	}

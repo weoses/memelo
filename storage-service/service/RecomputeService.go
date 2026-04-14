@@ -84,7 +84,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		return fmt.Errorf("recompute: get image bytes failed: %w", err)
 	}
 
-	rawImgS3Backed, err := r.tmpDataService.WrapData(ctx, rawImg)
+	rawImgS3Backed, err := r.tmpDataService.WrapData(ctx, "image/jpeg", rawImg)
 	defer helper.QuietClose(rawImgS3Backed, r.slogger)
 	if err != nil {
 		return fmt.Errorf("recompute: wrap data failed: %w", err)
@@ -119,13 +119,13 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 	}
 
 	data.ImageSize = &entity.Sizes{
-		Width:  pipelineResult.ImageOriginalSize.Width,
-		Height: pipelineResult.ImageOriginalSize.Height,
+		Width:  pipelineResult.OriginalSize.Width,
+		Height: pipelineResult.OriginalSize.Height,
 	}
 
 	data.ThumbSize = &entity.Sizes{
-		Width:  pipelineResult.ImageThumbnailSize.Width,
-		Height: pipelineResult.ImageThumbnailSize.Height,
+		Width:  pipelineResult.ThumbnailSize.Width,
+		Height: pipelineResult.ThumbnailSize.Height,
 	}
 
 	data.EmbeddingList = pipelineResult.Embedding

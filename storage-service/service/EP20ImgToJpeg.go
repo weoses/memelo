@@ -22,7 +22,7 @@ func (s *ImageToJpegPipelineStep) Do(ctx context.Context, inputContext MetadataI
 		return fmt.Errorf("ImageToJpegPipelineStep: cannot process original image: %w", err)
 	}
 
-	s3WrappedData, err := s.tmpDataService.WrapData(ctx, imgJpeg)
+	s3WrappedData, err := s.tmpDataService.WrapData(ctx, "image/jpeg", imgJpeg)
 	if err != nil {
 		return fmt.Errorf("ImageToJpegPipelineStep: cannot wrap s3 for image: %w", err)
 	}

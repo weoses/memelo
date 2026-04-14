@@ -2,7 +2,6 @@ package conf
 
 import (
 	"fmt"
-	"time"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/spf13/viper"
@@ -74,22 +73,25 @@ type GeminiExtractorConfig struct {
 	OutputToolCaptionDesc       string `mapstructure:"output-tool-caption-desc"`
 }
 
+type GeminiEmbeddingConfig struct {
+	ApiKey      string `mapstructure:"apikey"`
+	ApiEndpoint string `mapstructure:"apiendpoint"`
+	Model       string `mapstructure:"model"`
+}
+
 type Config struct {
-	Server            *commonconfig.ServerConfig       `mapstructure:"server"`
-	Log               *commonconfig.LoggingConfig      `mapstructure:"log"`
-	Search            *SearchConfig                    `mapstructure:"search"`
-	Embeddings        *CommonEmbeddingsConfig          `mapstructure:"embeddings"`
-	MediaStorage      *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
-	TempStorage       *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
-	TempStorageExpiry time.Duration                    `mapstructure:"temp-storage-expiry"`
-	MetadataDb        *MetadataDbConfig                `mapstructure:"metadata-db"`
-	TagDb             *TagDbConfig                     `mapstructure:"tag-db"`
-	MediaEmbedding    *MediaEmbedderConfig             `mapstructure:"media-embedding"`
-	ImageConverter    *ImageConverterConfig            `mapstructure:"image-converter"`
-	ImageOcr          *ImageOcrConfig                  `mapstructure:"image-ocr"`
-	AudioStt          *AudioSttConfig                  `mapstructure:"audio-stt"`
-	Ffmpeg            *FfmpegConfig                    `mapstructure:"ffmpeg"`
-	GeminiExtractor   *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`
+	Server          *commonconfig.ServerConfig       `mapstructure:"server"`
+	Log             *commonconfig.LoggingConfig      `mapstructure:"log"`
+	Search          *SearchConfig                    `mapstructure:"search"`
+	Embeddings      *CommonEmbeddingsConfig          `mapstructure:"embeddings"`
+	MediaStorage    *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
+	TempStorage     *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
+	MetadataDb      *MetadataDbConfig                `mapstructure:"metadata-db"`
+	TagDb           *TagDbConfig                     `mapstructure:"tag-db"`
+	ImageConverter  *ImageConverterConfig            `mapstructure:"image-converter"`
+	Ffmpeg          *FfmpegConfig                    `mapstructure:"ffmpeg"`
+	GeminiExtractor *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`
+	GeminiEmbedding *GeminiEmbeddingConfig           `mapstructure:"gemini-embedding"`
 }
 
 func NewConfig() (*Config, error) {

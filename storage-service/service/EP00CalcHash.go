@@ -1,9 +1,9 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +18,7 @@ type CalcHashPipelineStep struct {
 }
 
 func (c *CalcHashPipelineStep) Do(_ context.Context, inputContext MetadataInputContext, pipelineContext *MetadataPipelineContext) error {
-	hash, err := calcRawImageHash(inputContext.RawInput)
+	hash, err := calcRawHash(inputContext.RawInput)
 	if err != nil {
 		return fmt.Errorf("create pipeline: error calculating hash: %w", err)
 	}
@@ -26,20 +26,21 @@ func (c *CalcHashPipelineStep) Do(_ context.Context, inputContext MetadataInputC
 	return nil
 }
 
-func calcRawImageHash(raw temp.Data) (string, error) {
-	base64DataBuffer := bytes.NewBuffer(make([]byte, 0))
-	encoder := base64.NewEncoder(base64.RawStdEncoding, base64DataBuffer)
+func calcRawHash(raw temp.Data) (string, error) {
 	reader, err := raw.Reader()
 	if err != nil {
 		return "", fmt.Errorf("failed to read incoming temp %w", err)
 	}
-	defer helper.QuietClose(reader, slog.With("calcRawImageHash"))
-	_, err = io.Copy(encoder, reader)
+	defer helper.QuietClose(reader, slog.With("calcRawHash"))
+
+	hasher := md5.New()
+	_, err = io.Copy(hasher, reader)
 	if err != nil {
-		return "", fmt.Errorf("failed to write raw temp to base64 encode buffer: %w", err)
+		return "", fmt.Errorf("failed to write raw temp to hasher: %w", err)
 	}
-	hash := helper.CalcHash(base64DataBuffer.String())
-	return hash, nil
+
+	byteHash := hasher.Sum(nil)
+	return hex.EncodeToString(byteHash), nil
 }
 
 func NewCalcHashPipelineStep() ExtractPipelineStep {

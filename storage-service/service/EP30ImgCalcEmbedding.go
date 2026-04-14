@@ -11,7 +11,7 @@ import (
 type ImageCalcEmbeddingPipelineStep struct {
 	BasePipelineStep
 
-	imageEmbedder ocr.EmbeddingExtractor
+	imageEmbedder ocr.LlmEmbeddingExtractor
 }
 
 func (s *ImageCalcEmbeddingPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
@@ -23,7 +23,7 @@ func (s *ImageCalcEmbeddingPipelineStep) Do(ctx context.Context, inputContext Me
 	return nil
 }
 
-func NewImageCalcEmbeddingPipelineStep(imageEmbedder ocr.EmbeddingExtractor) ExtractPipelineStep {
+func NewImageCalcEmbeddingPipelineStep(imageEmbedder ocr.LlmEmbeddingExtractor) ExtractPipelineStep {
 	return &ImageCalcEmbeddingPipelineStep{
 		BasePipelineStep: BasePipelineStep{
 			typ: []entity.MetadataType{entity.ImageMetadataType},

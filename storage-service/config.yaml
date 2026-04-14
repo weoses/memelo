@@ -18,17 +18,16 @@ media-storage:
   Endpoint:
   AccessKey:
   SecretKey:
-  Bucket: melo-images
-  Secure: false
+  Bucket:
+  Secure:
 
 temp-storage:
   Endpoint:
   AccessKey:
   SecretKey:
-  Bucket: melo-temp
-  Secure: false
+  Bucket:
+  Secure:
 
-temp-storage-expiry: 24h
 
 metadata-db:
   Elastic:
@@ -37,7 +36,7 @@ metadata-db:
     Password:
     CloudID:
     ApiKey:
-  Index: melo-media-metadata
+  Index:
 
 tag-db:
   Elastic:
@@ -46,29 +45,10 @@ tag-db:
     Password:
     CloudID:
     ApiKey:
-  Index: melo-tags
-
-media-embedding:
-  ApiEndpoint: us-central1-aiplatform.googleapis.com:443
-  ApiLocation: us-central1
-  ProjectName:
-  Model: multimodalembedding@001
-
-audio-stt:
-  ApiEndpoint: us-speech.googleapis.com:443
-  ApiLocation: us
-  ProjectName:
-  Recognizer: "_"
-  Model: chirp_3
-  LanguageCodes:
-    - 'en-US'
-    - 'ru-RU'
+  Index:
 
 image-converter:
   ThumbSize: 360
-
-image-ocr:
-  ApiEndpoint: vision.googleapis.com:443
 
 ffmpeg:
   Binary: ffmpeg
@@ -85,3 +65,8 @@ gemini-extractor:
   output-tool-on-screen-text-desc: "Any text visible on screen (OCR)"
   output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
   output-tool-audio-track-desc: "An audio track, song, that is at sound background"
+
+gemini-embedding:
+  apikey:
+  apiendpoint:
+  model: "gemini-embedding-2-preview"

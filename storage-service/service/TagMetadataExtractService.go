@@ -21,7 +21,7 @@ type TagMetadataExtractService interface {
 
 type TagMetadataExtractServiceImpl struct {
 	slogger  *slog.Logger
-	embedder ocr.EmbeddingExtractor
+	embedder ocr.LlmEmbeddingExtractor
 }
 
 func (s *TagMetadataExtractServiceImpl) ProcessTagMetadata(ctx context.Context, name string, description string) (*TagMetadataPipelineContext, error) {
@@ -43,7 +43,7 @@ func (s *TagMetadataExtractServiceImpl) ProcessTagMetadata(ctx context.Context, 
 	}, nil
 }
 
-func NewTagMetadataExtractService(embedder ocr.EmbeddingExtractor) TagMetadataExtractService {
+func NewTagMetadataExtractService(embedder ocr.LlmEmbeddingExtractor) TagMetadataExtractService {
 	return &TagMetadataExtractServiceImpl{
 		slogger:  slog.With("service", "TagMetadataExtractService"),
 		embedder: embedder,
