@@ -11,7 +11,7 @@ import (
 type VidCalcEmbeddingsPipelineStep struct {
 	BasePipelineStep
 
-	embedder ocr.EmbeddingExtractor
+	embedder ocr.LlmEmbeddingExtractor
 }
 
 func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
@@ -29,10 +29,10 @@ func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext Met
 	return nil
 }
 
-func NewVidCalcEmbeddingsPipelineStep(embedder ocr.EmbeddingExtractor) ExtractPipelineStep {
+func NewVidCalcEmbeddingsPipelineStep(embedder ocr.LlmEmbeddingExtractor) ExtractPipelineStep {
 	return &VidCalcEmbeddingsPipelineStep{
 		BasePipelineStep: BasePipelineStep{
-			pos: 31,
+			pos: 30,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
 		},
 		embedder: embedder,

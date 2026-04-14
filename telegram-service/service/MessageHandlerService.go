@@ -167,7 +167,13 @@ func (m MessageHandlerServiceImpl) downloadToS3(ctx context.Context, fileURL str
 		return nil, fmt.Errorf("downloadToS3: non-2xx status: %d", resp.StatusCode)
 	}
 
-	s3data, err := m.tmpDataService.ByReader(ctx, resp.Body)
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	contentType = strings.SplitAfter(contentType, ";")[0]
+
+	s3data, err := m.tmpDataService.ByReader(ctx, contentType, resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("downloadToS3: upload to s3: %w", err)
 	}

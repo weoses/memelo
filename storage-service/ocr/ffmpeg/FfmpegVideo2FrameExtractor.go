@@ -91,36 +91,36 @@ func (f *Video2FrameExtractorImpl) ExtractFrames(ctx context.Context, video temp
 	return frames, nil
 }
 
-func (f *Video2FrameExtractorImpl) ExtractThumbnail(ctx context.Context, video temp.Data) (temp.Data, error) {
-	f.slogger.InfoContext(ctx, "ExtractThumbnail: start")
+func (f *Video2FrameExtractorImpl) ExtractOneFrame(ctx context.Context, video temp.Data) (temp.Data, error) {
+	f.slogger.InfoContext(ctx, "ExtractOneFrame: start")
 
 	dir, err := os.MkdirTemp("", "video2thumb-*")
 	if err != nil {
-		return nil, fmt.Errorf("ExtractThumbnail: create temp dir: %w", err)
+		return nil, fmt.Errorf("ExtractOneFrame: create temp dir: %w", err)
 	}
 	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			f.slogger.WarnContext(ctx, "ExtractThumbnail: remove temp dir failed", "error", err)
+			f.slogger.WarnContext(ctx, "ExtractOneFrame: remove temp dir failed", "error", err)
 		}
 	}()
 
 	ffmpegInputPath := filepath.Join(dir, "input.mp4")
 	ffmpegInputFile, err := os.OpenFile(ffmpegInputPath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		return nil, fmt.Errorf("ExtractThumbnail: create input file: %w", err)
+		return nil, fmt.Errorf("ExtractOneFrame: create input file: %w", err)
 	}
 
 	videoInputReader, err := video.Reader()
 	if err != nil {
 		helper.QuietClose(ffmpegInputFile, f.slogger)
-		return nil, fmt.Errorf("ExtractThumbnail: get reader: %w", err)
+		return nil, fmt.Errorf("ExtractOneFrame: get reader: %w", err)
 	}
 
 	_, err = io.Copy(ffmpegInputFile, videoInputReader)
 	helper.QuietClose(videoInputReader, f.slogger)
 	helper.QuietClose(ffmpegInputFile, f.slogger)
 	if err != nil {
-		return nil, fmt.Errorf("ExtractThumbnail: write input: %w", err)
+		return nil, fmt.Errorf("ExtractOneFrame: write input: %w", err)
 	}
 
 	outputPath := filepath.Join(dir, "thumb.jpg")
@@ -130,13 +130,13 @@ func (f *Video2FrameExtractorImpl) ExtractThumbnail(ctx context.Context, video t
 		"-f", "image2",
 		outputPath,
 	)
-	f.slogger.InfoContext(ctx, "ExtractThumbnail: running ffmpeg", "cmd", cmd.String())
+	f.slogger.InfoContext(ctx, "ExtractOneFrame: running ffmpeg", "cmd", cmd.String())
 	out, err := cmd.CombinedOutput()
 	if out != nil {
-		f.slogger.DebugContext(ctx, "ExtractThumbnail: ffmpeg output", "output", string(out))
+		f.slogger.DebugContext(ctx, "ExtractOneFrame: ffmpeg output", "output", string(out))
 	}
 	if err != nil {
-		return nil, fmt.Errorf("ExtractThumbnail: ffmpeg failed: %w\n%s", err, out)
+		return nil, fmt.Errorf("ExtractOneFrame: ffmpeg failed: %w\n%s", err, out)
 	}
 
 	return f.processExtractedFrame(outputPath)

@@ -86,6 +86,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		pipelineResult.Result.OnScreenText,
 		pipelineResult.Result.AudioTranscript,
 		pipelineResult.Result.AudioTrack)
+
 	metadataEntity := &entity.ElasticImageMetaData{
 		ImageId:       imgId,
 		Type:          mediaType,
@@ -95,8 +96,8 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 		ResultData:    pipelineResult.Result,
 		Hash:          pipelineResult.Hash,
 		EmbeddingList: pipelineResult.Embedding,
-		ImageSize:     &pipelineResult.ImageOriginalSize,
-		ThumbSize:     &pipelineResult.ImageThumbnailSize,
+		ImageSize:     &pipelineResult.OriginalSize,
+		ThumbSize:     &pipelineResult.ThumbnailSize,
 		Created:       time.Now().UnixMicro(),
 		Updated:       time.Now().UnixMicro(),
 		Tags: helper.TransformSlice(

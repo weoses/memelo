@@ -197,7 +197,7 @@ func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto)
 	}
 
 	if media.GetData() != nil {
-		data, err := api.dataService.ByBytes(ctx, media.GetData())
+		data, err := api.dataService.ByBytes(ctx, "application/octet-stream", media.GetData())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get data from bytes: %w", err)
 		}

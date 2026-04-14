@@ -15,7 +15,7 @@ type TextEmbeddingSearcher struct {
 	SearcherBase
 
 	metadata     storage.MetadataStorageService
-	embedder     ocr.EmbeddingExtractor
+	embedder     ocr.LlmEmbeddingExtractor
 	searchConfig *conf.SearchConfig
 }
 
@@ -40,7 +40,7 @@ func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, 
 	return results, nil
 }
 
-func NewTextEmbeddingSearcher(m storage.MetadataStorageService, e ocr.EmbeddingExtractor, cfg *conf.Config) SearchPipelineStep {
+func NewTextEmbeddingSearcher(m storage.MetadataStorageService, e ocr.LlmEmbeddingExtractor, cfg *conf.Config) SearchPipelineStep {
 	return &TextEmbeddingSearcher{
 		SearcherBase: SearcherBase{Name: "text_embedding_searcher", Index: 30},
 		metadata:     m,

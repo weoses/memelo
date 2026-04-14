@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
+	"github.com/weoses/memelo/common/helper"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
@@ -15,6 +17,7 @@ type VidCreateThumbnailPipelineStep struct {
 	frameExtractor ocr.Video2FrameExtractor
 	imageConverter ocr.ImageConveter
 	tmpDataService commonservice.TmpDataService
+	slogger        *slog.Logger
 }
 
 func (s *VidCreateThumbnailPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
@@ -22,41 +25,49 @@ func (s *VidCreateThumbnailPipelineStep) Do(ctx context.Context, inputContext Me
 		return nil
 	}
 
-	frame, err := s.frameExtractor.ExtractThumbnail(ctx, pCtx.VideoMp4)
+	frame, err := s.frameExtractor.ExtractOneFrame(ctx, pCtx.VideoMp4)
 	if err != nil {
 		return fmt.Errorf("cannot extract video thumbnail frame: %w", err)
 	}
-	defer frame.Close()
+	defer helper.QuietClose(frame, s.slogger)
+
+	wOrig, hOrig, err := s.imageConverter.GetSize(ctx, frame)
+	if err != nil {
+		return fmt.Errorf("cannot get video thumbnail size: %w", err)
+	}
+	pCtx.OriginalSize = entity.Sizes{Width: wOrig, Height: hOrig}
 
 	thumb, err := s.imageConverter.MakeThumbnail(ctx, frame)
 	if err != nil {
 		return fmt.Errorf("cannot create video thumbnail: %w", err)
 	}
 
-	s3WrappedThumb, err := s.tmpDataService.WrapData(ctx, thumb)
-	if err != nil {
-		return fmt.Errorf("cannot wrap data to s3 data: %w", err)
-	}
-
-	pCtx.VideoThumbnail = s3WrappedThumb
-	pCtx.StorageArtifacts = append(pCtx.StorageArtifacts, MetadataStorageArtifact{Type: SavedThumb, Data: s3WrappedThumb})
-
 	w, h, err := s.imageConverter.GetSize(ctx, thumb)
 	if err != nil {
 		return fmt.Errorf("cannot get video thumbnail size: %w", err)
 	}
-	pCtx.VideoThumbnailSizes = entity.Sizes{Width: w, Height: h}
+
+	s3WrappedThumb, err := s.tmpDataService.WrapData(ctx, "image/jpeg", thumb)
+	if err != nil {
+		return fmt.Errorf("cannot wrap data to s3 data: %w", err)
+	}
+
+	pCtx.ImageThumbnail = s3WrappedThumb
+	pCtx.StorageArtifacts = append(pCtx.StorageArtifacts, MetadataStorageArtifact{Type: SavedThumb, Data: s3WrappedThumb})
+
+	pCtx.ThumbnailSize = entity.Sizes{Width: w, Height: h}
 	return nil
 }
 
 func NewVidCreateThumbnailPipelineStep(frameExtractor ocr.Video2FrameExtractor, imageConverter ocr.ImageConveter, tmpDataService commonservice.TmpDataService) ExtractPipelineStep {
 	return &VidCreateThumbnailPipelineStep{
 		BasePipelineStep: BasePipelineStep{
-			pos: 61,
+			pos: 60,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
 		},
 		frameExtractor: frameExtractor,
 		imageConverter: imageConverter,
 		tmpDataService: tmpDataService,
+		slogger:        slog.With("service", "VidCreateThumbnailPipelineStep"),
 	}
 }
