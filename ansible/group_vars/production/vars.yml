@@ -1,0 +1,5 @@
+---
+metadata_elastic_index: melo-prod-media-metadata
+tag_elastic_index: melo-prod-tag-metadata
+s3_media_bucket: melo-prod-media
+s3_temp_bucket: melo-prod-temp

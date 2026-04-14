@@ -1,0 +1,53 @@
+---
+- name: Ensure deploy directory exists
+  file:
+    path: "{{ deploy_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone repository if not present
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ deploy_path }}"
+    version: "{{ commit_hash }}"
+    force: true
+  register: git_result
+
+- name: Template .env file
+  template:
+    src: .env.j2
+    dest: "{{ deploy_path }}/.env"
+    mode: "0600"
+
+- name: Copy ansible docker-compose file
+  copy:
+    src: "{{ playbook_dir }}/docker-compose.deploy.yml"
+    dest: "{{ deploy_path }}/docker-compose.deploy.yml"
+    mode: "0644"
+
+- name: Stop existing containers
+  command: docker compose -f docker-compose.deploy.yml -p memelo down
+  args:
+    chdir: "{{ deploy_path }}"
+  ignore_errors: true
+
+- name: Remove any leftover containers
+  shell: |
+    CONTAINERS=$(docker ps -q -f "name=memelo")
+    for id in $CONTAINERS; do
+      echo "Removing leftover container $id"
+      docker stop "$id"
+      docker rm "$id"
+    done
+  args:
+    chdir: "{{ deploy_path }}"
+
+- name: Pull new images
+  command: docker compose -f docker-compose.deploy.yml -p memelo pull
+  args:
+    chdir: "{{ deploy_path }}"
+
+- name: Start services
+  command: docker compose -f docker-compose.deploy.yml -p memelo up -d --wait --wait-timeout 300
+  args:
+    chdir: "{{ deploy_path }}"

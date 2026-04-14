@@ -6,6 +6,7 @@ on:
       - "**"
     tags:
       - '**'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,21 +17,21 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: "STORAGE: Build and push" 
+      - name: "STORAGE: Build and push"
         uses: docker/build-push-action@v6
         with:
           push: true
           file: Dockerfile-storage-service
           tags: ghcr.io/weoses/storage-service:dev-${{ github.sha }}
 
-      - name: "TELEGRAM: Build and push" 
+      - name: "TELEGRAM: Build and push"
         uses: docker/build-push-action@v6
         with:
           push: true
@@ -51,60 +52,19 @@ jobs:
         with:
           go-version-file: tests/e2e/go.mod
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        timeout-minutes: 10
+      - name: Deploy via Ansible
+        uses: dawidd6/action-ansible-playbook@v9
         with:
-          host: ${{ vars.SSH_HOST }}
-          username: ${{ vars.SSH_USERNAME }}
+          playbook: deploy.yml
+          directory: ansible/
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_CLOUDID,ELASTIC_APIKEY,METADATA_ELASTIC_INDEX,TAG_ELASTIC_INDEX,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD,TAG,TELEGRAM_WEBHOOK_EXTERNALURL,FFMPEG_CPULIMIT,MEDIA_STORAGE_BUCKET,TEMP_STORAGE_BUCKET
-          script: |
-            if [ ! -d "$DEPLOY_PATH/.git" ]; then
-              git clone "$REPO_URL" "$DEPLOY_PATH"
-            fi
-            cd "$DEPLOY_PATH"
-
-            docker compose -p memelo down || true
-
-            LAST_CONTAINER=$(docker ps -q -f "name=memelo")
-            for i in $LAST_CONTAINER
-            do
-              echo "Still lasts container $i, removing"
-              docker stop "$i"
-              docker rm "$i"
-            done            
-
-            git fetch --tags origin
-            git checkout "$TAG"
-
-            docker compose pull
-            docker compose -p memelo up -d --wait --wait-timeout 300
-        env:
-          ELASTIC_CLOUDID: ${{ secrets.ELASTIC_CLOUDID }}
-          ELASTIC_APIKEY: ${{ secrets.ELASTIC_APIKEY }}
-          METADATA_ELASTIC_INDEX: ${{vars.METADATA_ELASTIC_INDEX}}
-          TAG_ELASTIC_INDEX: ${{vars.TAG_ELASTIC_INDEX}}
-
-          MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
-          MINIO_ACCESS_KEY: ${{ vars.MINIO_ACCESS_KEY }}
-          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-          MINIO_SECURE: ${{ vars.MINIO_SECURE }}
-
-          EMBEDDING_PROJECTNAME: ${{ vars.EMBEDDING_PROJECTNAME }}
-          GOOGLE_CREDS_PATH: ${{ vars.GOOGLE_CREDS_PATH }}
-          TELEGRAM_TOKEN: ${{secrets.TELEGRAM_TOKEN}}
-          POSTGRES_DB: ${{vars.POSTGRES_DB}}
-          POSTGRES_USER: ${{vars.POSTGRES_USER}}
-          POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORS}}
-          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
-          RELEASE_VERSION: dev-${{ github.sha }}
-          TAG:  ${{ github.sha }}
-          TELEGRAM_WEBHOOK_EXTERNALURL: ${{vars.TELEGRAM_WEBHOOK_EXTERNALURL}}
-          FFMPEG_CPULIMIT: ${{vars.FFMPEG_CPULIMIT}}
-          MEDIA_STORAGE_BUCKET: ${{vars.MEDIA_STORAGE_BUCKET}}
-          TEMP_STORAGE_BUCKET: ${{vars.TEMP_STORAGE_BUCKET}}
+          inventory: inventory/test.yml
+          vault_password: ${{secrets.VAULT_PASSWORD}}
+          options: |
+            --limit test
+            --extra-vars release_version=dev-${{ github.sha }}
+            --extra-vars commit_hash=${{ github.sha }}
+            --extra-vars repo_url=${{ github.server_url }}/${{ github.repository }}.git
 
       - name: Tests
         uses: robherley/go-test-action@v0
@@ -113,7 +73,8 @@ jobs:
         env:
           STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
           STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
-          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD}}
+          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
+
 
   release-tag-images:
     runs-on: ubuntu-latest
@@ -141,6 +102,7 @@ jobs:
           source_tag: dev-${{ github.sha }}
           dest_tag: ${{ github.ref_name }}
 
+
   release-make:
     runs-on: ubuntu-latest
     needs:
@@ -158,6 +120,7 @@ jobs:
             **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           generate_release_notes: true
 
+
   release-deploy:
     runs-on: ubuntu-latest
     needs:
@@ -174,59 +137,19 @@ jobs:
         with:
           go-version-file: tests/e2e/go.mod
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        timeout-minutes: 10
+      - name: Deploy via Ansible
+        uses: dawidd6/action-ansible-playbook@v9
         with:
-          host: ${{ vars.SSH_HOST }}
-          username: ${{ vars.SSH_USERNAME }}
+          playbook: deploy.yml
+          directory: ansible/
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: ELASTIC_CLOUDID,ELASTIC_APIKEY,METADATA_ELASTIC_INDEX,TAG_ELASTIC_INDEX,MINIO_ENDPOINT,MINIO_ACCESS_KEY,MINIO_SECRET_KEY,MINIO_SECURE,EMBEDDING_PROJECTNAME,GOOGLE_CREDS_PATH,REPO_URL,DEPLOY_PATH,RELEASE_VERSION,TELEGRAM_TOKEN,POSTGRES_DB,POSTGRES_PASSWORD,TAG,TELEGRAM_WEBHOOK_EXTERNALURL,FFMPEG_CPULIMIT,MEDIA_STORAGE_BUCKET,TEMP_STORAGE_BUCKET
-          script: |
-            if [ ! -d "$DEPLOY_PATH/.git" ]; then
-              git clone "$REPO_URL" "$DEPLOY_PATH"
-            fi
-            cd "$DEPLOY_PATH"
-
-            docker compose -p memelo down || true
-
-            LAST_CONTAINER=$(docker ps -q -f "name=memelo")
-            for i in $LAST_CONTAINER
-            do
-              echo "Still lasts container $i, removing"
-              docker stop "$i"
-              docker rm "$i"
-            done            
-
-            git fetch --tags origin
-            git checkout "$TAG"
-
-            docker compose pull
-            docker compose -p memelo up -d --wait --wait-timeout 300
-        env:
-          ELASTIC_CLOUDID: ${{ secrets.ELASTIC_CLOUDID }}
-          ELASTIC_APIKEY: ${{ secrets.ELASTIC_APIKEY }}
-          METADATA_ELASTIC_INDEX: ${{vars.METADATA_ELASTIC_INDEX}}
-          TAG_ELASTIC_INDEX: ${{vars.TAG_ELASTIC_INDEX}}
-
-          MINIO_ENDPOINT: ${{ vars.MINIO_ENDPOINT }}
-          MINIO_ACCESS_KEY: ${{ vars.MINIO_ACCESS_KEY }}
-          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-          MINIO_SECURE: ${{ vars.MINIO_SECURE }}
-          EMBEDDING_PROJECTNAME: ${{ vars.EMBEDDING_PROJECTNAME }}
-          GOOGLE_CREDS_PATH: ${{ vars.GOOGLE_CREDS_PATH }}
-          TELEGRAM_TOKEN: ${{secrets.TELEGRAM_TOKEN}}
-          POSTGRES_DB: ${{vars.POSTGRES_DB}}
-          POSTGRES_USER: ${{vars.POSTGRES_USER}}
-          POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORS}}
-          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
-          DEPLOY_PATH: ${{ vars.DEPLOY_REPO_PATH }}
-          RELEASE_VERSION: ${{ github.ref_name }}
-          TAG:  ${{ github.sha }}
-          TELEGRAM_WEBHOOK_EXTERNALURL: ${{vars.TELEGRAM_WEBHOOK_EXTERNALURL}}
-          FFMPEG_CPULIMIT: ${{vars.FFMPEG_CPULIMIT}}
-          MEDIA_STORAGE_BUCKET: ${{vars.MEDIA_STORAGE_BUCKET}}
-          TEMP_STORAGE_BUCKET: ${{vars.TEMP_STORAGE_BUCKET}}
+          inventory: inventory/production.yml
+          vault_password: ${{secrets.VAULT_PASSWORD}}
+          options: |
+            --limit production
+            --extra-vars release_version=${{ github.ref_name }}
+            --extra-vars commit_hash=${{ github.ref_name }}
+            --extra-vars repo_url=${{ github.server_url }}/${{ github.repository }}.git
 
       - name: Tests
         uses: robherley/go-test-action@v0
@@ -235,4 +158,4 @@ jobs:
         env:
           STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
           STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
-          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD}}
+          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}

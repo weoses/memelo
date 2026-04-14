@@ -1,0 +1,98 @@
+services:
+  storage-service:
+    image: ghcr.io/weoses/storage-service:${RELEASE_VERSION:-latest}
+    environment:
+      METADATA_DB_ELASTIC_CLOUDID: ${ELASTIC_CLOUDID}
+      METADATA_DB_ELASTIC_APIKEY: ${ELASTIC_APIKEY}
+      METADATA_DB_INDEX: ${METADATA_DB_INDEX}
+
+      TAG_DB_ELASTIC_CLOUDID: ${ELASTIC_CLOUDID}
+      TAG_DB_ELASTIC_APIKEY: ${ELASTIC_APIKEY}
+      TAG_DB_INDEX: ${TAG_DB_INDEX}
+
+      MEDIA_STORAGE_ENDPOINT: ${S3_ENDPOINT}
+      MEDIA_STORAGE_ACCESSKEY: ${S3_ACCESSKEY}
+      MEDIA_STORAGE_SECRETKEY: ${S3_SECRETKEY}
+      MEDIA_STORAGE_SECURE: ${S3_SECURE}
+      MEDIA_STORAGE_BUCKET: ${S3_MEDIA_BUCKET}
+
+      TEMP_STORAGE_ENDPOINT: ${S3_ENDPOINT}
+      TEMP_STORAGE_ACCESSKEY: ${S3_ACCESSKEY}
+      TEMP_STORAGE_SECRETKEY: ${S3_SECRETKEY}
+      TEMP_STORAGE_SECURE: ${S3_SECURE}
+      TEMP_STORAGE_BUCKET: ${S3_TEMP_BUCKET}
+
+      GEMINI_EMBEDDING_APIKEY: ${GEMINI_EMBEDDING_APIKEY}
+      GEMINI_EMBEDDING_APIENDPOINT: ${GEMINI_EMBEDDING_APIENDPOINT}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL}
+
+      GEMINI_EXTRACTOR_APIKEY: ${GEMINI_EXTRACTOR_APIKEY}
+      GEMINI_EXTRACTOR_APIENDPOINT: ${GEMINI_EXTRACTOR_APIENDPOINT}
+      GEMINI_EXTRACTOR_MODEL: ${GEMINI_EXTRACTOR_MODEL}
+
+      FFMPEG_BINARY: ${FFMPEG_BINARY}
+      FFMPEG_CPULIMIT: ${FFMPEG_CPULIMIT}
+      FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT}
+
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7001:7001"
+    volumes:
+      - "./storage-service/config.yaml:/app/config/config.yaml"
+    networks:
+      - env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - env
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  telegram-service:
+    image: ghcr.io/weoses/telegram-service:${RELEASE_VERSION:-latest}
+    environment:
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      WEBHOOK_EXTERNALURL: ${WEBHOOK_EXTERNALURL}
+      STORAGE_SERVICE_URI: http://storage-service:7001
+      POSTGRES_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      TEMP_STORAGE_ENDPOINT: ${TEMP_STORAGE_ENDPOINT}
+      TEMP_STORAGE_ACCESSKEY: ${TEMP_STORAGE_ACCESSKEY}
+      TEMP_STORAGE_SECRETKEY: ${TEMP_STORAGE_SECRETKEY}
+      TEMP_STORAGE_SECURE: ${TEMP_STORAGE_SECURE}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7002:7002"
+    volumes:
+      - "./telegram-service/config.yaml:/app/config/config.yaml"
+    networks:
+      - env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage-service:
+        condition: service_healthy
+
+networks:
+  env:
+
+volumes:
+  postgres_data:
