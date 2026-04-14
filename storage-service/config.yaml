@@ -74,3 +74,14 @@ ffmpeg:
   Binary: ffmpeg
   CpuLimit: 0
   ThreadsLimit: 0
+
+gemini-extractor:
+  apikey:
+  apiendpoint:
+  model: gemini-3-flash-preview
+  prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption)."
+  output-tool-description: "Extract structured metadata from the media"
+  output-tool-transcription-desc: "Audio transcription or speech-to-text content from the media"
+  output-tool-on-screen-text-desc: "Any text visible on screen (OCR)"
+  output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
+  output-tool-audio-track-desc: "An audio track, song, that is at sound background"

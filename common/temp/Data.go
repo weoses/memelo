@@ -19,4 +19,5 @@ type S3BackedData interface {
 	IsGsSupported() bool
 	GetS3Path(ctx context.Context) (string, error)
 	GetS3Url(ctx context.Context) (string, error)
+	GetPresignedUrl(ctx context.Context) (string, error)
 }

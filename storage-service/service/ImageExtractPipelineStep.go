@@ -50,7 +50,7 @@ func (m *MetadataStorageArtifact) Close() error {
 type MetadataPipelineContext struct {
 	Hash             string
 	Embedding        []entity.EmbeddingItem
-	Transcription    string
+	Result           *entity.Result
 	StorageArtifacts []MetadataStorageArtifact
 	Duplicate        *entity.ElasticImageMetaData
 	Tags             []entity.ElasticTag

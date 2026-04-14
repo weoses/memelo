@@ -12,15 +12,23 @@ import (
 type VidCreateThumbnailPipelineStep struct {
 	BasePipelineStep
 
+	frameExtractor ocr.Video2FrameExtractor
 	imageConverter ocr.ImageConveter
 	tmpDataService commonservice.TmpDataService
 }
 
 func (s *VidCreateThumbnailPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if len(pCtx.VideoFrames) == 0 {
+	if pCtx.VideoMp4 == nil {
 		return nil
 	}
-	thumb, err := s.imageConverter.MakeThumbnail(ctx, pCtx.VideoFrames[0])
+
+	frame, err := s.frameExtractor.ExtractThumbnail(ctx, pCtx.VideoMp4)
+	if err != nil {
+		return fmt.Errorf("cannot extract video thumbnail frame: %w", err)
+	}
+	defer frame.Close()
+
+	thumb, err := s.imageConverter.MakeThumbnail(ctx, frame)
 	if err != nil {
 		return fmt.Errorf("cannot create video thumbnail: %w", err)
 	}
@@ -41,12 +49,13 @@ func (s *VidCreateThumbnailPipelineStep) Do(ctx context.Context, inputContext Me
 	return nil
 }
 
-func NewVidCreateThumbnailPipelineStep(imageConverter ocr.ImageConveter, tmpDataService commonservice.TmpDataService) ExtractPipelineStep {
+func NewVidCreateThumbnailPipelineStep(frameExtractor ocr.Video2FrameExtractor, imageConverter ocr.ImageConveter, tmpDataService commonservice.TmpDataService) ExtractPipelineStep {
 	return &VidCreateThumbnailPipelineStep{
 		BasePipelineStep: BasePipelineStep{
 			pos: 61,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
 		},
+		frameExtractor: frameExtractor,
 		imageConverter: imageConverter,
 		tmpDataService: tmpDataService,
 	}

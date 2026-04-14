@@ -19,3 +19,10 @@ type Sizes struct {
 	Width  int `validator:"required"`
 	Height int `validator:"required"`
 }
+
+type Result struct {
+	OnScreenText    string
+	AudioTranscript string
+	AudioTrack      string
+	Caption         string
+}

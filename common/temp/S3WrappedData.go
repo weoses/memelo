@@ -15,17 +15,26 @@ type UploadResult struct {
 }
 
 type s3wrappedData struct {
-	physical    Data
-	once        sync.Once
-	s3path      string
-	upload      func(ctx context.Context, data Data) (string, error)
-	download    func(ctx context.Context, s3path string) (Data, error)
-	delete      func(ctx context.Context, s3path string) error
-	url         func(ctx context.Context, s3path string) (string, error)
-	gsSupported bool
-	closed      bool
-	slogger     *slog.Logger
-	mu          sync.Mutex
+	physical     Data
+	once         sync.Once
+	s3path       string
+	upload       func(ctx context.Context, data Data) (string, error)
+	download     func(ctx context.Context, s3path string) (Data, error)
+	delete       func(ctx context.Context, s3path string) error
+	url          func(ctx context.Context, s3path string) (string, error)
+	presignedUrl func(ctx context.Context, s3path string) (string, error)
+	gsSupported  bool
+	closed       bool
+	slogger      *slog.Logger
+	mu           sync.Mutex
+}
+
+func (m *s3wrappedData) GetPresignedUrl(ctx context.Context) (string, error) {
+	err := m.resolveUpload(ctx)
+	if err != nil {
+		return "", err
+	}
+	return m.presignedUrl(ctx, m.s3path)
 }
 
 func (m *s3wrappedData) IsGsSupported() bool {
@@ -143,15 +152,17 @@ func NewS3BackedDataFromLocal(
 	gsSupported bool,
 	upload func(ctx context.Context, data Data) (string, error),
 	url func(ctx context.Context, s3path string) (string, error),
+	presignedUrl func(ctx context.Context, s3path string) (string, error),
 	delete func(ctx context.Context, s3path string) error,
 ) S3BackedData {
 	return &s3wrappedData{
-		physical:    physical,
-		gsSupported: gsSupported,
-		upload:      upload,
-		delete:      delete,
-		url:         url,
-		slogger:     slog.With(slog.String("component", "s3wrappedData")),
+		physical:     physical,
+		gsSupported:  gsSupported,
+		upload:       upload,
+		delete:       delete,
+		url:          url,
+		presignedUrl: presignedUrl,
+		slogger:      slog.With(slog.String("component", "s3wrappedData")),
 	}
 }
 
@@ -160,14 +171,16 @@ func NewS3BackedDataFromPath(
 	gsSupported bool,
 	download func(ctx context.Context, s3path string) (Data, error),
 	url func(ctx context.Context, s3path string) (string, error),
+	presignedUrl func(ctx context.Context, s3path string) (string, error),
 	delete func(ctx context.Context, s3path string) error,
 ) S3BackedData {
 	return &s3wrappedData{
-		s3path:      s3path,
-		gsSupported: gsSupported,
-		download:    download,
-		url:         url,
-		delete:      delete,
-		slogger:     slog.With(slog.String("component", "s3wrappedData")),
+		s3path:       s3path,
+		gsSupported:  gsSupported,
+		download:     download,
+		url:          url,
+		presignedUrl: presignedUrl,
+		delete:       delete,
+		slogger:      slog.With(slog.String("component", "s3wrappedData")),
 	}
 }

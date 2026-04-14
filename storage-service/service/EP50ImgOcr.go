@@ -19,7 +19,10 @@ func (s *ImageOcrImagePipelineStep) Do(ctx context.Context, inputContext Metadat
 	if err != nil {
 		return fmt.Errorf("error ocring image: %w", err)
 	}
-	pCtx.Transcription = ocrResult
+	if pCtx.Result == nil {
+		pCtx.Result = &entity.Result{}
+	}
+	pCtx.Result.OnScreenText = ocrResult
 	return nil
 }
 

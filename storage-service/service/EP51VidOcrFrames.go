@@ -22,6 +22,10 @@ func (s *VidOcrFramesPipelineStep) Do(ctx context.Context, inputContext Metadata
 	if len(pCtx.VideoFrames) == 0 {
 		return nil
 	}
+	if pCtx.Result == nil {
+		pCtx.Result = &entity.Result{}
+	}
+
 	var results []string
 	var errors []error
 
@@ -76,12 +80,7 @@ func (s *VidOcrFramesPipelineStep) Do(ctx context.Context, inputContext Metadata
 
 	if len(mergedResults) > 0 {
 		joined := strings.Join(mergedResults, "\n")
-		if pCtx.Transcription != "" {
-			pCtx.Transcription = pCtx.Transcription + "\n\n" + joined
-		} else {
-			pCtx.Transcription = joined
-
-		}
+		pCtx.Result.OnScreenText = joined
 	}
 
 	return nil
