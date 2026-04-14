@@ -58,9 +58,9 @@ jobs:
           playbook: deploy.yml
           directory: ansible/
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          inventory: inventory/test.yml
           vault_password: ${{secrets.VAULT_PASSWORD}}
           options: |
+            --inventory inventory/test.yml
             --limit test
             --extra-vars release_version=dev-${{ github.sha }}
             --extra-vars commit_hash=${{ github.sha }}
@@ -71,8 +71,8 @@ jobs:
         with:
           moduleDirectory: tests/e2e
         env:
-          STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
-          STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
+          STORAGE_SERVICE_URI: ${{ secrets.TEST_STORAGE_SERVICE_URI }}
+          STORAGE_SERVICE_USERNAME: ${{ secrets.TEST_PROXY_USERNAME }}
           STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
 
 
@@ -143,9 +143,9 @@ jobs:
           playbook: deploy.yml
           directory: ansible/
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          inventory: inventory/production.yml
           vault_password: ${{secrets.VAULT_PASSWORD}}
           options: |
+            --inventory inventory/test.yml
             --limit production
             --extra-vars release_version=${{ github.ref_name }}
             --extra-vars commit_hash=${{ github.ref_name }}
@@ -156,6 +156,6 @@ jobs:
         with:
           moduleDirectory: tests/e2e
         env:
-          STORAGE_SERVICE_URI: ${{ vars.TEST_STORAGE_SERVICE_URI }}
-          STORAGE_SERVICE_USERNAME: ${{ vars.TEST_PROXY_USERNAME }}
+          STORAGE_SERVICE_URI: ${{ secrets.TEST_STORAGE_SERVICE_URI }}
+          STORAGE_SERVICE_USERNAME: ${{ secrets.TEST_PROXY_USERNAME }}
           STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
