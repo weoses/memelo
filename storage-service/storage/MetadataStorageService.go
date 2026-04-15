@@ -620,7 +620,7 @@ func NewElasticMetadataStorage(
 	validate *validator.Validate,
 ) (MetadataStorageService, error) {
 	config := cfg.MetadataDb
-	configEmbeddings := cfg.Embeddings
+	configEmbeddings := cfg.Extracting
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 	logger := slog.With("service", "ElasticMetadataStorage")
 	indexExists, err := es8.Indices.
@@ -648,7 +648,7 @@ func NewElasticMetadataStorage(
 		config.Index, MigrationHistoryIndex,
 		map[string]string{
 			"index": config.Index,
-			"dims":  strconv.Itoa(configEmbeddings.Dimensions),
+			"dims":  strconv.Itoa(configEmbeddings.EmbeddingDimensions),
 		},
 		logger,
 	)

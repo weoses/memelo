@@ -15,7 +15,7 @@ func buildCmd(ctx context.Context, cfg *conf.FfmpegConfig, args ...string) *exec
 		args = append([]string{"-threads", strconv.Itoa(cfg.ThreadsLimit)}, args...)
 	}
 
-	binary := cfg.Binary
+	binary := cfg.FfmpegBinary
 	if binary == "" {
 		binary = "ffmpeg"
 	}

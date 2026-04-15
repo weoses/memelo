@@ -8,5 +8,5 @@ import (
 )
 
 type VideoSlicer interface {
-	SliceVideo(ctx context.Context, video temp.Data, interval time.Duration) ([]temp.Data, error)
+	SliceVideoWithOverlap(ctx context.Context, video temp.Data, interval time.Duration, overlap time.Duration) ([]temp.Data, error)
 }

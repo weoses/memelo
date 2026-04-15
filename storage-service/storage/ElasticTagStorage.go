@@ -41,7 +41,7 @@ type ElasticTagStorageImpl struct {
 
 func NewElasticTagStorage(cfg *conf.Config) (ElasticTagStorage, error) {
 	config := cfg.TagDb
-	configEmbeddings := cfg.Embeddings
+	configEmbeddings := cfg.Extracting
 	es8, _ := elasticsearch8.NewTypedClient(*config.Elastic)
 	logger := slog.With("service", "ElasticTagStorage")
 	indexExists, err := es8.Indices.
@@ -69,7 +69,7 @@ func NewElasticTagStorage(cfg *conf.Config) (ElasticTagStorage, error) {
 		config.Index, MigrationHistoryIndex,
 		map[string]string{
 			"index": config.Index,
-			"dims":  strconv.Itoa(configEmbeddings.Dimensions),
+			"dims":  strconv.Itoa(configEmbeddings.EmbeddingDimensions),
 		},
 		logger,
 	)

@@ -57,6 +57,7 @@ type MetadataPipelineContext struct {
 
 	ImageOriginalJpeg temp.S3BackedData
 	VideoMp4          temp.S3BackedData
+	VideoSlices       []temp.S3BackedData
 	ImageThumbnail    temp.S3BackedData
 
 	OriginalSize  entity.Sizes
@@ -74,6 +75,7 @@ func (m *MetadataPipelineContext) Close() error {
 	helper.QuietClose(m.ImageOriginalJpeg, tmpLogger)
 	helper.QuietClose(m.ImageThumbnail, tmpLogger)
 	helper.QuietClose(m.VideoMp4, tmpLogger)
+	helper.QuietCloseAll(m.VideoSlices, tmpLogger)
 
 	return nil
 }
