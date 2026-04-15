@@ -84,7 +84,12 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		return fmt.Errorf("recompute: get image bytes failed: %w", err)
 	}
 
-	rawImgS3Backed, err := r.tmpDataService.WrapData(ctx, "image/jpeg", rawImg)
+	mime := "image/jpeg"
+	if data.Type == entity.VideoMetadataType {
+		mime = "video/mp4"
+	}
+
+	rawImgS3Backed, err := r.tmpDataService.WrapData(ctx, mime, rawImg)
 	defer helper.QuietClose(rawImgS3Backed, r.slogger)
 	if err != nil {
 		return fmt.Errorf("recompute: wrap data failed: %w", err)
@@ -148,11 +153,13 @@ func NewRecomputeService(
 	extractService MetadataExtractService,
 	metadataStorageService storage2.MetadataStorageService,
 	imageStorageService storage2.MediaStorageService,
+	tmpDataService service.TmpDataService,
 ) RecomputeService {
 	return &RecomputeServiceImpl{
 		slogger:                slog.With("service", "RecomputeService"),
 		extractService:         extractService,
 		metadataStorageService: metadataStorageService,
 		imageStorageService:    imageStorageService,
+		tmpDataService:         tmpDataService,
 	}
 }
