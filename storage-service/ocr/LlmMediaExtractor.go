@@ -16,5 +16,5 @@ type MediaExtractResult struct {
 type LlmMediaExtractor interface {
 	ProcessImage(ctx context.Context, data temp.Data) (*MediaExtractResult, error)
 	ProcessVideo(ctx context.Context, data temp.Data) (*MediaExtractResult, error)
-	CombineResults(ctx context.Context, results []*MediaExtractResult) (*MediaExtractResult, error)
+	CombineResults(ctx context.Context, results []MediaExtractResult) (*MediaExtractResult, error)
 }

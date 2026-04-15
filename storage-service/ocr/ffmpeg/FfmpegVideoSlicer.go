@@ -29,7 +29,7 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 	ctx context.Context,
 	video temp.Data,
 	interval time.Duration,
-	overlap time.Duration) ([]temp.Data, error) {
+	overlap time.Duration) ([]ocr.VideoSlice, error) {
 
 	f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: start", "interval", interval, "overlap", overlap)
 
@@ -73,8 +73,13 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 	f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: video duration", "duration", totalDuration)
 
 	step := interval - overlap
-	slices := make([]temp.Data, 0)
+	slices := make([]ocr.VideoSlice, 0)
 	for start := time.Duration(0); start < totalDuration; start += step {
+		end := start + interval
+		if end > totalDuration {
+			end = totalDuration
+		}
+
 		segmentPath := filepath.Join(dir, fmt.Sprintf("segment_%05d.mp4", len(slices)))
 		startSec := strconv.FormatFloat(start.Seconds(), 'f', -1, 64)
 		durationSec := strconv.FormatFloat(interval.Seconds(), 'f', -1, 64)
@@ -105,7 +110,11 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 			closeAll(slices)
 			return nil, fmt.Errorf("SliceVideoWithOverlap: read segment: %w", errData)
 		}
-		slices = append(slices, data)
+		slices = append(slices, ocr.VideoSlice{
+			Data:      data,
+			StartTime: int(start.Seconds()),
+			EndTime:   int(end.Seconds()),
+		})
 	}
 
 	f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: done", "segments", len(slices))
@@ -132,9 +141,9 @@ func (f *VideoSlicerImpl) getVideoDuration(ctx context.Context, inputPath string
 	return time.Duration(durSec * float64(time.Second)), nil
 }
 
-func closeAll(items []temp.Data) {
+func closeAll(items []ocr.VideoSlice) {
 	for _, d := range items {
-		_ = d.Close()
+		_ = d.Data.Close()
 	}
 }
 

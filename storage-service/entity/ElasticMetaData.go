@@ -25,4 +25,6 @@ type ElasticImageMetaData struct {
 	Type MetadataType `validator:"required"`
 
 	ResultData *Result
+
+	ResultPerVideoSlices []ResultPerVideoSlice
 }

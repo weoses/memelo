@@ -153,7 +153,7 @@ func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType 
 	return nil, fmt.Errorf("model did not return %s call", toolName)
 }
 
-func (g *GeminiExtractor) CombineResults(ctx context.Context, results []*ocr.MediaExtractResult) (*ocr.MediaExtractResult, error) {
+func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.MediaExtractResult) (*ocr.MediaExtractResult, error) {
 	if err := g.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("rate limiter: %w", err)
 	}
