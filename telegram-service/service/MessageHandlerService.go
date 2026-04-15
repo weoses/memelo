@@ -101,11 +101,16 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 
 	return &MessageHandlerResponse{
 		Message: fmt.Sprintf(
-			"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+			"```Text\n%s\n```\n"+
+				" Tags: ```%s```\n"+
+				" Caption: `%s`\n"+
+				" ID: `%s` \n"+
+				" Status: `%s`",
 			result.Text,
+			strings.Join(result.Tags, ", "),
+			result.Caption,
 			result.Id,
-			result.DuplicateStatus,
-			strings.Join(result.Tags, ", ")),
+			result.DuplicateStatus),
 		ParseMode: "Markdown",
 	}, nil
 }

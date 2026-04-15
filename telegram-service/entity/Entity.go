@@ -8,6 +8,7 @@ type Choice struct {
 type MemeCreateResult struct {
 	Id              uuid.UUID
 	Text            string
+	Caption         string
 	DuplicateStatus string
 	Tags            []string
 }
@@ -27,4 +28,6 @@ type MemeSearchResult struct {
 	ThumbHeight int
 
 	Type string
+
+	Caption string
 }

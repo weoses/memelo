@@ -143,7 +143,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 					inlineChoice.MimeType = "image/jpeg"
 					inlineChoice.Height = item.ThumbHeight
 					inlineChoice.Width = item.ThumbWidth
-
+					inlineChoice.Caption = item.Caption
 					if delQuery {
 						inlineChoice.Caption = "Deleted"
 					}
@@ -159,7 +159,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 					inlineChoice.ThumbURL = item.ThumbUrl
 					inlineChoice.Width = item.ThumbWidth
 					inlineChoice.Height = item.ThumbHeight
-					inlineChoice.Title = "memelo-video"
+					inlineChoice.Title = item.Caption
 
 					if delQuery {
 						inlineChoice.Caption = "Deleted"

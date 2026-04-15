@@ -91,6 +91,10 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 		dto.MediaOriginal.ImageHeight = helper.Addr(int32(urls.Metadata.ImageSize.Height))
 	}
 
+	if urls.Metadata.ResultData != nil {
+		dto.Caption = urls.Metadata.ResultData.Caption
+	}
+
 	return dto
 }
 

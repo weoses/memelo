@@ -74,7 +74,7 @@ func (CreateMemeStatus) EnumDescriptor() ([]byte, []int) {
 type MediaDataDto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	S3Path        *string                `protobuf:"bytes,1,opt,name=s3_path,json=s3Path,proto3,oneof" json:"s3_path,omitempty"`
-	Data          []byte                 `protobuf:"bytes,2,opt,name=temp,proto3,oneof" json:"temp,omitempty"`
+	Data          []byte                 `protobuf:"bytes,2,opt,name=data,proto3,oneof" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

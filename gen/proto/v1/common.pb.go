@@ -89,6 +89,7 @@ type MemeDto struct {
 	MediaOriginal  *ImageDto              `protobuf:"bytes,4,opt,name=media_original,json=mediaOriginal,proto3" json:"media_original,omitempty"`
 	Tags           []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
 	Type           string                 `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
+	Caption        string                 `protobuf:"bytes,7,opt,name=caption,proto3" json:"caption,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -161,6 +162,13 @@ func (x *MemeDto) GetTags() []string {
 func (x *MemeDto) GetType() string {
 	if x != nil {
 		return x.Type
+	}
+	return ""
+}
+
+func (x *MemeDto) GetCaption() string {
+	if x != nil {
+		return x.Caption
 	}
 	return ""
 }
@@ -256,7 +264,7 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"imageWidth\x88\x01\x01\x12&\n" +
 	"\fimage_height\x18\x03 \x01(\x05H\x01R\vimageHeight\x88\x01\x01B\x0e\n" +
 	"\f_image_widthB\x0f\n" +
-	"\r_image_height\"\xe6\x01\n" +
+	"\r_image_height\"\x80\x02\n" +
 	"\aMemeDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -264,7 +272,8 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"\x0fimage_thumbnail\x18\x03 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\x0eimageThumbnail\x12@\n" +
 	"\x0emedia_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rmediaOriginal\x12\x12\n" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\x12\x12\n" +
-	"\x04type\x18\x06 \x01(\tR\x04type\"1\n" +
+	"\x04type\x18\x06 \x01(\tR\x04type\x12\x18\n" +
+	"\acaption\x18\a \x01(\tR\acaption\"1\n" +
 	"\x10DeleteAllRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"\x13\n" +
