@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"sync"
 
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
@@ -12,20 +15,47 @@ type VidCalcEmbeddingsPipelineStep struct {
 	BasePipelineStep
 
 	embedder ocr.LlmEmbeddingExtractor
+	slogger  *slog.Logger
 }
 
 func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if pCtx.VideoMp4 == nil {
+	if len(pCtx.VideoSlices) == 0 {
 		return nil
 	}
 
-	embeddings, err := s.embedder.GetVideoEmbedding(ctx, pCtx.VideoMp4)
-	if err != nil {
-		return fmt.Errorf("cannot get embedding for video: %w", err)
+	s.slogger.InfoContext(ctx, "calculating embeddings for video slices", "slices", len(pCtx.VideoSlices))
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+
+	errorsList := make([]error, 0)
+	embeddingsList := make([]entity.EmbeddingItem, 0)
+
+	for i, slice := range pCtx.VideoSlices {
+		errorsPtr := &errorsList
+		embeddingsPtr := &embeddingsList
+
+		wg.Go(func() {
+			s.slogger.InfoContext(ctx, "embedding video slice", "index", i)
+			sliceEmbeddings, err := s.embedder.GetVideoEmbedding(ctx, slice)
+
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				*errorsPtr = append(*errorsPtr, fmt.Errorf("cannot get embedding for video slice %d: %w", i, err))
+				return
+			}
+			*embeddingsPtr = append(*embeddingsPtr, sliceEmbeddings...)
+		})
 	}
-	for _, e := range embeddings {
-		pCtx.Embedding = append(pCtx.Embedding, *e)
+	wg.Wait()
+
+	if len(errorsList) > 0 {
+		return errors.Join(errorsList...)
 	}
+
+	s.slogger.InfoContext(ctx, "embeddings done", "total", len(embeddingsList))
+	pCtx.Embedding = embeddingsList
 	return nil
 }
 
@@ -36,5 +66,6 @@ func NewVidCalcEmbeddingsPipelineStep(embedder ocr.LlmEmbeddingExtractor) Extrac
 			typ: []entity.MetadataType{entity.VideoMetadataType},
 		},
 		embedder: embedder,
+		slogger:  slog.With("service", "VidCalcEmbeddingsPipelineStep"),
 	}
 }

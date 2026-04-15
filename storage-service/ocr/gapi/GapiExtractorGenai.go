@@ -4,17 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"golang.org/x/time/rate"
 	"google.golang.org/genai"
 )
 
 type GeminiExtractor struct {
 	client  *genai.Client
 	cfg     *conf.GeminiExtractorConfig
+	limiter *rate.Limiter
 	slogger *slog.Logger
 }
 
@@ -38,6 +41,7 @@ func NewGeminiExtractor(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 	return &GeminiExtractor{
 		client:  client,
 		cfg:     c,
+		limiter: rate.NewLimiter(15, 15),
 		slogger: logger,
 	}, nil
 }
@@ -97,6 +101,10 @@ func (g *GeminiExtractor) ProcessVideo(ctx context.Context, data temp.Data) (*oc
 func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType string) (*ocr.MediaExtractResult, error) {
 	g.slogger.InfoContext(ctx, "process start", "mimeType", mimeType)
 
+	if err := g.limiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("rate limiter: %w", err)
+	}
+
 	mediaPart, err := g.buildMediaPart(ctx, data, mimeType)
 	if err != nil {
 		return nil, err
@@ -143,6 +151,54 @@ func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType 
 		}
 	}
 	return nil, fmt.Errorf("model did not return %s call", toolName)
+}
+
+func (g *GeminiExtractor) CombineResults(ctx context.Context, results []*ocr.MediaExtractResult) (*ocr.MediaExtractResult, error) {
+	if err := g.limiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("rate limiter: %w", err)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(g.cfg.CombinePrompt)
+	sb.WriteString("\n\n")
+	for i, r := range results {
+		fmt.Fprintf(&sb, "Segment %d:\non_screen_text: %s\naudio_transcript: %s\naudio_track: %s\ncaption: %s\n\n",
+			i+1, r.OnScreenText, r.AudioTranscript, r.AudioTrack, r.Caption)
+	}
+
+	contents := []*genai.Content{
+		genai.NewContentFromParts([]*genai.Part{{Text: sb.String()}}, genai.RoleUser),
+	}
+
+	const toolName = "extract_metadata"
+	resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
+		Tools: []*genai.Tool{g.buildTool()},
+		ToolConfig: &genai.ToolConfig{
+			FunctionCallingConfig: &genai.FunctionCallingConfig{
+				Mode:                 genai.FunctionCallingConfigModeAny,
+				AllowedFunctionNames: []string{toolName},
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("combine results generate content: %w", err)
+	}
+
+	for _, cand := range resp.Candidates {
+		for _, part := range cand.Content.Parts {
+			if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
+				args := part.FunctionCall.Args
+				g.slogger.InfoContext(ctx, "combine results done")
+				return &ocr.MediaExtractResult{
+					OnScreenText:    stringArg(args, "on_screen_text"),
+					AudioTranscript: stringArg(args, "audio_transcript"),
+					AudioTrack:      stringArg(args, "audio_track"),
+					Caption:         stringArg(args, "caption"),
+				}, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("model did not return %s call during combine", toolName)
 }
 
 func stringArg(args map[string]any, key string) string {

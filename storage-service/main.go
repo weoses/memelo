@@ -39,11 +39,13 @@ func main() {
 		fx.Provide(NewValidator),
 		fx.Supply(cfg),
 		fx.Provide(func(c *conf.Config) *conf.FfmpegConfig { return c.Ffmpeg }),
+		fx.Provide(func(c *conf.Config) *conf.CommonExtractingConfig { return c.Extracting }),
 
 		fx.Provide(ocr.NewImageConverter),
 		fx.Provide(gapi.NewImageEmbeddingExtractorGenai),
 		fx.Provide(ffmpeg.NewVideo2Mp4Converter),
 		fx.Provide(ffmpeg.NewVideo2FrameExtractor),
+		fx.Provide(ffmpeg.NewVideoSlicer),
 		fx.Provide(gapi.NewGeminiExtractor),
 
 		fx.Provide(storage2.NewElasticTagStorage),
@@ -131,6 +133,12 @@ func main() {
 		fx.Provide(
 			fx.Annotate(
 				service.NewVidToMp4PipelineStep,
+				fx.ResultTags(`group:"pipeline_steps"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				service.NewVidSlicePipelineStep,
 				fx.ResultTags(`group:"pipeline_steps"`),
 			),
 		),

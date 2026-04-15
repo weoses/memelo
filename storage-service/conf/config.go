@@ -8,9 +8,9 @@ import (
 	commonconfig "github.com/weoses/memelo/common/config"
 )
 
-type CommonEmbeddingsConfig struct {
-	Dimensions                int
-	VideoEmbeddingIntervalSec int
+type CommonExtractingConfig struct {
+	EmbeddingDimensions   int
+	VideoSliceIntervalSec int
 }
 
 type SearchConfig struct {
@@ -56,9 +56,10 @@ type AudioSttConfig struct {
 }
 
 type FfmpegConfig struct {
-	Binary       string
-	CpuLimit     int
-	ThreadsLimit int
+	FfmpegBinary  string
+	FfprobeBinary string
+	CpuLimit      int
+	ThreadsLimit  int
 }
 
 type GeminiExtractorConfig struct {
@@ -66,6 +67,7 @@ type GeminiExtractorConfig struct {
 	ApiEndpoint                 string `mapstructure:"apiendpoint"`
 	Model                       string `mapstructure:"model"`
 	Prompt                      string `mapstructure:"prompt"`
+	CombinePrompt               string `mapstructure:"combine-prompt"`
 	OutputToolDescription       string `mapstructure:"output-tool-description"`
 	OutputToolTranscriptionDesc string `mapstructure:"output-tool-transcription-desc"`
 	OutputToolOnScreenTextDesc  string `mapstructure:"output-tool-on-screen-text-desc"`
@@ -83,7 +85,7 @@ type Config struct {
 	Server          *commonconfig.ServerConfig       `mapstructure:"server"`
 	Log             *commonconfig.LoggingConfig      `mapstructure:"log"`
 	Search          *SearchConfig                    `mapstructure:"search"`
-	Embeddings      *CommonEmbeddingsConfig          `mapstructure:"embeddings"`
+	Extracting      *CommonExtractingConfig          `mapstructure:"extracting"`
 	MediaStorage    *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
 	TempStorage     *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
 	MetadataDb      *MetadataDbConfig                `mapstructure:"metadata-db"`

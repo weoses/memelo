@@ -63,7 +63,7 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetImageEmbedding(ctx context.C
 	}, nil
 }
 
-func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.Context, video temp.Data) ([]*entity.EmbeddingItem, error) {
+func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.Context, video temp.Data) ([]entity.EmbeddingItem, error) {
 	i.slogger.InfoContext(ctx, "GetVideoEmbedding start")
 	if err := i.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("rate limiter: %w", err)
@@ -72,7 +72,7 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.C
 	var part *genai.Part
 	if s3data, ok := video.(temp.S3BackedData); ok && s3data.IsGsSupported() {
 		if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-			i.slogger.InfoContext(ctx, "GetImageEmbedding using gcsUri", "uri", uri)
+			i.slogger.InfoContext(ctx, "GetVideoEmbedding using gcsUri", "uri", uri)
 			part = genai.NewPartFromURI(uri, "video/mp4")
 		}
 	}
@@ -95,9 +95,9 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.C
 		return nil, fmt.Errorf("GetVideoEmbedding: %w", err)
 	}
 
-	items := make([]*entity.EmbeddingItem, len(resp.Embeddings))
+	items := make([]entity.EmbeddingItem, len(resp.Embeddings))
 	for idx, emb := range resp.Embeddings {
-		items[idx] = &entity.EmbeddingItem{
+		items[idx] = entity.EmbeddingItem{
 			Data:  emb.Values,
 			Model: i.model,
 			Type:  entity.EmbeddingTypeVideo,
@@ -144,7 +144,7 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) embedContent(ctx context.Contex
 
 func NewImageEmbeddingExtractorGenai(cfg *conf.Config) (ocr.LlmEmbeddingExtractor, error) {
 	geminiConfig := cfg.GeminiEmbedding
-	embeddingConfig := cfg.Embeddings
+	embeddingConfig := cfg.Extracting
 
 	clientCfg := &genai.ClientConfig{}
 
@@ -162,8 +162,8 @@ func NewImageEmbeddingExtractorGenai(cfg *conf.Config) (ocr.LlmEmbeddingExtracto
 	return &GcloudImageEmbeddingExtractorGenaiImpl{
 		client:    client,
 		model:     geminiConfig.Model,
-		dimension: int32(embeddingConfig.Dimensions),
-		limiter:   rate.NewLimiter(2, 4),
+		dimension: int32(embeddingConfig.EmbeddingDimensions),
+		limiter:   rate.NewLimiter(40, 40),
 		slogger:   slog.With("service", "LlmEmbeddingExtractor"),
 	}, nil
 }
