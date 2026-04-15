@@ -75,7 +75,7 @@ func (x *ExportRequest) GetId() string {
 
 type ExportImageDto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Data          []byte                 `protobuf:"bytes,1,opt,name=temp,proto3" json:"temp,omitempty"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	Width         int32                  `protobuf:"varint,2,opt,name=width,proto3" json:"width,omitempty"`
 	Height        int32                  `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -136,7 +136,7 @@ func (x *ExportImageDto) GetHeight() int32 {
 type ExportImageEmbedding struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
-	Data          []float32              `protobuf:"fixed32,2,rep,packed,name=temp,proto3" json:"temp,omitempty"`
+	Data          []float32              `protobuf:"fixed32,2,rep,packed,name=data,proto3" json:"data,omitempty"`
 	TimeStart     int32                  `protobuf:"varint,3,opt,name=time_start,json=timeStart,proto3" json:"time_start,omitempty"`
 	TimeEnd       int32                  `protobuf:"varint,4,opt,name=time_end,json=timeEnd,proto3" json:"time_end,omitempty"`
 	Type          string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`

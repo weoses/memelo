@@ -105,6 +105,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 				result.ThumbHeight = int(dto.GetImageThumbnail().GetImageHeight())
 			}
 			result.Type = dto.GetType()
+			result.Caption = dto.GetCaption()
 			return result
 		})
 	return entityResult, nil
@@ -159,6 +160,7 @@ func (s *StorageConnectorImpl) CreateVideo(ctx context.Context, data temp.S3Back
 		Text:            response.Result.GetOcrResult(),
 		DuplicateStatus: response.Status.String(),
 		Tags:            response.Result.GetTags(),
+		Caption:         response.Result.GetCaption(),
 	}, nil
 }
 

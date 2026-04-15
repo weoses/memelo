@@ -18,6 +18,7 @@ message MemeDto {
   ImageDto media_original = 4;
   repeated string tags = 5;
   string type = 6;
+  string caption = 7;
 }
 
 message DeleteAllRequest {
