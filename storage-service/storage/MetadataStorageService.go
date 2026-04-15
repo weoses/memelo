@@ -465,7 +465,7 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	resultField.Field = "Result"
 
 	sortId := types.NewSortOptions()
-	sortId.SortOptions["ImageId"] = *types.NewFieldSort()
+	sortId.SortOptions["Created"] = *types.NewFieldSort()
 
 	searchRequest := e.client.Search().
 		Index(e.indexName).
