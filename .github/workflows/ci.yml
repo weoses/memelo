@@ -96,10 +96,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           vault_password: ${{secrets.VAULT_PASSWORD}}
           options: |
-            --inventory inventory/test.yml
+            --inventory inventory/production.yml
             --limit production
-            --extra-vars release_version=${{ github.ref_name }}
-            --extra-vars commit_hash=${{ github.ref_name }}
+            --extra-vars release_version=dev-${{ github.sha }}
+            --extra-vars commit_hash=${{ github.sha }}
             --extra-vars repo_url=${{ github.server_url }}/${{ github.repository }}.git
 
       - name: Tests
