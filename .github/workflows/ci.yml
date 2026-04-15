@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "**"
-    tags:
+    tags-ignore:
       - '**'
 
 jobs:
@@ -75,60 +75,11 @@ jobs:
           STORAGE_SERVICE_USERNAME: ${{ secrets.TEST_PROXY_USERNAME }}
           STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
 
-
-  release-tag-images:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
-    steps:
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Retag storage-service image by tag
-        uses: Nextdoor/docker-image-retag-action@main
-        with:
-          image: ghcr.io/weoses/storage-service
-          source_tag: dev-${{ github.sha }}
-          dest_tag: ${{ github.ref_name }}
-
-      - name: Retag telegram-service image by tag
-        uses: Nextdoor/docker-image-retag-action@main
-        with:
-          image: ghcr.io/weoses/telegram-service
-          source_tag: dev-${{ github.sha }}
-          dest_tag: ${{ github.ref_name }}
-
-
-  release-make:
-    runs-on: ubuntu-latest
-    needs:
-      - release-tag-images
-    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && endsWith(github.ref_name, '.00')
-    steps:
-      - name: "Make release"
-        uses: softprops/action-gh-release@v2
-        with:
-          body: |
-            **Docker images:**
-            `ghcr.io/weoses/storage-service:${{ github.ref_name }}`
-            `ghcr.io/weoses/telegram-service:${{ github.ref_name }}`
-
-            **Deploy workflow:** [link](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          generate_release_notes: true
-
-
   release-deploy:
     runs-on: ubuntu-latest
     needs:
       - build
-      - release-tag-images
-      - release-make
     environment: memelo-test
-    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     steps:
       - uses: actions/checkout@v5
 
