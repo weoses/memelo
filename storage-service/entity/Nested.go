@@ -26,3 +26,10 @@ type Result struct {
 	AudioTrack      string
 	Caption         string
 }
+
+type ResultPerVideoSlice struct {
+	SliceNumber    int
+	SliceStartTime int
+	SliceEndTime   int
+	Result         Result
+}

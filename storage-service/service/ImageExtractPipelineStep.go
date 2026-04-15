@@ -39,7 +39,7 @@ type MetadataStorageArtifact struct {
 	Data temp.S3BackedData
 }
 
-func (m *MetadataStorageArtifact) Close() error {
+func (m MetadataStorageArtifact) Close() error {
 	if m.Data != nil {
 		tmpLogger := slog.With("service", "MetadataStorageArtifact")
 		helper.QuietClose(m.Data, tmpLogger)
@@ -47,17 +47,29 @@ func (m *MetadataStorageArtifact) Close() error {
 	return nil
 }
 
+type VideoSlice struct {
+	SliceNumber    int
+	SliceStartTime int
+	SliceEndTime   int
+	Slice          temp.S3BackedData
+}
+
+func (vs VideoSlice) Close() error {
+	return vs.Slice.Close()
+}
+
 type MetadataPipelineContext struct {
-	Hash             string
-	Embedding        []entity.EmbeddingItem
-	Result           *entity.Result
-	StorageArtifacts []MetadataStorageArtifact
-	Duplicate        *entity.ElasticImageMetaData
-	Tags             []entity.ElasticTag
+	Hash                 string
+	Embedding            []entity.EmbeddingItem
+	Result               *entity.Result
+	ResultPerVideoSlices []entity.ResultPerVideoSlice
+	StorageArtifacts     []MetadataStorageArtifact
+	Duplicate            *entity.ElasticImageMetaData
+	Tags                 []entity.ElasticTag
 
 	ImageOriginalJpeg temp.S3BackedData
 	VideoMp4          temp.S3BackedData
-	VideoSlices       []temp.S3BackedData
+	VideoSlices       []VideoSlice
 	ImageThumbnail    temp.S3BackedData
 
 	OriginalSize  entity.Sizes
@@ -66,16 +78,12 @@ type MetadataPipelineContext struct {
 
 func (m *MetadataPipelineContext) Close() error {
 	tmpLogger := slog.With("service", "MetadataPipelineContext")
-	if m.StorageArtifacts != nil {
-		for i := range m.StorageArtifacts {
-			helper.QuietClose(&m.StorageArtifacts[i], tmpLogger)
-		}
-	}
 
 	helper.QuietClose(m.ImageOriginalJpeg, tmpLogger)
 	helper.QuietClose(m.ImageThumbnail, tmpLogger)
 	helper.QuietClose(m.VideoMp4, tmpLogger)
 	helper.QuietCloseAll(m.VideoSlices, tmpLogger)
+	helper.QuietCloseAll(m.StorageArtifacts, tmpLogger)
 
 	return nil
 }

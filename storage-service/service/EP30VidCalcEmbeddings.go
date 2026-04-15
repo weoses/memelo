@@ -37,7 +37,7 @@ func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext Met
 
 		wg.Go(func() {
 			s.slogger.InfoContext(ctx, "embedding video slice", "index", i)
-			sliceEmbeddings, err := s.embedder.GetVideoEmbedding(ctx, slice)
+			sliceEmbeddings, err := s.embedder.GetVideoEmbedding(ctx, slice.Slice)
 
 			mu.Lock()
 			defer mu.Unlock()

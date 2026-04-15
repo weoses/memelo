@@ -109,6 +109,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		pipelineResult.Result.AudioTrack)
 	data.Result = joinedResult
 	data.ResultData = pipelineResult.Result
+	data.ResultPerVideoSlices = pipelineResult.ResultPerVideoSlices
 
 	for i := range pipelineResult.StorageArtifacts {
 		artifact := pipelineResult.StorageArtifacts[i]
