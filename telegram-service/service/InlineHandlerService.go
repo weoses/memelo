@@ -132,6 +132,11 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 				"url", item.MediaUrl,
 			)
 
+			caption := item.Caption
+			if caption == "" {
+				caption = "media"
+			}
+
 			switch item.Type {
 			case entity.ResultTypeImage:
 				{
@@ -143,7 +148,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 					inlineChoice.MimeType = "image/jpeg"
 					inlineChoice.Height = item.ThumbHeight
 					inlineChoice.Width = item.ThumbWidth
-					inlineChoice.Caption = item.Caption
+					inlineChoice.Caption = caption
 					if delQuery {
 						inlineChoice.Caption = "Deleted"
 					}
@@ -159,7 +164,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 					inlineChoice.ThumbURL = item.ThumbUrl
 					inlineChoice.Width = item.ThumbWidth
 					inlineChoice.Height = item.ThumbHeight
-					inlineChoice.Title = item.Caption
+					inlineChoice.Title = caption
 
 					if delQuery {
 						inlineChoice.Caption = "Deleted"
