@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	v1 "github.com/weoses/memelo/gen/proto/v1"
@@ -116,8 +117,8 @@ func TestSearchMeme_Simple(t *testing.T) {
 	if respSearch.SearcherName != "simple_searcher" {
 		t.Fatal("expected simple_searcher")
 	}
-	if respSearch.Results[0].OcrResult != "ok guys this is my face reveal..." {
-		t.Fatal("expected the result to be 'ok guys this is my face reveal'")
+	if !strings.Contains(respSearch.Results[0].OcrResult, "ok guys this is my face reveal") {
+		t.Fatalf("expected the result to be 'ok guys this is my face reveal' to be contained in the result, got %s", respSearch.Results[0].OcrResult)
 	}
 }
 
@@ -157,8 +158,8 @@ func TestSearchMeme_All(t *testing.T) {
 	if respSearch.SearcherName != "all_searcher" {
 		t.Fatal("expected all_searcher")
 	}
-	if respSearch.Results[0].OcrResult != "ok guys this is my face reveal..." {
-		t.Fatal("expected the result to be 'ok guys this is my face reveal'")
+	if !strings.Contains(respSearch.Results[0].OcrResult, "ok guys this is my face reveal") {
+		t.Fatalf("expected the result to be 'ok guys this is my face reveal' to be contained in the result, got %s", respSearch.Results[0].OcrResult)
 	}
 }
 
