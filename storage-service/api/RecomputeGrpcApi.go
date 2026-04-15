@@ -34,7 +34,7 @@ func (r RecomputeGrpcApiImpl) RecomputeOcrData(ctx context.Context, request *v1.
 	}
 
 	return r.recomputeService.Recompute(
-		ctx,
+		context.WithoutCancel(ctx),
 		accountId,
 		id,
 		callback)
