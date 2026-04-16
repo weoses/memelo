@@ -166,6 +166,7 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 			i+1, r.OnScreenText, r.AudioTranscript, r.AudioTrack, r.Caption)
 	}
 
+	g.slogger.DebugContext(ctx, "combine prompt", "prompt", sb.String())
 	contents := []*genai.Content{
 		genai.NewContentFromParts([]*genai.Part{{Text: sb.String()}}, genai.RoleUser),
 	}

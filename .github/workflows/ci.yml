@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
-    environment: memelo-test
+    environment: production
     steps:
       - uses: actions/checkout@v5
 

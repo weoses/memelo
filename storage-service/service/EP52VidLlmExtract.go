@@ -48,6 +48,10 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 				errs = append(errs, fmt.Errorf("slice %d: %w", i, err))
 				return
 			}
+			s.slogger.DebugContext(ctx, "processed slice",
+				"index", i,
+				"onScreenText", r.OnScreenText,
+				"audioTransription", r.AudioTranscript)
 
 			results[i] = OneSliceResult{
 				SliceNumber:    i,
