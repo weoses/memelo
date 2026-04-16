@@ -149,7 +149,6 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 					inlineChoice.MimeType = "image/jpeg"
 					inlineChoice.Height = item.ThumbHeight
 					inlineChoice.Width = item.ThumbWidth
-					inlineChoice.Caption = caption
 					if delQuery {
 						inlineChoice.Caption = "Deleted"
 					}
