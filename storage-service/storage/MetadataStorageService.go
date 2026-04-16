@@ -36,20 +36,20 @@ type MetadataStorageService interface {
 		ctx context.Context,
 		accountId *uuid.UUID,
 		id *uuid.UUID,
-		idAfter *uuid.UUID,
+		idAfter *int64,
 		pageSize *int,
 	) ([]*entity.ElasticImageMetaData, error)
 
 	SearchByAccountId(ctx context.Context,
 		accountId uuid.UUID,
-		idAfter *uuid.UUID,
+		idAfter *int64,
 		pageSize *int,
 	) ([]*entity.ElasticImageMetaData, error)
 
 	SearchSimple(ctx context.Context,
 		accountId uuid.UUID,
 		query string,
-		idAfter *uuid.UUID,
+		idAfter *int64,
 		pageSize *int,
 	) ([]*entity.ElasticImageMetaData, error)
 
@@ -80,7 +80,7 @@ type ElasticMetadataStorageServiceImpl struct {
 func (e *ElasticMetadataStorageServiceImpl) SearchByAccountId(
 	ctx context.Context,
 	accountId uuid.UUID,
-	sortIdAfter *uuid.UUID,
+	sortIdAfter *int64,
 	pageSize *int,
 ) ([]*entity.ElasticImageMetaData, error) {
 	result, err := e.searchByAccountId(ctx, accountId, sortIdAfter, pageSize)
@@ -99,7 +99,7 @@ func (e *ElasticMetadataStorageServiceImpl) List(
 	ctx context.Context,
 	accountId *uuid.UUID,
 	id *uuid.UUID,
-	sortIdAfter *uuid.UUID,
+	sortIdAfter *int64,
 	pageSize *int,
 ) ([]*entity.ElasticImageMetaData, error) {
 	result, err := e.list(ctx, accountId, id, sortIdAfter, pageSize)
@@ -115,7 +115,7 @@ func (e *ElasticMetadataStorageServiceImpl) List(
 	return results, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) SearchSimple(ctx context.Context, accountId uuid.UUID, query string, sortIdAfter *uuid.UUID, pageSize *int) ([]*entity.ElasticImageMetaData, error) {
+func (e *ElasticMetadataStorageServiceImpl) SearchSimple(ctx context.Context, accountId uuid.UUID, query string, sortIdAfter *int64, pageSize *int) ([]*entity.ElasticImageMetaData, error) {
 	result, err := e.searchSimple(ctx, accountId, query, sortIdAfter, pageSize)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline all failed: %w", err)
@@ -451,7 +451,7 @@ func (e *ElasticMetadataStorageServiceImpl) processKnn(
 func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	ctx context.Context,
 	query *types.Query,
-	idAfter *uuid.UUID,
+	sortingIdAfter *int64,
 	size *int,
 ) (*search.Response, error) {
 	highlight := types.NewHighlight()
@@ -465,7 +465,9 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 	resultField.Field = "Result"
 
 	sortId := types.NewSortOptions()
-	sortId.SortOptions["Created"] = *types.NewFieldSort()
+	sortOptions := *types.NewFieldSort()
+	sortOptions.Order = helper.Addr(sortorder.Desc)
+	sortId.SortOptions["Created"] = sortOptions
 
 	searchRequest := e.client.Search().
 		Index(e.indexName).
@@ -474,8 +476,8 @@ func (e *ElasticMetadataStorageServiceImpl) runSearchQuery(
 		Highlight(highlight).
 		Sort(sortId)
 
-	if idAfter != nil {
-		searchRequest = searchRequest.SearchAfter(*idAfter)
+	if sortingIdAfter != nil {
+		searchRequest = searchRequest.SearchAfter(*sortingIdAfter)
 	}
 
 	if size != nil {
@@ -512,7 +514,7 @@ func (e *ElasticMetadataStorageServiceImpl) searchFuzzy(
 	return resultFuzzy, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, accountId uuid.UUID, queryString string, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
+func (e *ElasticMetadataStorageServiceImpl) searchSimple(ctx context.Context, accountId uuid.UUID, queryString string, idAfter *int64, pageSize *int) (*search.Response, error) {
 	e.slogger.InfoContext(ctx, "Search SIMPLE start",
 		"idAfter", idAfter,
 		"query", queryString,
@@ -534,7 +536,7 @@ func (e *ElasticMetadataStorageServiceImpl) list(
 	ctx context.Context,
 	accountId *uuid.UUID,
 	id *uuid.UUID,
-	idAfter *uuid.UUID,
+	idAfter *int64,
 	pageSize *int) (*search.Response, error) {
 	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.list start",
 		"idAfter", idAfter,
@@ -563,7 +565,7 @@ func (e *ElasticMetadataStorageServiceImpl) list(
 	return result, nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) searchByAccountId(ctx context.Context, accountId uuid.UUID, idAfter *uuid.UUID, pageSize *int) (*search.Response, error) {
+func (e *ElasticMetadataStorageServiceImpl) searchByAccountId(ctx context.Context, accountId uuid.UUID, idAfter *int64, pageSize *int) (*search.Response, error) {
 	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchByAccountId start",
 		"idAfter", idAfter,
 		"pageSize", pageSize,

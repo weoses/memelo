@@ -39,7 +39,7 @@ type SearchResult struct {
 }
 
 type MemeCrudService interface {
-	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error)
+	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterCreated *int64, size *int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAll(ctx context.Context, accountId uuid.UUID) error
@@ -124,7 +124,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
-func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchResult, error) {
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) (*SearchResult, error) {
 	elasticData, err := m.searchService.Search(ctx, accountId, query, afterId, size)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
@@ -165,7 +165,7 @@ func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUI
 
 func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID) error {
 	pageSize := 100
-	var afterId *uuid.UUID
+	var afterId *int64
 
 	for {
 		results, err := m.metadataStorageService.SearchByAccountId(ctx, accountId, afterId, &pageSize)
@@ -196,7 +196,7 @@ func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID
 			break
 		}
 
-		afterId = &results[len(results)-1].ImageId
+		afterId = &results[len(results)-1].Created
 	}
 	return nil
 }

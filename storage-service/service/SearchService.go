@@ -16,7 +16,7 @@ type SearchServiceResponse struct {
 }
 
 type SearchService interface {
-	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) (*SearchServiceResponse, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) (*SearchServiceResponse, error)
 }
 
 type SearchServiceImpl struct {
@@ -28,7 +28,7 @@ func (m *SearchServiceImpl) Search(
 	ctx context.Context,
 	accountId uuid.UUID,
 	query string,
-	afterId *uuid.UUID,
+	afterId *int64,
 	size *int,
 ) (*SearchServiceResponse, error) {
 	selectedSearcherName := ""

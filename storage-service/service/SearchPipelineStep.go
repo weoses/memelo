@@ -10,7 +10,7 @@ import (
 type SearchPipelineStep interface {
 	GetIndex() int
 	GetName() string
-	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) ([]*entity.ElasticImageMetaData, error)
 }
 
 type SearcherBase struct {

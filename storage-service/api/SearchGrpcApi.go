@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -82,8 +83,9 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 			ImageWidth:  helper.Addr(int32(urls.Metadata.ThumbSize.Width)),
 			ImageHeight: helper.Addr(int32(urls.Metadata.ThumbSize.Height)),
 		},
-		Tags: urls.Metadata.Tags,
-		Type: string(urls.Metadata.Type),
+		Tags:      urls.Metadata.Tags,
+		Type:      string(urls.Metadata.Type),
+		SortingId: urls.Metadata.Created,
 	}
 
 	if urls.Metadata.ImageSize != nil {
@@ -108,15 +110,15 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, fmt.Errorf("error parsing AccountId: %w", err)
 	}
 
-	var afterIdUuid *uuid.UUID
+	var afterCreated *int64
 	var pageSize *int
 
 	if req.PageAfterId != nil {
-		afterIdUuid_, err := uuid.Parse(*req.PageAfterId)
+		_afterCreated, err := strconv.ParseInt(*req.PageAfterId, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing PageAfterId: %w", err)
 		}
-		afterIdUuid = &afterIdUuid_
+		afterCreated = &_afterCreated
 	}
 
 	if req.PageSize != nil {
@@ -124,7 +126,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		pageSize = &pageSize_
 	}
 
-	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, afterIdUuid, pageSize)
+	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, afterCreated, pageSize)
 	if err != nil {
 		api.slogger.ErrorContext(ctx, "SearchMeme error", "query", req.Query)
 		return nil, err

@@ -19,6 +19,7 @@ message MemeDto {
   repeated string tags = 5;
   string type = 6;
   string caption = 7;
+  int64 sortingId = 8;
 }
 
 message DeleteAllRequest {
