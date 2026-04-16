@@ -19,7 +19,7 @@ type TextEmbeddingSearcher struct {
 	searchConfig *conf.SearchConfig
 }
 
-func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *uuid.UUID, size *int) ([]*entity.ElasticImageMetaData, error) {
+func (s TextEmbeddingSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) ([]*entity.ElasticImageMetaData, error) {
 	if query == "" {
 		return make([]*entity.ElasticImageMetaData, 0), nil
 	}

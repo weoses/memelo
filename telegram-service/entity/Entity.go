@@ -30,4 +30,6 @@ type MemeSearchResult struct {
 	Type string
 
 	Caption string
+
+	SortingId int64
 }

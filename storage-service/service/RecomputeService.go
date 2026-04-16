@@ -38,7 +38,7 @@ func (r *RecomputeServiceImpl) Recompute(
 	id *uuid.UUID,
 	callback func(ctx context.Context, recompute ProgressDataRecompute) error) error {
 	pageSize := exportPageSize
-	var afterId *uuid.UUID
+	var afterId *int64
 	processed := 0
 
 	for {
@@ -62,7 +62,7 @@ func (r *RecomputeServiceImpl) Recompute(
 		}
 
 		last := page[len(page)-1]
-		afterId = &last.ImageId
+		afterId = &last.Created
 
 		err = callback(ctx, ProgressDataRecompute{Processed: processed})
 		if err != nil {

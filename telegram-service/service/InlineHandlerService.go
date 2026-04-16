@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -177,7 +178,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	nextOffset := ""
 	if len(results) == i.config.Inline.PageSize && i.config.Inline.PageSize > 0 {
-		nextOffset = results[i.config.Inline.PageSize-1].Id
+		nextOffset = strconv.FormatInt(results[i.config.Inline.PageSize-1].SortingId, 10)
 	}
 
 	i.log.InfoContext(ctx, "Search next offset",

@@ -42,7 +42,7 @@ func (e *ExportServiceImpl) Export(
 ) error {
 
 	pageSize := exportPageSize
-	var afterId *uuid.UUID
+	var afterId *int64
 	processed := 0
 
 	for {
@@ -65,7 +65,7 @@ func (e *ExportServiceImpl) Export(
 		}
 
 		last := page[len(page)-1]
-		afterId = &last.ImageId
+		afterId = &last.Created
 
 		e.slogger.DebugContext(ctx, "export: invoke callback", "Processed", processed)
 		err = callback(ctx, items)
