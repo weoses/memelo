@@ -37,14 +37,39 @@ func (r *RecomputeServiceImpl) Recompute(
 	accountId *uuid.UUID,
 	id *uuid.UUID,
 	callback func(ctx context.Context, recompute ProgressDataRecompute) error) error {
-	pageSize := exportPageSize
-	var afterId *int64
 	processed := 0
 
-	for {
-		page, err := r.metadataStorageService.List(ctx, accountId, id, afterId, &pageSize)
+	if id != nil && accountId != nil {
+		item, err := r.metadataStorageService.GetById(ctx, *accountId, *id)
 		if err != nil {
-			return fmt.Errorf("export: query metadataService page failed: %w", err)
+			return fmt.Errorf("recompute: query metadataService item failed: %w", err)
+		}
+		if item != nil {
+			if err = r.recomputeOne(ctx, item); err != nil {
+				r.slogger.Error("recompute: item failed:",
+					"imageId", item.ImageId,
+					"error", err)
+			} else {
+				processed++
+			}
+		}
+		return callback(ctx, ProgressDataRecompute{Processed: processed})
+	}
+
+	var sortKey entity.ElasticSortKey
+
+	for {
+		var page []*entity.ElasticImageMetaData
+		var nextKey entity.ElasticSortKey
+		var err error
+
+		if accountId != nil {
+			page, nextKey, err = r.metadataStorageService.GetByAccountIdOrderByCreated(ctx, *accountId, sortKey, exportPageSize)
+		} else {
+			page, nextKey, err = r.metadataStorageService.GetAll(ctx, sortKey, exportPageSize)
+		}
+		if err != nil {
+			return fmt.Errorf("recompute: query metadataService page failed: %w", err)
 		}
 		if len(page) == 0 {
 			break
@@ -53,7 +78,6 @@ func (r *RecomputeServiceImpl) Recompute(
 		for _, meta := range page {
 			if err = r.recomputeOne(ctx, meta); err != nil {
 				r.slogger.Error("recompute: item failed:",
-					"try", meta.ImageId,
 					"imageId", meta.ImageId,
 					"error", err)
 				continue
@@ -61,18 +85,16 @@ func (r *RecomputeServiceImpl) Recompute(
 			processed++
 		}
 
-		last := page[len(page)-1]
-		afterId = &last.Created
-
-		err = callback(ctx, ProgressDataRecompute{Processed: processed})
-		if err != nil {
+		if err = callback(ctx, ProgressDataRecompute{Processed: processed}); err != nil {
 			return fmt.Errorf("recompute: callback failed: %w", err)
 		}
 
-		if len(page) < pageSize {
+		if len(page) < exportPageSize {
 			break
 		}
+		sortKey = nextKey
 	}
+
 	r.slogger.Info("recompute finished:", "processed", processed)
 	return nil
 }

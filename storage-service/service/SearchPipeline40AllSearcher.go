@@ -15,27 +15,22 @@ type AllSearcher struct {
 	metadata storage.MetadataStorageService
 }
 
-func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) ([]*entity.ElasticImageMetaData, error) {
+func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
 	if query != "" {
-		return make([]*entity.ElasticImageMetaData, 0), nil
+		return []*entity.ElasticImageMetaData{}, nil, nil
 	}
 
-	matchedMetadataAll, err := a.metadata.SearchByAccountId(
-		ctx,
-		accountId,
-		afterId,
-		size,
-	)
-
+	results, nextKey, err := a.metadata.GetByAccountIdOrderByCreated(ctx, accountId, sortKey, size)
 	if err != nil {
-		return nil, fmt.Errorf("searcher %s failed: %w", a.GetName(), err)
+		return nil, nil, fmt.Errorf("searcher %s failed: %w", a.GetName(), err)
 	}
-	return matchedMetadataAll, nil
+
+	return results, nextKey, nil
 }
 
 func NewAllSearcher(m storage.MetadataStorageService) SearchPipelineStep {
 	return &AllSearcher{
-		SearcherBase: SearcherBase{Name: "all_searcher", Index: 40},
+		SearcherBase: SearcherBase{Name: "all_searcher", Index: 20},
 		metadata:     m,
 	}
 }

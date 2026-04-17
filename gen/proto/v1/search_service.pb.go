@@ -127,8 +127,8 @@ type SearchMemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
-	PageAfterId   *string                `protobuf:"bytes,3,opt,name=page_after_id,json=pageAfterId,proto3,oneof" json:"page_after_id,omitempty"`
-	PageSize      *int32                 `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3,oneof" json:"page_size,omitempty"`
+	AfterId       *PipelinePagination    `protobuf:"bytes,5,opt,name=after_id,json=afterId,proto3" json:"after_id,omitempty"`
+	PageSize      int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -177,16 +177,16 @@ func (x *SearchMemeRequest) GetQuery() string {
 	return ""
 }
 
-func (x *SearchMemeRequest) GetPageAfterId() string {
-	if x != nil && x.PageAfterId != nil {
-		return *x.PageAfterId
+func (x *SearchMemeRequest) GetAfterId() *PipelinePagination {
+	if x != nil {
+		return x.AfterId
 	}
-	return ""
+	return nil
 }
 
 func (x *SearchMemeRequest) GetPageSize() int32 {
-	if x != nil && x.PageSize != nil {
-		return *x.PageSize
+	if x != nil {
+		return x.PageSize
 	}
 	return 0
 }
@@ -194,7 +194,7 @@ func (x *SearchMemeRequest) GetPageSize() int32 {
 type SearchMemeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Results       []*MemeDto             `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	SearcherName  string                 `protobuf:"bytes,2,opt,name=searcher_name,json=searcherName,proto3" json:"searcher_name,omitempty"`
+	LastId        *PipelinePagination    `protobuf:"bytes,3,opt,name=last_id,json=lastId,proto3" json:"last_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,11 +236,11 @@ func (x *SearchMemeResponse) GetResults() []*MemeDto {
 	return nil
 }
 
-func (x *SearchMemeResponse) GetSearcherName() string {
+func (x *SearchMemeResponse) GetLastId() *PipelinePagination {
 	if x != nil {
-		return x.SearcherName
+		return x.LastId
 	}
-	return ""
+	return nil
 }
 
 type CreateMemeRequest struct {
@@ -549,19 +549,16 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\x04data\x18\x02 \x01(\fH\x01R\x04data\x88\x01\x01B\n" +
 	"\n" +
 	"\b_s3_pathB\a\n" +
-	"\x05_data\"\xb3\x01\n" +
+	"\x05_data\"\xa5\x01\n" +
 	"\x11SearchMemeRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x14\n" +
-	"\x05query\x18\x02 \x01(\tR\x05query\x12'\n" +
-	"\rpage_after_id\x18\x03 \x01(\tH\x00R\vpageAfterId\x88\x01\x01\x12 \n" +
-	"\tpage_size\x18\x04 \x01(\x05H\x01R\bpageSize\x88\x01\x01B\x10\n" +
-	"\x0e_page_after_idB\f\n" +
-	"\n" +
-	"_page_size\"m\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12>\n" +
+	"\bafter_id\x18\x05 \x01(\v2#.proto.memelo.v1.PipelinePaginationR\aafterId\x12\x1b\n" +
+	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\"\x86\x01\n" +
 	"\x12SearchMemeResponse\x122\n" +
-	"\aresults\x18\x01 \x03(\v2\x18.proto.memelo.v1.MemeDtoR\aresults\x12#\n" +
-	"\rsearcher_name\x18\x02 \x01(\tR\fsearcherName\"\xba\x01\n" +
+	"\aresults\x18\x01 \x03(\v2\x18.proto.memelo.v1.MemeDtoR\aresults\x12<\n" +
+	"\alast_id\x18\x03 \x01(\v2#.proto.memelo.v1.PipelinePaginationR\x06lastId\"\xba\x01\n" +
 	"\x11CreateMemeRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x128\n" +
@@ -623,32 +620,35 @@ var file_proto_v1_search_service_proto_goTypes = []any{
 	(*GetMemeResponse)(nil),    // 7: proto.memelo.v1.GetMemeResponse
 	(*DeleteMemeRequest)(nil),  // 8: proto.memelo.v1.DeleteMemeRequest
 	(*DeleteMemeResponse)(nil), // 9: proto.memelo.v1.DeleteMemeResponse
-	(*MemeDto)(nil),            // 10: proto.memelo.v1.MemeDto
-	(*DeleteAllRequest)(nil),   // 11: proto.memelo.v1.DeleteAllRequest
-	(*DeleteAllResponse)(nil),  // 12: proto.memelo.v1.DeleteAllResponse
+	(*PipelinePagination)(nil), // 10: proto.memelo.v1.PipelinePagination
+	(*MemeDto)(nil),            // 11: proto.memelo.v1.MemeDto
+	(*DeleteAllRequest)(nil),   // 12: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil),  // 13: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_search_service_proto_depIdxs = []int32{
-	10, // 0: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
-	1,  // 1: proto.memelo.v1.CreateMemeRequest.image:type_name -> proto.memelo.v1.MediaDataDto
-	1,  // 2: proto.memelo.v1.CreateMemeRequest.video:type_name -> proto.memelo.v1.MediaDataDto
-	10, // 3: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	0,  // 4: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
-	10, // 5: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	2,  // 6: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
-	4,  // 7: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
-	6,  // 8: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
-	8,  // 9: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
-	11, // 10: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
-	3,  // 11: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
-	5,  // 12: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
-	7,  // 13: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
-	9,  // 14: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
-	12, // 15: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	10, // 0: proto.memelo.v1.SearchMemeRequest.after_id:type_name -> proto.memelo.v1.PipelinePagination
+	11, // 1: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
+	10, // 2: proto.memelo.v1.SearchMemeResponse.last_id:type_name -> proto.memelo.v1.PipelinePagination
+	1,  // 3: proto.memelo.v1.CreateMemeRequest.image:type_name -> proto.memelo.v1.MediaDataDto
+	1,  // 4: proto.memelo.v1.CreateMemeRequest.video:type_name -> proto.memelo.v1.MediaDataDto
+	11, // 5: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	0,  // 6: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
+	11, // 7: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	2,  // 8: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
+	4,  // 9: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
+	6,  // 10: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
+	8,  // 11: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
+	12, // 12: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
+	3,  // 13: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
+	5,  // 14: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
+	7,  // 15: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
+	9,  // 16: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
+	13, // 17: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
+	13, // [13:18] is the sub-list for method output_type
+	8,  // [8:13] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_search_service_proto_init() }
@@ -658,7 +658,6 @@ func file_proto_v1_search_service_proto_init() {
 	}
 	file_proto_v1_common_proto_init()
 	file_proto_v1_search_service_proto_msgTypes[0].OneofWrappers = []any{}
-	file_proto_v1_search_service_proto_msgTypes[1].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

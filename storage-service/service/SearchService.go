@@ -11,12 +11,12 @@ import (
 )
 
 type SearchServiceResponse struct {
-	SearcherName string
-	Result       []*entity.ElasticImageMetaData
+	AfterID *PipelineAfterID
+	Result  []*entity.ElasticImageMetaData
 }
 
 type SearchService interface {
-	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) (*SearchServiceResponse, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchServiceResponse, error)
 }
 
 type SearchServiceImpl struct {
@@ -28,18 +28,36 @@ func (m *SearchServiceImpl) Search(
 	ctx context.Context,
 	accountId uuid.UUID,
 	query string,
-	afterId *int64,
-	size *int,
+	afterId *PipelineAfterID,
+	size int,
 ) (*SearchServiceResponse, error) {
-	selectedSearcherName := ""
-	selectedElasticData := make([]*entity.ElasticImageMetaData, 0)
+	var encounteredLastSearcher = true
+	var skipUntilName string
+	var resumeSortKey entity.ElasticSortKey
+
+	if afterId != nil {
+		encounteredLastSearcher = false
+		skipUntilName = afterId.SearcherName
+		resumeSortKey = afterId.SortKey
+	}
+
 	for _, searcher := range m.searchers {
 		searcherName := searcher.GetName()
+
+		if !encounteredLastSearcher && searcherName != skipUntilName {
+			continue
+		}
+
+		var sortKey entity.ElasticSortKey
+		if !encounteredLastSearcher && searcherName == skipUntilName {
+			sortKey = resumeSortKey
+			encounteredLastSearcher = true
+		}
 
 		m.slogger.DebugContext(ctx, "Start searcher",
 			"searcher", searcherName)
 
-		data, err := searcher.Search(ctx, accountId, query, afterId, size)
+		data, returnedKey, err := searcher.Search(ctx, accountId, query, sortKey, size)
 
 		m.slogger.DebugContext(ctx, "End searcher",
 			"searcher", searcherName,
@@ -50,14 +68,23 @@ func (m *SearchServiceImpl) Search(
 		}
 
 		if len(data) > 0 {
-			selectedSearcherName = searcherName
-			selectedElasticData = append(selectedElasticData, data...)
-			break
+			var nextAfterID *PipelineAfterID
+			if returnedKey != nil {
+				nextAfterID = &PipelineAfterID{
+					SearcherName: searcherName,
+					SortKey:      returnedKey,
+				}
+			}
+			return &SearchServiceResponse{
+				AfterID: nextAfterID,
+				Result:  data,
+			}, nil
 		}
 	}
+
 	return &SearchServiceResponse{
-		SearcherName: selectedSearcherName,
-		Result:       selectedElasticData,
+		AfterID: nil,
+		Result:  make([]*entity.ElasticImageMetaData, 0),
 	}, nil
 }
 

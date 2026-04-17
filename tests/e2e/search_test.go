@@ -104,6 +104,7 @@ func TestSearchMeme_Simple(t *testing.T) {
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     "guys",
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme failed: %v", err)
@@ -113,9 +114,6 @@ func TestSearchMeme_Simple(t *testing.T) {
 	}
 	if len(respSearch.Results) == 0 {
 		t.Fatal("expected at least one result")
-	}
-	if respSearch.SearcherName != "simple_searcher" {
-		t.Fatal("expected simple_searcher")
 	}
 	if !strings.Contains(respSearch.Results[0].OcrResult, "ok guys this is my face reveal") {
 		t.Fatalf("expected the result to be 'ok guys this is my face reveal' to be contained in the result, got %s", respSearch.Results[0].OcrResult)
@@ -145,6 +143,7 @@ func TestSearchMeme_All(t *testing.T) {
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     "",
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme failed: %v", err)
@@ -154,9 +153,6 @@ func TestSearchMeme_All(t *testing.T) {
 	}
 	if len(respSearch.Results) == 0 {
 		t.Fatal("expected at least one result")
-	}
-	if respSearch.SearcherName != "all_searcher" {
-		t.Fatal("expected all_searcher")
 	}
 	if !strings.Contains(respSearch.Results[0].OcrResult, "ok guys this is my face reveal") {
 		t.Fatalf("expected the result to be 'ok guys this is my face reveal' to be contained in the result, got %s", respSearch.Results[0].OcrResult)
@@ -187,6 +183,7 @@ func TestSearchMeme_ById(t *testing.T) {
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     id,
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme by ID failed: %v", err)
@@ -196,9 +193,6 @@ func TestSearchMeme_ById(t *testing.T) {
 	}
 	if respSearch.Results[0].Id != id {
 		t.Fatalf("expected result ID %s, got %s", id, respSearch.Results[0].Id)
-	}
-	if respSearch.SearcherName != "id_searcher" {
-		t.Fatalf("expected id_searcher, got %s", respSearch.SearcherName)
 	}
 }
 
@@ -226,6 +220,7 @@ func TestSearchMeme_ById_ValidImageLinks(t *testing.T) {
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     id,
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme by ID failed: %v", err)
@@ -297,15 +292,13 @@ func TestSearchMeme_EmbeddingSearch(t *testing.T) {
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     "cat",
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme by embedding failed: %v", err)
 	}
 	if len(respSearch.Results) == 0 {
 		t.Fatal("expected at least one result")
-	}
-	if respSearch.SearcherName != "text_embedding_searcher" {
-		t.Fatalf("expected text_embedding_searcher, got %s", respSearch.SearcherName)
 	}
 }
 
@@ -350,6 +343,7 @@ func createVideoTestInternal(t *testing.T, file string) {
 	respSearch, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     id,
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme by ID failed: %v", err)
@@ -401,6 +395,7 @@ func TestSearchMeme_Empty(t *testing.T) {
 	resp, err := searchClient.SearchMeme(context.Background(), &v1.SearchMemeRequest{
 		AccountId: testAccountId,
 		Query:     "test",
+		PageSize:  10,
 	})
 	if err != nil {
 		t.Fatalf("SearchMeme failed: %v", err)

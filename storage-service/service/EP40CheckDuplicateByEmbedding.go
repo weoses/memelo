@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/storage"
@@ -19,7 +18,13 @@ type CheckDuplicateByEmbeddingPipelineStep struct {
 
 func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
 	for i := range len(pCtx.Embedding) {
-		items, err := s.metadata.SearchByEmbeddingV1(ctx, inputContext.AccountId, pCtx.Embedding[i], helper.Addr(1), s.searchConfig.SemanticDuplicateThreshold)
+		items, _, err := s.metadata.GetDuplicatesByEmbeddingOrderByImageId(
+			ctx,
+			inputContext.AccountId,
+			pCtx.Embedding[i],
+			s.searchConfig.SemanticDuplicateThreshold,
+			nil,
+			1)
 		if err != nil {
 			return fmt.Errorf("error getting items by embedding: %w", err)
 		}

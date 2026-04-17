@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -110,23 +109,13 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, fmt.Errorf("error parsing AccountId: %w", err)
 	}
 
-	var afterCreated *int64
-	var pageSize *int
-
-	if req.PageAfterId != nil {
-		_afterCreated, err := strconv.ParseInt(*req.PageAfterId, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing PageAfterId: %w", err)
-		}
-		afterCreated = &_afterCreated
+	afterId := pipelineAfterIDFromProto(req.AfterId)
+	pageSize := int(req.PageSize)
+	if pageSize == 0 {
+		return nil, fmt.Errorf("invalid pageSize")
 	}
 
-	if req.PageSize != nil {
-		pageSize_ := int(*req.PageSize)
-		pageSize = &pageSize_
-	}
-
-	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, afterCreated, pageSize)
+	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, afterId, pageSize)
 	if err != nil {
 		api.slogger.ErrorContext(ctx, "SearchMeme error", "query", req.Query)
 		return nil, err
@@ -139,7 +128,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 			data.Result,
 			make([]*v1.MemeDto, len(data.Result)),
 			api.metadataToMemeDto),
-		SearcherName: data.SearcherName,
+		LastId: pipelineAfterIDToProto(data.AfterID),
 	}, nil
 }
 

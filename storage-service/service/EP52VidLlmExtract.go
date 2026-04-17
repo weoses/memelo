@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 
 	"github.com/weoses/memelo/common/helper"
@@ -66,6 +67,10 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
+
+	slices.SortFunc(results, func(e OneSliceResult, e2 OneSliceResult) int {
+		return e.SliceNumber - e2.SliceNumber
+	})
 
 	var combined *ocr.MediaExtractResult
 	if len(results) == 1 {
