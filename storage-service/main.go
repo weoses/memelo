@@ -42,7 +42,18 @@ func main() {
 		fx.Provide(func(c *conf.Config) *conf.CommonExtractingConfig { return c.Extracting }),
 
 		fx.Provide(ocr.NewImageConverter),
-		fx.Provide(gapi.NewImageEmbeddingExtractorGenai),
+		fx.Provide(
+			fx.Annotate(
+				gapi.NewImageEmbeddingExtractorGenai,
+				fx.ResultTags(`name:"raw_embedder"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				ocr.NewCachedEmbeddingExtractor,
+				fx.ParamTags(`name:"raw_embedder"`),
+			),
+		),
 		fx.Provide(ffmpeg.NewVideo2Mp4Converter),
 		fx.Provide(ffmpeg.NewVideo2FrameExtractor),
 		fx.Provide(ffmpeg.NewVideoSlicer),
@@ -169,25 +180,13 @@ func main() {
 
 		fx.Provide(
 			fx.Annotate(
-				service.NewSimpleSearcher,
-				fx.ResultTags(`group:"searchers"`),
-			),
-		),
-		fx.Provide(
-			fx.Annotate(
 				service.NewIdSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),
 		fx.Provide(
 			fx.Annotate(
-				service.NewFuzzySearcher,
-				fx.ResultTags(`group:"searchers"`),
-			),
-		),
-		fx.Provide(
-			fx.Annotate(
-				service.NewTextEmbeddingSearcher,
+				service.NewHybridSearcher,
 				fx.ResultTags(`group:"searchers"`),
 			),
 		),

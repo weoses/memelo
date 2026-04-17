@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 
@@ -34,12 +33,12 @@ type CreateResult struct {
 }
 
 type SearchResult struct {
-	Result       []*MetadataWithUrls
-	SearcherName string
+	Result  []*MetadataWithUrls
+	AfterID *PipelineAfterID
 }
 
 type MemeCrudService interface {
-	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterCreated *int64, size *int) (*SearchResult, error)
+	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAll(ctx context.Context, accountId uuid.UUID) error
@@ -124,7 +123,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
-func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) (*SearchResult, error) {
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchResult, error) {
 	elasticData, err := m.searchService.Search(ctx, accountId, query, afterId, size)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
@@ -136,8 +135,8 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 	}
 
 	return &SearchResult{
-		Result:       results,
-		SearcherName: elasticData.SearcherName,
+		Result:  results,
+		AfterID: elasticData.AfterID,
 	}, nil
 }
 
@@ -164,11 +163,11 @@ func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUI
 }
 
 func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID) error {
-	pageSize := 100
-	var afterId *int64
+	const pageSize = 100
+	var sortKey entity.ElasticSortKey
 
 	for {
-		results, err := m.metadataStorageService.SearchByAccountId(ctx, accountId, afterId, &pageSize)
+		results, nextKey, err := m.metadataStorageService.GetByAccountIdOrderByCreated(ctx, accountId, sortKey, pageSize)
 		if err != nil {
 			return fmt.Errorf("list memes failed: %w", err)
 		}
@@ -177,18 +176,17 @@ func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID
 			errMinioOrig := m.imageStorageService.Delete(ctx, meta.S3Id, storageMediaType(meta.Type, SavedOriginal))
 			errMinioThumb := m.imageStorageService.Delete(ctx, meta.S3Id, storageMediaType(meta.Type, SavedThumb))
 
-			var minioError minio.ErrorResponse
-			if errMinioOrig != nil && (!errors.As(errMinioOrig, &minioError) || minioError.Code != "NoSuchKey") {
-				return fmt.Errorf("delete image %s failed: %w", meta.S3Id, errMinioOrig)
+			if errMinioOrig != nil {
+				m.slogger.WarnContext(ctx, "delete s3 image failed", "s3Id", meta.S3Id, "error", errMinioOrig)
 			}
 
-			if errMinioThumb != nil && (!errors.As(errMinioThumb, &minioError) || minioError.Code != "NoSuchKey") {
-				return fmt.Errorf("delete image %s failed: %w", meta.S3Id, errMinioThumb)
+			if errMinioThumb != nil {
+				m.slogger.WarnContext(ctx, "delete s3 image failed", "s3Id", meta.S3Id, "error", errMinioThumb)
 			}
 
 			errElastic := m.metadataStorageService.DeleteById(ctx, accountId, meta.ImageId)
 			if errElastic != nil {
-				return fmt.Errorf("delete elastic %s failed: %w", meta.ImageId, errElastic)
+				m.slogger.WarnContext(ctx, "delete elastic failed", "imageId", meta.ImageId, "error", errElastic)
 			}
 		}
 
@@ -196,7 +194,7 @@ func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID
 			break
 		}
 
-		afterId = &results[len(results)-1].Created
+		sortKey = nextKey
 	}
 	return nil
 }

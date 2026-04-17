@@ -21,6 +21,10 @@ message MemeDto {
   string caption = 7;
   int64 sortingId = 8;
 }
+message PipelinePagination {
+  string searcher = 1;
+  map<string, string> sorting_after = 2;
+}
 
 message DeleteAllRequest {
   string account_id = 1;

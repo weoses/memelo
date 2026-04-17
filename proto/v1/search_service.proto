@@ -19,13 +19,13 @@ message MediaDataDto {
 message SearchMemeRequest {
   string account_id = 1;
   string query = 2;
-  optional string page_after_id = 3;
-  optional int32 page_size = 4;
+  PipelinePagination after_id = 5;
+  int32 page_size = 6;
 }
 
 message SearchMemeResponse {
   repeated MemeDto results = 1;
-  string searcher_name = 2;
+  PipelinePagination last_id = 3;
 }
 
 message CreateMemeRequest {

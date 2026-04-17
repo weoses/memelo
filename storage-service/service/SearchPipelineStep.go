@@ -7,10 +7,18 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
+// PipelineAfterID is the pagination cursor returned by the search pipeline.
+// SearcherName identifies which searcher to resume on the next call.
+// SortKey is the Elasticsearch search_after cursor for that searcher.
+type PipelineAfterID struct {
+	SearcherName string
+	SortKey      entity.ElasticSortKey
+}
+
 type SearchPipelineStep interface {
 	GetIndex() int
 	GetName() string
-	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *int64, size *int) ([]*entity.ElasticImageMetaData, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 }
 
 type SearcherBase struct {

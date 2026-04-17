@@ -40,21 +40,42 @@ func (e *ExportServiceImpl) Export(
 	id *uuid.UUID,
 	callback func(ctx context.Context, items []ExportItem) error,
 ) error {
+	if id != nil {
+		item, err := e.metadataStorageService.GetById(ctx, *accountId, *id)
+		if err != nil {
+			return fmt.Errorf("export: query metadataService item failed: %w", err)
+		}
+		if item == nil {
+			return nil
+		}
+		exportedItem, err := e.exportOne(ctx, item)
+		if err != nil {
+			return fmt.Errorf("export: export item failed: %w", err)
+		}
+		return callback(ctx, []ExportItem{*exportedItem})
+	}
 
-	pageSize := exportPageSize
-	var afterId *int64
+	var sortKey entity.ElasticSortKey
 	processed := 0
 
 	for {
-		page, err := e.metadataStorageService.List(ctx, accountId, id, afterId, &pageSize)
+		var page []*entity.ElasticImageMetaData
+		var nextKey entity.ElasticSortKey
+		var err error
+
+		if accountId != nil {
+			page, nextKey, err = e.metadataStorageService.GetByAccountIdOrderByCreated(ctx, *accountId, sortKey, exportPageSize)
+		} else {
+			page, nextKey, err = e.metadataStorageService.GetAll(ctx, sortKey, exportPageSize)
+		}
 		if err != nil {
 			return fmt.Errorf("export: query metadataService page failed: %w", err)
 		}
 		if len(page) == 0 {
 			break
 		}
-		items := make([]ExportItem, len(page))
 
+		items := make([]ExportItem, len(page))
 		for i, meta := range page {
 			item, err := e.exportOne(ctx, meta)
 			if err != nil {
@@ -64,19 +85,15 @@ func (e *ExportServiceImpl) Export(
 			processed++
 		}
 
-		last := page[len(page)-1]
-		afterId = &last.Created
-
 		e.slogger.DebugContext(ctx, "export: invoke callback", "Processed", processed)
-		err = callback(ctx, items)
-		if err != nil {
+		if err = callback(ctx, items); err != nil {
 			return fmt.Errorf("export: callback failed: %w", err)
 		}
 
-		// Last page — no more temp
-		if len(page) < pageSize {
+		if len(page) < exportPageSize {
 			break
 		}
+		sortKey = nextKey
 	}
 
 	e.slogger.InfoContext(ctx, "export: completed", "Processed", processed)
