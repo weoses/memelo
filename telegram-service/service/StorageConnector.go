@@ -21,10 +21,9 @@ type StorageConnector interface {
 	ProcessSearchQuery(
 		ctx context.Context,
 		accountId uuid.UUID,
-		query string,
+		params entity.SearchParams,
 		pageSize int,
-		pageAfterId *string,
-	) ([]*entity.MemeSearchResult, error)
+	) (*entity.SearchQueryResult, error)
 
 	CreateMeme(ctx context.Context, data temp.S3BackedData, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
 	CreateVideo(ctx context.Context, data temp.S3BackedData, accountId uuid.UUID) (*entity.MemeCreateResult, error)
@@ -70,35 +69,38 @@ func (s *StorageConnectorImpl) DeleteMeme(ctx context.Context, accountId uuid.UU
 func (s *StorageConnectorImpl) ProcessSearchQuery(
 	ctx context.Context,
 	accountId uuid.UUID,
-	query string,
+	params entity.SearchParams,
 	pageSize int,
-	pageAfterId *string,
-) ([]*entity.MemeSearchResult, error) {
-	pageSize32 := int32(pageSize)
-	response, err := s.cl.SearchMeme(ctx, &v1.SearchMemeRequest{
-		AccountId:   accountId.String(),
-		Query:       query,
-		PageAfterId: pageAfterId,
-		PageSize:    &pageSize32,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("storageService: search_pipeline meme query failed query: %s : %w", query, err)
+) (*entity.SearchQueryResult, error) {
+	req := &v1.SearchMemeRequest{
+		AccountId: accountId.String(),
+		Query:     params.Query,
+		PageSize:  int32(pageSize),
+	}
+	if params.Pagination != nil {
+		req.AfterId = &v1.PipelinePagination{
+			Searcher:     params.Pagination.Searcher,
+			SortingAfter: params.Pagination.SortingAfter,
+		}
 	}
 
-	entityResult := helper.TransformSlice(
+	response, err := s.cl.SearchMeme(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("storageService: search_pipeline meme query failed query: %s : %w", params.Query, err)
+	}
+
+	results := helper.TransformSlice(
 		response.Results,
-		make([]*entity.MemeSearchResult, len(response.Results)),
-		func(dto *v1.MemeDto) *entity.MemeSearchResult {
-			result := &entity.MemeSearchResult{
+		make([]entity.MemeSearchResult, len(response.Results)),
+		func(dto *v1.MemeDto) entity.MemeSearchResult {
+			result := entity.MemeSearchResult{
 				Id: dto.GetId(),
 			}
-
 			if dto.GetMediaOriginal() != nil {
 				result.MediaUrl = dto.GetMediaOriginal().GetUrl()
 				result.MediaWidth = int(dto.GetMediaOriginal().GetImageWidth())
 				result.MediaHeight = int(dto.GetMediaOriginal().GetImageHeight())
 			}
-
 			if dto.GetImageThumbnail() != nil {
 				result.ThumbUrl = dto.GetImageThumbnail().GetUrl()
 				result.ThumbWidth = int(dto.GetImageThumbnail().GetImageWidth())
@@ -109,7 +111,15 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 			result.SortingId = dto.GetSortingId()
 			return result
 		})
-	return entityResult, nil
+
+	qr := &entity.SearchQueryResult{Results: results}
+	if last := response.GetLastId(); last != nil {
+		qr.Pagination = &entity.PaginationOffset{
+			Searcher:     last.GetSearcher(),
+			SortingAfter: last.GetSortingAfter(),
+		}
+	}
+	return qr, nil
 }
 
 func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, data temp.S3BackedData, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
