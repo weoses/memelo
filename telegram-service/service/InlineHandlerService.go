@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/telegram-service/entity"
+	"github.com/weoses/memelo/telegram-service/util"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -95,7 +96,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	params := entity.SearchParams{
 		Query:      query,
-		Pagination: parseOffset(request.Offset),
+		Pagination: util.ParseOffset(request.Offset),
 	}
 
 	searchResult, err := i.storage.ProcessSearchQuery(
@@ -177,7 +178,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	nextOffset := ""
 	if len(results) == i.config.Inline.PageSize && i.config.Inline.PageSize > 0 {
-		nextOffset = serializeOffset(searchResult.Pagination)
+		nextOffset = util.SerializeOffset(searchResult.Pagination)
 	}
 
 	i.log.InfoContext(ctx, "Search next offset",

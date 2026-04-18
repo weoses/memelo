@@ -36,19 +36,20 @@ var sortFieldsImageId = []string{"ImageId"}
 
 // extractSortKey builds an ElasticSortKey from the last hit's Sort values,
 // using sortFields to name the values in order.
-func extractSortKey(resp *search.Response, sortFields []string) entity.ElasticSortKey {
+func extractSortKey(resp *search.Response) entity.ElasticSortKey {
 	hits := resp.Hits.Hits
 	if len(hits) == 0 {
 		return nil
 	}
-	lastSort := hits[len(hits)-1].Sort
-	if len(lastSort) == 0 {
+
+	lastSortValues := hits[len(hits)-1].Sort
+	if len(lastSortValues) == 0 {
 		return nil
 	}
-	key := make(entity.ElasticSortKey, len(sortFields))
-	for i := range sortFields {
-		if i < len(lastSort) {
-			key[i] = lastSort[i]
+	key := make(entity.ElasticSortKey, len(lastSortValues))
+	for i := range lastSortValues {
+		if i < len(lastSortValues) {
+			key[i] = fmt.Sprint(lastSortValues[i])
 		}
 	}
 	return key
@@ -171,7 +172,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 		return nil, nil, fmt.Errorf("search_pipeline by account id failed: accountId=%s  sortKey=%v: %w", accountId.String(), sortKey, err)
 	}
 
-	return results, extractSortKey(result, sortFieldsCreated), nil
+	return results, extractSortKey(result), nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) GetAll(
@@ -204,7 +205,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetAll(
 	}
 
 	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.GetAll end", "count", len(results))
-	return results, extractSortKey(result, sortFieldsImageId), nil
+	return results, extractSortKey(result), nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImageId(
@@ -252,7 +253,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 	}
 
 	e.slogger.InfoContext(ctx, "GetDuplicatesByEmbeddingOrderByImageId done", "count", len(resultsEntity))
-	return resultsEntity, extractSortKey(resp, sortFieldsImageId), nil
+	return resultsEntity, extractSortKey(resp), nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error {
@@ -376,7 +377,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 		data[i] = item
 	}
 
-	return data, extractSortKey(result, sortFieldsImageId), nil
+	return data, extractSortKey(result), nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
@@ -424,7 +425,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 	}
 
 	e.slogger.InfoContext(ctx, "SearchHybridOrderByScore done", "count", len(resultsEntity))
-	return resultsEntity, extractSortKey(resp, sortFieldsScore), nil
+	return resultsEntity, extractSortKey(resp), nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *entity.ElasticImageMetaData) error {
