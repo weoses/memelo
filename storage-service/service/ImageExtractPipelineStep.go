@@ -29,9 +29,14 @@ func (bp *BasePipelineStep) GetAllowedPipelineTypes() []entity.MetadataType {
 }
 
 type MetadataInputContext struct {
-	RawInput  temp.S3BackedData
-	AccountId uuid.UUID
-	Type      entity.MetadataType
+	RawInput         temp.S3BackedData
+	AccountId        uuid.UUID
+	Type             entity.MetadataType
+	CheckDuplicates  bool
+	ComputeHash      bool
+	ComputeExtractor bool
+	ComputeEmbedding bool
+	SeedData         *MetadataPipelineContext
 }
 
 type MetadataStorageArtifact struct {

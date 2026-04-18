@@ -15,6 +15,9 @@ type ImageCheckDuplicateByHashPipelineStep struct {
 }
 
 func (s *ImageCheckDuplicateByHashPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
+	if !inputContext.CheckDuplicates {
+		return nil
+	}
 	items, _, err := s.metadataService.GetByHash(ctx, inputContext.AccountId, pCtx.Hash, nil, 1)
 	if err != nil {
 		return fmt.Errorf("error getting items by hash: %w", err)

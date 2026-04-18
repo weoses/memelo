@@ -17,6 +17,9 @@ type CheckDuplicateByEmbeddingPipelineStep struct {
 }
 
 func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
+	if !inputContext.CheckDuplicates {
+		return nil
+	}
 	for i := range len(pCtx.Embedding) {
 		items, _, err := s.metadata.GetDuplicatesByEmbeddingOrderByImageId(
 			ctx,

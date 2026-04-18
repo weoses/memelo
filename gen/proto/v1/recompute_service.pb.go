@@ -9,6 +9,7 @@ package v1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,15 +22,70 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RecomputeJobStatus_State int32
+
+const (
+	RecomputeJobStatus_STATE_UNSPECIFIED RecomputeJobStatus_State = 0
+	RecomputeJobStatus_STATE_PENDING     RecomputeJobStatus_State = 1
+	RecomputeJobStatus_STATE_RUNNING     RecomputeJobStatus_State = 2
+	RecomputeJobStatus_STATE_DONE        RecomputeJobStatus_State = 3
+	RecomputeJobStatus_STATE_FAILED      RecomputeJobStatus_State = 4
+)
+
+// Enum value maps for RecomputeJobStatus_State.
+var (
+	RecomputeJobStatus_State_name = map[int32]string{
+		0: "STATE_UNSPECIFIED",
+		1: "STATE_PENDING",
+		2: "STATE_RUNNING",
+		3: "STATE_DONE",
+		4: "STATE_FAILED",
+	}
+	RecomputeJobStatus_State_value = map[string]int32{
+		"STATE_UNSPECIFIED": 0,
+		"STATE_PENDING":     1,
+		"STATE_RUNNING":     2,
+		"STATE_DONE":        3,
+		"STATE_FAILED":      4,
+	}
+)
+
+func (x RecomputeJobStatus_State) Enum() *RecomputeJobStatus_State {
+	p := new(RecomputeJobStatus_State)
+	*p = x
+	return p
+}
+
+func (x RecomputeJobStatus_State) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RecomputeJobStatus_State) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_v1_recompute_service_proto_enumTypes[0].Descriptor()
+}
+
+func (RecomputeJobStatus_State) Type() protoreflect.EnumType {
+	return &file_proto_v1_recompute_service_proto_enumTypes[0]
+}
+
+func (x RecomputeJobStatus_State) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RecomputeJobStatus_State.Descriptor instead.
+func (RecomputeJobStatus_State) EnumDescriptor() ([]byte, []int) {
+	return file_proto_v1_recompute_service_proto_rawDescGZIP(), []int{3, 0}
+}
+
 type RecomputeRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	AccountId          *string                `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3,oneof" json:"account_id,omitempty"`
-	Id                 *string                `protobuf:"bytes,2,opt,name=id,proto3,oneof" json:"id,omitempty"`
-	RecomputeOcrData   bool                   `protobuf:"varint,3,opt,name=recompute_ocr_data,json=recomputeOcrData,proto3" json:"recompute_ocr_data,omitempty"`
-	RecomputeThumbnail bool                   `protobuf:"varint,4,opt,name=recompute_thumbnail,json=recomputeThumbnail,proto3" json:"recompute_thumbnail,omitempty"`
-	RecomputeEmbedding bool                   `protobuf:"varint,5,opt,name=recompute_embedding,json=recomputeEmbedding,proto3" json:"recompute_embedding,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Query            *structpb.Struct       `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	ComputeHash      bool                   `protobuf:"varint,2,opt,name=compute_hash,json=computeHash,proto3" json:"compute_hash,omitempty"`
+	ComputeExtractor bool                   `protobuf:"varint,3,opt,name=compute_extractor,json=computeExtractor,proto3" json:"compute_extractor,omitempty"`
+	ComputeEmbedding bool                   `protobuf:"varint,4,opt,name=compute_embedding,json=computeEmbedding,proto3" json:"compute_embedding,omitempty"`
+	CheckDuplicates  bool                   `protobuf:"varint,5,opt,name=check_duplicates,json=checkDuplicates,proto3" json:"check_duplicates,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *RecomputeRequest) Reset() {
@@ -62,62 +118,62 @@ func (*RecomputeRequest) Descriptor() ([]byte, []int) {
 	return file_proto_v1_recompute_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RecomputeRequest) GetAccountId() string {
-	if x != nil && x.AccountId != nil {
-		return *x.AccountId
-	}
-	return ""
-}
-
-func (x *RecomputeRequest) GetId() string {
-	if x != nil && x.Id != nil {
-		return *x.Id
-	}
-	return ""
-}
-
-func (x *RecomputeRequest) GetRecomputeOcrData() bool {
+func (x *RecomputeRequest) GetQuery() *structpb.Struct {
 	if x != nil {
-		return x.RecomputeOcrData
+		return x.Query
+	}
+	return nil
+}
+
+func (x *RecomputeRequest) GetComputeHash() bool {
+	if x != nil {
+		return x.ComputeHash
 	}
 	return false
 }
 
-func (x *RecomputeRequest) GetRecomputeThumbnail() bool {
+func (x *RecomputeRequest) GetComputeExtractor() bool {
 	if x != nil {
-		return x.RecomputeThumbnail
+		return x.ComputeExtractor
 	}
 	return false
 }
 
-func (x *RecomputeRequest) GetRecomputeEmbedding() bool {
+func (x *RecomputeRequest) GetComputeEmbedding() bool {
 	if x != nil {
-		return x.RecomputeEmbedding
+		return x.ComputeEmbedding
 	}
 	return false
 }
 
-type RecomputeStatus struct {
+func (x *RecomputeRequest) GetCheckDuplicates() bool {
+	if x != nil {
+		return x.CheckDuplicates
+	}
+	return false
+}
+
+type RecomputeJob struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Processed     int32                  `protobuf:"varint,1,opt,name=processed,proto3" json:"processed,omitempty"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RecomputeStatus) Reset() {
-	*x = RecomputeStatus{}
+func (x *RecomputeJob) Reset() {
+	*x = RecomputeJob{}
 	mi := &file_proto_v1_recompute_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RecomputeStatus) String() string {
+func (x *RecomputeJob) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RecomputeStatus) ProtoMessage() {}
+func (*RecomputeJob) ProtoMessage() {}
 
-func (x *RecomputeStatus) ProtoReflect() protoreflect.Message {
+func (x *RecomputeJob) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_v1_recompute_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -129,36 +185,188 @@ func (x *RecomputeStatus) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RecomputeStatus.ProtoReflect.Descriptor instead.
-func (*RecomputeStatus) Descriptor() ([]byte, []int) {
+// Deprecated: Use RecomputeJob.ProtoReflect.Descriptor instead.
+func (*RecomputeJob) Descriptor() ([]byte, []int) {
 	return file_proto_v1_recompute_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RecomputeStatus) GetProcessed() int32 {
+func (x *RecomputeJob) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+type RecomputeError struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ObjectId      string                 `protobuf:"bytes,1,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	ErrorText     string                 `protobuf:"bytes,2,opt,name=error_text,json=errorText,proto3" json:"error_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecomputeError) Reset() {
+	*x = RecomputeError{}
+	mi := &file_proto_v1_recompute_service_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecomputeError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecomputeError) ProtoMessage() {}
+
+func (x *RecomputeError) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_recompute_service_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecomputeError.ProtoReflect.Descriptor instead.
+func (*RecomputeError) Descriptor() ([]byte, []int) {
+	return file_proto_v1_recompute_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RecomputeError) GetObjectId() string {
+	if x != nil {
+		return x.ObjectId
+	}
+	return ""
+}
+
+func (x *RecomputeError) GetErrorText() string {
+	if x != nil {
+		return x.ErrorText
+	}
+	return ""
+}
+
+type RecomputeJobStatus struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	JobId         string                   `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	State         RecomputeJobStatus_State `protobuf:"varint,2,opt,name=state,proto3,enum=proto.memelo.v1.RecomputeJobStatus_State" json:"state,omitempty"`
+	Processed     int32                    `protobuf:"varint,3,opt,name=processed,proto3" json:"processed,omitempty"`
+	Total         int32                    `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	Errors        []*RecomputeError        `protobuf:"bytes,5,rep,name=errors,proto3" json:"errors,omitempty"`
+	LastId        string                   `protobuf:"bytes,6,opt,name=last_id,json=lastId,proto3" json:"last_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecomputeJobStatus) Reset() {
+	*x = RecomputeJobStatus{}
+	mi := &file_proto_v1_recompute_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecomputeJobStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecomputeJobStatus) ProtoMessage() {}
+
+func (x *RecomputeJobStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_recompute_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecomputeJobStatus.ProtoReflect.Descriptor instead.
+func (*RecomputeJobStatus) Descriptor() ([]byte, []int) {
+	return file_proto_v1_recompute_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RecomputeJobStatus) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *RecomputeJobStatus) GetState() RecomputeJobStatus_State {
+	if x != nil {
+		return x.State
+	}
+	return RecomputeJobStatus_STATE_UNSPECIFIED
+}
+
+func (x *RecomputeJobStatus) GetProcessed() int32 {
 	if x != nil {
 		return x.Processed
 	}
 	return 0
 }
 
+func (x *RecomputeJobStatus) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *RecomputeJobStatus) GetErrors() []*RecomputeError {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
+func (x *RecomputeJobStatus) GetLastId() string {
+	if x != nil {
+		return x.LastId
+	}
+	return ""
+}
+
 var File_proto_v1_recompute_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_recompute_service_proto_rawDesc = "" +
 	"\n" +
-	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\"\xf1\x01\n" +
-	"\x10RecomputeRequest\x12\"\n" +
+	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xe9\x01\n" +
+	"\x10RecomputeRequest\x12-\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x05query\x12!\n" +
+	"\fcompute_hash\x18\x02 \x01(\bR\vcomputeHash\x12+\n" +
+	"\x11compute_extractor\x18\x03 \x01(\bR\x10computeExtractor\x12+\n" +
+	"\x11compute_embedding\x18\x04 \x01(\bR\x10computeEmbedding\x12)\n" +
+	"\x10check_duplicates\x18\x05 \x01(\bR\x0fcheckDuplicates\"%\n" +
+	"\fRecomputeJob\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"L\n" +
+	"\x0eRecomputeError\x12\x1b\n" +
+	"\tobject_id\x18\x01 \x01(\tR\bobjectId\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tH\x00R\taccountId\x88\x01\x01\x12\x13\n" +
-	"\x02id\x18\x02 \x01(\tH\x01R\x02id\x88\x01\x01\x12,\n" +
-	"\x12recompute_ocr_data\x18\x03 \x01(\bR\x10recomputeOcrData\x12/\n" +
-	"\x13recompute_thumbnail\x18\x04 \x01(\bR\x12recomputeThumbnail\x12/\n" +
-	"\x13recompute_embedding\x18\x05 \x01(\bR\x12recomputeEmbeddingB\r\n" +
-	"\v_account_idB\x05\n" +
-	"\x03_id\"/\n" +
-	"\x0fRecomputeStatus\x12\x1c\n" +
-	"\tprocessed\x18\x01 \x01(\x05R\tprocessed2m\n" +
-	"\x10RecomputeService\x12Y\n" +
-	"\x10RecomputeOcrData\x12!.proto.memelo.v1.RecomputeRequest\x1a .proto.memelo.v1.RecomputeStatus0\x01B\xb1\x01\n" +
+	"error_text\x18\x02 \x01(\tR\terrorText\"\xda\x02\n" +
+	"\x12RecomputeJobStatus\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12?\n" +
+	"\x05state\x18\x02 \x01(\x0e2).proto.memelo.v1.RecomputeJobStatus.StateR\x05state\x12\x1c\n" +
+	"\tprocessed\x18\x03 \x01(\x05R\tprocessed\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x05R\x05total\x127\n" +
+	"\x06errors\x18\x05 \x03(\v2\x1f.proto.memelo.v1.RecomputeErrorR\x06errors\x12\x17\n" +
+	"\alast_id\x18\x06 \x01(\tR\x06lastId\"f\n" +
+	"\x05State\x12\x15\n" +
+	"\x11STATE_UNSPECIFIED\x10\x00\x12\x11\n" +
+	"\rSTATE_PENDING\x10\x01\x12\x11\n" +
+	"\rSTATE_RUNNING\x10\x02\x12\x0e\n" +
+	"\n" +
+	"STATE_DONE\x10\x03\x12\x10\n" +
+	"\fSTATE_FAILED\x10\x042\xc0\x01\n" +
+	"\x10RecomputeService\x12R\n" +
+	"\x0eStartRecompute\x12!.proto.memelo.v1.RecomputeRequest\x1a\x1d.proto.memelo.v1.RecomputeJob\x12X\n" +
+	"\x12GetRecomputeStatus\x12\x1d.proto.memelo.v1.RecomputeJob\x1a#.proto.memelo.v1.RecomputeJobStatusB\xb1\x01\n" +
 	"\x13com.proto.memelo.v1B\x15RecomputeServiceProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
 var (
@@ -173,19 +381,29 @@ func file_proto_v1_recompute_service_proto_rawDescGZIP() []byte {
 	return file_proto_v1_recompute_service_proto_rawDescData
 }
 
-var file_proto_v1_recompute_service_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_v1_recompute_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_v1_recompute_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_proto_v1_recompute_service_proto_goTypes = []any{
-	(*RecomputeRequest)(nil), // 0: proto.memelo.v1.RecomputeRequest
-	(*RecomputeStatus)(nil),  // 1: proto.memelo.v1.RecomputeStatus
+	(RecomputeJobStatus_State)(0), // 0: proto.memelo.v1.RecomputeJobStatus.State
+	(*RecomputeRequest)(nil),      // 1: proto.memelo.v1.RecomputeRequest
+	(*RecomputeJob)(nil),          // 2: proto.memelo.v1.RecomputeJob
+	(*RecomputeError)(nil),        // 3: proto.memelo.v1.RecomputeError
+	(*RecomputeJobStatus)(nil),    // 4: proto.memelo.v1.RecomputeJobStatus
+	(*structpb.Struct)(nil),       // 5: google.protobuf.Struct
 }
 var file_proto_v1_recompute_service_proto_depIdxs = []int32{
-	0, // 0: proto.memelo.v1.RecomputeService.RecomputeOcrData:input_type -> proto.memelo.v1.RecomputeRequest
-	1, // 1: proto.memelo.v1.RecomputeService.RecomputeOcrData:output_type -> proto.memelo.v1.RecomputeStatus
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	5, // 0: proto.memelo.v1.RecomputeRequest.query:type_name -> google.protobuf.Struct
+	0, // 1: proto.memelo.v1.RecomputeJobStatus.state:type_name -> proto.memelo.v1.RecomputeJobStatus.State
+	3, // 2: proto.memelo.v1.RecomputeJobStatus.errors:type_name -> proto.memelo.v1.RecomputeError
+	1, // 3: proto.memelo.v1.RecomputeService.StartRecompute:input_type -> proto.memelo.v1.RecomputeRequest
+	2, // 4: proto.memelo.v1.RecomputeService.GetRecomputeStatus:input_type -> proto.memelo.v1.RecomputeJob
+	2, // 5: proto.memelo.v1.RecomputeService.StartRecompute:output_type -> proto.memelo.v1.RecomputeJob
+	4, // 6: proto.memelo.v1.RecomputeService.GetRecomputeStatus:output_type -> proto.memelo.v1.RecomputeJobStatus
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_recompute_service_proto_init() }
@@ -194,19 +412,19 @@ func file_proto_v1_recompute_service_proto_init() {
 		return
 	}
 	file_proto_v1_common_proto_init()
-	file_proto_v1_recompute_service_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_recompute_service_proto_rawDesc), len(file_proto_v1_recompute_service_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_v1_recompute_service_proto_goTypes,
 		DependencyIndexes: file_proto_v1_recompute_service_proto_depIdxs,
+		EnumInfos:         file_proto_v1_recompute_service_proto_enumTypes,
 		MessageInfos:      file_proto_v1_recompute_service_proto_msgTypes,
 	}.Build()
 	File_proto_v1_recompute_service_proto = out.File

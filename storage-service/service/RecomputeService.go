@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
@@ -12,16 +13,20 @@ import (
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
 
-type ProgressDataRecompute struct {
-	Processed int
+const maxRecomputeWorkers = 4
+const recomputePageSize = 50
+
+type RecomputeParams struct {
+	Query            map[string]interface{}
+	ComputeHash      bool
+	ComputeExtractor bool
+	ComputeEmbedding bool
+	CheckDuplicates  bool
 }
 
 type RecomputeService interface {
-	Recompute(
-		ctx context.Context,
-		accountId *uuid.UUID,
-		id *uuid.UUID,
-		callback func(ctx context.Context, recompute ProgressDataRecompute) error) error
+	StartRecompute(ctx context.Context, params RecomputeParams) (string, error)
+	GetJobStatus(ctx context.Context, jobId string) (*RecomputeJobState, error)
 }
 
 type RecomputeServiceImpl struct {
@@ -30,80 +35,107 @@ type RecomputeServiceImpl struct {
 	metadataStorageService storage2.MetadataStorageService
 	imageStorageService    storage2.MediaStorageService
 	tmpDataService         service.TmpDataService
+	jobStorage             RecomputeJobStorage
 }
 
-func (r *RecomputeServiceImpl) Recompute(
-	ctx context.Context,
-	accountId *uuid.UUID,
-	id *uuid.UUID,
-	callback func(ctx context.Context, recompute ProgressDataRecompute) error) error {
-	processed := 0
+func (r *RecomputeServiceImpl) StartRecompute(ctx context.Context, params RecomputeParams) (string, error) {
+	jobId := uuid.New().String()
+	job := r.jobStorage.Create(jobId)
 
-	if id != nil && accountId != nil {
-		item, err := r.metadataStorageService.GetById(ctx, *accountId, *id)
-		if err != nil {
-			return fmt.Errorf("recompute: query metadataService item failed: %w", err)
-		}
-		if item != nil {
-			if err = r.recomputeOne(ctx, item); err != nil {
-				r.slogger.Error("recompute: item failed:",
-					"imageId", item.ImageId,
-					"error", err)
-			} else {
-				processed++
-			}
-		}
-		return callback(ctx, ProgressDataRecompute{Processed: processed})
+	go r.runJob(context.WithoutCancel(ctx), job, params)
+
+	return jobId, nil
+}
+
+func (r *RecomputeServiceImpl) GetJobStatus(_ context.Context, jobId string) (*RecomputeJobState, error) {
+	job, ok := r.jobStorage.Get(jobId)
+	if !ok {
+		return nil, fmt.Errorf("job not found: %s", jobId)
+	}
+	return job, nil
+}
+
+func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobState, params RecomputeParams) {
+	job.Mu.Lock()
+	job.State = RecomputeStateRunning
+	job.Mu.Unlock()
+
+	rawQuery := params.Query
+	if rawQuery == nil {
+		rawQuery = map[string]interface{}{"match_all": map[string]interface{}{}}
 	}
 
 	var sortKey entity.ElasticSortKey
+	sem := make(chan struct{}, maxRecomputeWorkers)
+	var wg sync.WaitGroup
 
 	for {
-		var page []*entity.ElasticImageMetaData
-		var nextKey entity.ElasticSortKey
-		var err error
-
-		if accountId != nil {
-			page, nextKey, err = r.metadataStorageService.GetByAccountIdOrderByCreated(ctx, *accountId, sortKey, exportPageSize)
-		} else {
-			page, nextKey, err = r.metadataStorageService.GetAll(ctx, sortKey, exportPageSize)
-		}
+		page, nextKey, err := r.metadataStorageService.QueryByRaw(ctx, rawQuery, sortKey, recomputePageSize)
 		if err != nil {
-			return fmt.Errorf("recompute: query metadataService page failed: %w", err)
+			r.slogger.ErrorContext(ctx, "recompute: pagination failed", "jobId", job.JobId, "error", err)
+			job.Mu.Lock()
+			job.State = RecomputeStateFailed
+			job.Errors = append(job.Errors, RecomputeJobError{ErrorText: err.Error()})
+			job.Mu.Unlock()
+			return
 		}
 		if len(page) == 0 {
 			break
 		}
 
 		for _, meta := range page {
-			if err = r.recomputeOne(ctx, meta); err != nil {
-				r.slogger.Error("recompute: item failed:",
-					"imageId", meta.ImageId,
-					"error", err)
-				continue
-			}
-			processed++
+			m := meta
+			sem <- struct{}{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() { <-sem }()
+
+				r.slogger.InfoContext(ctx, "recompute: processing media object",
+					"jobId", job.JobId,
+					"imageId", m.ImageId)
+
+				if err := r.recomputeOne(ctx, m, params); err != nil {
+					r.slogger.ErrorContext(ctx, "recompute: object failed",
+						"jobId", job.JobId,
+						"imageId", m.ImageId,
+						"error", err)
+					job.Mu.Lock()
+					job.Errors = append(job.Errors, RecomputeJobError{
+						ObjectId:  m.ImageId.String(),
+						ErrorText: err.Error(),
+					})
+					job.Mu.Unlock()
+					return
+				}
+
+				job.Mu.Lock()
+				job.Processed++
+				job.LastId = m.ImageId.String()
+				job.Mu.Unlock()
+			}()
 		}
 
-		if err = callback(ctx, ProgressDataRecompute{Processed: processed}); err != nil {
-			return fmt.Errorf("recompute: callback failed: %w", err)
-		}
-
-		if len(page) < exportPageSize {
+		if len(page) < recomputePageSize {
 			break
 		}
 		sortKey = nextKey
 	}
 
-	r.slogger.Info("recompute finished:", "processed", processed)
-	return nil
+	wg.Wait()
+
+	job.Mu.Lock()
+	job.State = RecomputeStateDone
+	job.Mu.Unlock()
+
+	r.slogger.InfoContext(ctx, "recompute: job done", "jobId", job.JobId, "processed", job.Processed)
 }
 
-func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData) error {
+func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData, params RecomputeParams) error {
 	rawImg, err := r.imageStorageService.Read(ctx, data.S3Id, storageMediaType(data.Type, SavedOriginal))
 	defer helper.QuietClose(rawImg, r.slogger)
 	if err != nil {
-		return fmt.Errorf("recompute: get image bytes failed: %w", err)
+		return fmt.Errorf("get image bytes failed: %w", err)
 	}
 
 	mime := "image/jpeg"
@@ -114,29 +146,40 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 	rawImgS3Backed, err := r.tmpDataService.WrapData(ctx, mime, rawImg)
 	defer helper.QuietClose(rawImgS3Backed, r.slogger)
 	if err != nil {
-		return fmt.Errorf("recompute: wrap data failed: %w", err)
+		return fmt.Errorf("wrap data failed: %w", err)
 	}
 
-	pipelineResult, err := r.extractService.Extract(ctx,
-		data.AccountId,
-		data.Type,
-		rawImgS3Backed,
-		false,
-	)
+	seed := &MetadataPipelineContext{
+		Hash:      data.Hash,
+		Embedding: data.EmbeddingList,
+	}
+
+	pipelineResult, err := r.extractService.Extract(ctx, MetadataInputContext{
+		AccountId:        data.AccountId,
+		Type:             data.Type,
+		RawInput:         rawImgS3Backed,
+		SeedData:         seed,
+		CheckDuplicates:  params.CheckDuplicates,
+		ComputeHash:      params.ComputeHash,
+		ComputeExtractor: params.ComputeExtractor,
+		ComputeEmbedding: params.ComputeEmbedding,
+	})
 	if err != nil {
-		return fmt.Errorf("recompute: process create failed: %w", err)
+		return fmt.Errorf("extract pipeline failed: %w", err)
 	}
 	defer helper.QuietClose(pipelineResult, r.slogger)
 
 	data.Hash = pipelineResult.Hash
 
-	joinedResult := fmt.Sprintf("%s %s %s",
-		pipelineResult.Result.OnScreenText,
-		pipelineResult.Result.AudioTranscript,
-		pipelineResult.Result.AudioTrack)
-	data.Result = joinedResult
-	data.ResultData = pipelineResult.Result
-	data.ResultPerVideoSlices = pipelineResult.ResultPerVideoSlices
+	if pipelineResult.Result != nil {
+		joinedResult := fmt.Sprintf("%s %s %s",
+			pipelineResult.Result.OnScreenText,
+			pipelineResult.Result.AudioTranscript,
+			pipelineResult.Result.AudioTrack)
+		data.Result = joinedResult
+		data.ResultData = pipelineResult.Result
+		data.ResultPerVideoSlices = pipelineResult.ResultPerVideoSlices
+	}
 
 	for i := range pipelineResult.StorageArtifacts {
 		artifact := pipelineResult.StorageArtifacts[i]
@@ -146,27 +189,31 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		}
 	}
 
-	data.ImageSize = &entity.Sizes{
-		Width:  pipelineResult.OriginalSize.Width,
-		Height: pipelineResult.OriginalSize.Height,
+	if pipelineResult.OriginalSize.Width > 0 {
+		data.ImageSize = &entity.Sizes{
+			Width:  pipelineResult.OriginalSize.Width,
+			Height: pipelineResult.OriginalSize.Height,
+		}
+	}
+	if pipelineResult.ThumbnailSize.Width > 0 {
+		data.ThumbSize = &entity.Sizes{
+			Width:  pipelineResult.ThumbnailSize.Width,
+			Height: pipelineResult.ThumbnailSize.Height,
+		}
 	}
 
-	data.ThumbSize = &entity.Sizes{
-		Width:  pipelineResult.ThumbnailSize.Width,
-		Height: pipelineResult.ThumbnailSize.Height,
+	if len(pipelineResult.Embedding) > 0 {
+		data.EmbeddingList = pipelineResult.Embedding
+	}
+	if len(pipelineResult.Tags) > 0 {
+		data.Tags = helper.TransformSlice(
+			pipelineResult.Tags,
+			make([]string, len(pipelineResult.Tags)),
+			func(tag entity.ElasticTag) string { return tag.Tag })
 	}
 
-	data.EmbeddingList = pipelineResult.Embedding
-	data.Tags = helper.TransformSlice(
-		pipelineResult.Tags,
-		make([]string, len(pipelineResult.Tags)),
-		func(tag entity.ElasticTag) string {
-			return tag.Tag
-		})
-
-	err = r.metadataStorageService.Save(ctx, data)
-	if err != nil {
-		return fmt.Errorf("recompute: save metadataService failed: %w", err)
+	if err = r.metadataStorageService.Save(ctx, data); err != nil {
+		return fmt.Errorf("save metadata failed: %w", err)
 	}
 	return nil
 }
@@ -176,6 +223,7 @@ func NewRecomputeService(
 	metadataStorageService storage2.MetadataStorageService,
 	imageStorageService storage2.MediaStorageService,
 	tmpDataService service.TmpDataService,
+	jobStorage RecomputeJobStorage,
 ) RecomputeService {
 	return &RecomputeServiceImpl{
 		slogger:                slog.With("service", "RecomputeService"),
@@ -183,5 +231,6 @@ func NewRecomputeService(
 		metadataStorageService: metadataStorageService,
 		imageStorageService:    imageStorageService,
 		tmpDataService:         tmpDataService,
+		jobStorage:             jobStorage,
 	}
 }

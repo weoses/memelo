@@ -15,6 +15,9 @@ type ImageCalcEmbeddingPipelineStep struct {
 }
 
 func (s *ImageCalcEmbeddingPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
+	if !inputContext.ComputeEmbedding && len(pCtx.Embedding) > 0 {
+		return nil
+	}
 	embedding, err := s.imageEmbedder.GetImageEmbedding(ctx, pCtx.ImageOriginalJpeg)
 	if err != nil {
 		return fmt.Errorf("error getting image embedding: %w", err)
