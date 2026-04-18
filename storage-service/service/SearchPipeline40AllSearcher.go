@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
@@ -19,6 +20,7 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 	if query != "" {
 		return []*entity.ElasticImageMetaData{}, nil, nil
 	}
+	a.slogger.InfoContext(ctx, "search", "query", query, "sortKey", sortKey, "size", size)
 
 	results, nextKey, err := a.metadata.GetByAccountIdOrderByCreated(ctx, accountId, sortKey, size)
 	if err != nil {
@@ -29,8 +31,9 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 }
 
 func NewAllSearcher(m storage.MetadataStorageService) SearchPipelineStep {
+	name := "all_searcher"
 	return &AllSearcher{
-		SearcherBase: SearcherBase{Name: "all", Index: 20},
+		SearcherBase: SearcherBase{Name: name, Index: 20, slogger: slog.With("service", name)},
 		metadata:     m,
 	}
 }

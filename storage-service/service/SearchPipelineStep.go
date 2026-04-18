@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
@@ -22,8 +23,9 @@ type SearchPipelineStep interface {
 }
 
 type SearcherBase struct {
-	Name  string
-	Index int
+	Name    string
+	Index   int
+	slogger *slog.Logger
 }
 
 func (b SearcherBase) GetName() string { return b.Name }
