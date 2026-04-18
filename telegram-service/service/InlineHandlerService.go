@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -69,6 +69,31 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 	return nil
 }
 
+func parseOffset(offset string) *entity.PaginationOffset {
+	if offset == "" {
+		return nil
+	}
+	var p entity.PaginationOffset
+	if err := json.Unmarshal([]byte(offset), &p); err != nil {
+		return nil
+	}
+	return &entity.PaginationOffset{Searcher: p.Searcher, SortingAfter: p.SortingAfter}
+}
+
+func serializeOffset(qr *entity.PaginationOffset) string {
+	if qr == nil {
+		return ""
+	}
+	if qr.Searcher == "" && len(qr.SortingAfter) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(entity.PaginationOffset{Searcher: qr.Searcher, SortingAfter: qr.SortingAfter})
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
 // ProcessQuery implements InlineService.
 func (i *InineHandlerServiceImpl) ProcessQuery(
 	ctx context.Context,
@@ -94,21 +119,22 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		return nil, err
 	}
 
-	var searchAfter *string
-	if request.Offset != "" {
-		searchAfter = &request.Offset
+	params := entity.SearchParams{
+		Query:      query,
+		Pagination: parseOffset(request.Offset),
 	}
 
-	results, err := i.storage.ProcessSearchQuery(
+	searchResult, err := i.storage.ProcessSearchQuery(
 		ctx,
 		accountId,
-		query,
+		params,
 		i.config.Inline.PageSize,
-		searchAfter,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ProcessSearchQuery failed: %w", err)
 	}
+
+	results := searchResult.Results
 
 	i.log.InfoContext(ctx, "Search query result",
 		"userId", userId,
@@ -127,7 +153,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	photos := helper.TransformSlice(
 		results,
 		make([]interface{}, len(results)),
-		func(item *entity.MemeSearchResult) interface{} {
+		func(item entity.MemeSearchResult) interface{} {
 			i.log.DebugContext(ctx, "SearchResultItem",
 				"id", item.Id,
 				"url", item.MediaUrl,
@@ -177,7 +203,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 
 	nextOffset := ""
 	if len(results) == i.config.Inline.PageSize && i.config.Inline.PageSize > 0 {
-		nextOffset = strconv.FormatInt(results[i.config.Inline.PageSize-1].SortingId, 10)
+		nextOffset = serializeOffset(searchResult.Pagination)
 	}
 
 	i.log.InfoContext(ctx, "Search next offset",
