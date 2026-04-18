@@ -3,7 +3,9 @@ module github.com/weoses/memelo/telegram-service
 go 1.25.0
 
 require (
+	connectrpc.com/connect v1.19.1
 	github.com/golang-migrate/migrate/v4 v4.18.1
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/spf13/viper v1.19.0
@@ -12,7 +14,6 @@ require (
 )
 
 require (
-	connectrpc.com/connect v1.19.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
