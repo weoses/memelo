@@ -106,6 +106,15 @@ func TestSerializeDeserialize(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "nokey",
+			args: args{
+				p: &entity.PaginationOffset{
+					Searcher:     "hybrid",
+					SortingAfter: []string{},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

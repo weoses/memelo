@@ -30,7 +30,7 @@ var metadataMigrationFS embed.FS
 const MaxFuzzy = 10
 
 // sort field slices used to build / extract sort keys
-var sortFieldsCreated = []string{"Created", "ImageId"}
+var sortFieldsCreated = []string{"Created"}
 var sortFieldsScore = []string{"_score", "ImageId"}
 var sortFieldsImageId = []string{"ImageId"}
 
@@ -56,14 +56,16 @@ func extractSortKey(resp *search.Response) entity.ElasticSortKey {
 }
 
 // buildSortOptions constructs a SortOptions with every field sorted by order.
-func buildSortOptions(fields []string, order sortorder.SortOrder) *types.SortOptions {
-	sortId := types.NewSortOptions()
-	for _, field := range fields {
+func buildSortOptions(fields []string, order sortorder.SortOrder) []types.SortCombinations {
+	combinations := make([]types.SortCombinations, len(fields))
+	for i, field := range fields {
+		sortId := types.NewSortOptions()
 		fieldSort := *types.NewFieldSort()
 		fieldSort.Order = helper.Addr(order)
 		sortId.SortOptions[field] = fieldSort
+		combinations[i] = sortId
 	}
-	return sortId
+	return combinations
 }
 
 // searchAfterValues returns sort values from a sort key in field order,
@@ -153,7 +155,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 	searchRequest := e.client.Search().
 		Index(e.indexName).
 		Query(q).
-		Sort(buildSortOptions(sortFieldsCreated, sortorder.Desc)).
+		Sort(buildSortOptions(sortFieldsCreated, sortorder.Desc)...).
 		Size(pageSize)
 
 	if vals := searchAfterValues(sortKey); len(vals) > 0 {
@@ -187,7 +189,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetAll(
 
 	searchRequest := e.client.Search().
 		Index(e.indexName).
-		Sort(buildSortOptions(sortFieldsImageId, sortorder.Asc)).
+		Sort(buildSortOptions(sortFieldsImageId, sortorder.Asc)...).
 		Size(pageSize)
 
 	if vals := searchAfterValues(sortKey); len(vals) > 0 {
@@ -224,7 +226,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 	searchReq := e.client.Search().
 		Index(e.indexName).
 		Knn(*knnQuery).
-		Sort(buildSortOptions(sortFieldsImageId, sortorder.Asc)).
+		Sort(buildSortOptions(sortFieldsImageId, sortorder.Asc)...).
 		TrackScores(true).
 		Size(pageSize)
 
@@ -351,7 +353,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	searchRequest := e.client.Search().
 		Index(e.indexName).
 		Query(query).
-		Sort(buildSortOptions(sortFieldsImageId, sortorder.Desc)).
+		Sort(buildSortOptions(sortFieldsImageId, sortorder.Desc)...).
 		Size(pageSize)
 
 	if vals := searchAfterValues(sortKey); len(vals) > 0 {
@@ -399,7 +401,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 		Index(e.indexName).
 		Query(bm25Query).
 		Knn(*knnQuery).
-		Sort(buildSortOptions(sortFieldsScore, sortorder.Desc)).
+		Sort(buildSortOptions(sortFieldsScore, sortorder.Desc)...).
 		TrackScores(true).
 		Size(pageSize)
 
