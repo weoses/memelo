@@ -393,7 +393,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 	e.slogger.InfoContext(ctx, "SearchHybridOrderByScore start", "query", query, "pageSize", pageSize)
 
 	accountIdFilter := e.accountIdQuery(accountId)
-	bm25Query := e.fuzzyStringAndAccountQuery(accountId, query, fuzziness)
+	bm25Query := e.stringAndAccountQuery(accountId, query, fuzziness)
 	knnQuery := e.embeddingV1KnnAllQuery(embedding, accountIdFilter, pageSize)
 
 	searchReq := e.client.Search().
@@ -414,7 +414,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 	}
 
 	resultsEntity := make([]*entity.ElasticImageMetaData, 0)
-	for index, _ := range resp.Hits.Hits {
+	for index := range resp.Hits.Hits {
 		item, err := unmarshalSearchResultToElasticEntity(index, resp)
 		if err != nil {
 			return nil, nil, fmt.Errorf("SearchHybridOrderByScore result unmarshall failed: %w", err)
@@ -506,27 +506,6 @@ func (e *ElasticMetadataStorageServiceImpl) hashQuery(
 }
 
 func (e *ElasticMetadataStorageServiceImpl) stringAndAccountQuery(
-	accountId uuid.UUID,
-	queryString string,
-) *types.Query {
-	q1 := types.NewQuery()
-	q1.Match = map[string]types.MatchQuery{
-		"Result": {
-			Query:     queryString,
-			Fuzziness: "0",
-			Operator:  &operator.And,
-		},
-	}
-
-	query := types.NewQuery()
-	query.Bool = types.NewBoolQuery()
-	query.Bool.Must = []types.Query{
-		*q1, *e.accountIdQuery(accountId),
-	}
-	return query
-}
-
-func (e *ElasticMetadataStorageServiceImpl) fuzzyStringAndAccountQuery(
 	accountId uuid.UUID,
 	queryString string,
 	fuzziness string,
