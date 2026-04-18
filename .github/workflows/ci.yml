@@ -24,6 +24,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl libvips-dev ffmpeg cpulimit
+
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: storage-service/go.mod
+
+      - name: Go tests
+        uses: robherley/go-test-action@v0
+        with:
+          moduleDirectory: storage-service
+
       - name: "STORAGE: Build and push"
         uses: docker/build-push-action@v6
         with:
@@ -46,12 +63,6 @@ jobs:
     environment: memelo-test
     steps:
       - uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: tests/e2e/go.mod
-
       - name: Deploy via Ansible
         uses: dawidd6/action-ansible-playbook@v9
         with:
@@ -65,15 +76,6 @@ jobs:
             --extra-vars release_version=dev-${{ github.sha }}
             --extra-vars commit_hash=${{ github.sha }}
             --extra-vars repo_url=${{ github.server_url }}/${{ github.repository }}.git
-
-      - name: Tests
-        uses: robherley/go-test-action@v0
-        with:
-          moduleDirectory: tests/e2e
-        env:
-          STORAGE_SERVICE_URI: ${{ secrets.TEST_STORAGE_SERVICE_URI }}
-          STORAGE_SERVICE_USERNAME: ${{ secrets.TEST_PROXY_USERNAME }}
-          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
 
   release-deploy:
     runs-on: ubuntu-latest

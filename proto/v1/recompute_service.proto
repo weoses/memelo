@@ -8,7 +8,6 @@ import "google/protobuf/struct.proto";
 
 message RecomputeRequest {
   google.protobuf.Struct query = 1;
-  bool compute_hash = 2;
   bool compute_extractor = 3;
   bool compute_embedding = 4;
   bool check_duplicates = 5;
