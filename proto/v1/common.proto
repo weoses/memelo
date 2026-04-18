@@ -23,7 +23,7 @@ message MemeDto {
 }
 message PipelinePagination {
   string searcher = 1;
-  map<string, string> sorting_after = 2;
+  repeated string sorting_after = 2;
 }
 
 message DeleteAllRequest {

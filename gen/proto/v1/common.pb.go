@@ -184,7 +184,7 @@ func (x *MemeDto) GetSortingId() int64 {
 type PipelinePagination struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Searcher      string                 `protobuf:"bytes,1,opt,name=searcher,proto3" json:"searcher,omitempty"`
-	SortingAfter  map[string]string      `protobuf:"bytes,2,rep,name=sorting_after,json=sortingAfter,proto3" json:"sorting_after,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	SortingAfter  []string               `protobuf:"bytes,2,rep,name=sorting_after,json=sortingAfter,proto3" json:"sorting_after,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -226,7 +226,7 @@ func (x *PipelinePagination) GetSearcher() string {
 	return ""
 }
 
-func (x *PipelinePagination) GetSortingAfter() map[string]string {
+func (x *PipelinePagination) GetSortingAfter() []string {
 	if x != nil {
 		return x.SortingAfter
 	}
@@ -334,13 +334,10 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\x12\x12\n" +
 	"\x04type\x18\x06 \x01(\tR\x04type\x12\x18\n" +
 	"\acaption\x18\a \x01(\tR\acaption\x12\x1c\n" +
-	"\tsortingId\x18\b \x01(\x03R\tsortingId\"\xcd\x01\n" +
+	"\tsortingId\x18\b \x01(\x03R\tsortingId\"U\n" +
 	"\x12PipelinePagination\x12\x1a\n" +
-	"\bsearcher\x18\x01 \x01(\tR\bsearcher\x12Z\n" +
-	"\rsorting_after\x18\x02 \x03(\v25.proto.memelo.v1.PipelinePagination.SortingAfterEntryR\fsortingAfter\x1a?\n" +
-	"\x11SortingAfterEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"1\n" +
+	"\bsearcher\x18\x01 \x01(\tR\bsearcher\x12#\n" +
+	"\rsorting_after\x18\x02 \x03(\tR\fsortingAfter\"1\n" +
 	"\x10DeleteAllRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"\x13\n" +
@@ -359,24 +356,22 @@ func file_proto_v1_common_proto_rawDescGZIP() []byte {
 	return file_proto_v1_common_proto_rawDescData
 }
 
-var file_proto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_proto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_v1_common_proto_goTypes = []any{
 	(*ImageDto)(nil),           // 0: proto.memelo.v1.ImageDto
 	(*MemeDto)(nil),            // 1: proto.memelo.v1.MemeDto
 	(*PipelinePagination)(nil), // 2: proto.memelo.v1.PipelinePagination
 	(*DeleteAllRequest)(nil),   // 3: proto.memelo.v1.DeleteAllRequest
 	(*DeleteAllResponse)(nil),  // 4: proto.memelo.v1.DeleteAllResponse
-	nil,                        // 5: proto.memelo.v1.PipelinePagination.SortingAfterEntry
 }
 var file_proto_v1_common_proto_depIdxs = []int32{
 	0, // 0: proto.memelo.v1.MemeDto.image_thumbnail:type_name -> proto.memelo.v1.ImageDto
 	0, // 1: proto.memelo.v1.MemeDto.media_original:type_name -> proto.memelo.v1.ImageDto
-	5, // 2: proto.memelo.v1.PipelinePagination.sorting_after:type_name -> proto.memelo.v1.PipelinePagination.SortingAfterEntry
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_common_proto_init() }
@@ -391,7 +386,7 @@ func file_proto_v1_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_common_proto_rawDesc), len(file_proto_v1_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

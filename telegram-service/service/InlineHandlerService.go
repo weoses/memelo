@@ -1,12 +1,8 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"log/slog"
 	"strings"
 
@@ -70,77 +66,6 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 	}
 
 	return nil
-}
-
-func writeStr(w io.Writer, s string) error {
-	if err := binary.Write(w, binary.LittleEndian, uint32(len(s))); err != nil {
-		return err
-	}
-	_, err := io.WriteString(w, s)
-	return err
-}
-
-func readStr(r io.Reader) (string, error) {
-	var n uint32
-	if err := binary.Read(r, binary.LittleEndian, &n); err != nil {
-		return "", err
-	}
-	b := make([]byte, n)
-	if _, err := io.ReadFull(r, b); err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-func parseOffset(offset string) *entity.PaginationOffset {
-	if offset == "" {
-		return nil
-	}
-	raw, err := base64.StdEncoding.DecodeString(offset)
-	if err != nil {
-		return nil
-	}
-	r := bytes.NewReader(raw)
-	searcher, err := readStr(r)
-	if err != nil {
-		return nil
-	}
-	var mapLen uint32
-	if err := binary.Read(r, binary.LittleEndian, &mapLen); err != nil {
-		return nil
-	}
-	sortingAfter := make(map[string]string, mapLen)
-	for range mapLen {
-		k, err := readStr(r)
-		if err != nil {
-			return nil
-		}
-		v, err := readStr(r)
-		if err != nil {
-			return nil
-		}
-		sortingAfter[k] = v
-	}
-	return &entity.PaginationOffset{Searcher: searcher, SortingAfter: sortingAfter}
-}
-
-func serializeOffset(p *entity.PaginationOffset) string {
-	if p == nil || (p.Searcher == "" && len(p.SortingAfter) == 0) {
-		return ""
-	}
-	var buf bytes.Buffer
-	if writeStr(&buf, p.Searcher) != nil {
-		return ""
-	}
-	if binary.Write(&buf, binary.LittleEndian, uint32(len(p.SortingAfter))) != nil {
-		return ""
-	}
-	for k, v := range p.SortingAfter {
-		if writeStr(&buf, k) != nil || writeStr(&buf, v) != nil {
-			return ""
-		}
-	}
-	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
 // ProcessQuery implements InlineService.
