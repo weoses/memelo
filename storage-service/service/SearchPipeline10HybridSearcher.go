@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/conf"
@@ -23,6 +24,7 @@ func (s HybridSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 	if query == "" {
 		return []*entity.ElasticImageMetaData{}, nil, nil
 	}
+	s.slogger.InfoContext(ctx, "search", "query", query, "sortKey", sortKey, "size", size)
 
 	embedding, err := s.embedder.GetTextEmbedding(ctx, query)
 	if err != nil {
@@ -40,8 +42,9 @@ func (s HybridSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 }
 
 func NewHybridSearcher(m storage.MetadataStorageService, e ocr.LlmEmbeddingExtractor, cfg *conf.Config) SearchPipelineStep {
+	name := "hybrid_searcher"
 	return &HybridSearcher{
-		SearcherBase: SearcherBase{Name: "hybrid", Index: 10},
+		SearcherBase: SearcherBase{Name: name, Index: 10, slogger: slog.With("service", name)},
 		metadata:     m,
 		embedder:     e,
 		searchConfig: cfg.Search,
