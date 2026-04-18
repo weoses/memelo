@@ -39,7 +39,7 @@ func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query strin
 
 func NewIdSearcher(m storage.MetadataStorageService) SearchPipelineStep {
 	return &IdSearcher{
-		SearcherBase: SearcherBase{Name: "id_searcher", Index: 0},
+		SearcherBase: SearcherBase{Name: "id", Index: 0},
 		metadata:     m,
 	}
 }

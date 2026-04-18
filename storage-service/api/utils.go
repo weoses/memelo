@@ -14,12 +14,12 @@ func pipelineAfterIDFromProto(p *v1.PipelinePagination) *service.PipelineAfterID
 		return nil
 	}
 	sortKey := make(entity.ElasticSortKey, len(p.SortingAfter))
-	for k, v := range p.SortingAfter {
+	for i, v := range p.SortingAfter {
 		var val interface{}
 		if err := json.Unmarshal([]byte(v), &val); err != nil {
 			val = v
 		}
-		sortKey[k] = val
+		sortKey[i] = val
 	}
 	return &service.PipelineAfterID{
 		SearcherName: p.Searcher,
@@ -31,13 +31,13 @@ func pipelineAfterIDToProto(a *service.PipelineAfterID) *v1.PipelinePagination {
 	if a == nil {
 		return nil
 	}
-	sortingAfter := make(map[string]string, len(a.SortKey))
-	for k, v := range a.SortKey {
+	sortingAfter := make([]string, len(a.SortKey))
+	for i, v := range a.SortKey {
 		b, err := json.Marshal(v)
 		if err != nil {
-			sortingAfter[k] = fmt.Sprintf("%v", v)
+			sortingAfter[i] = fmt.Sprintf("%v", v)
 		} else {
-			sortingAfter[k] = string(b)
+			sortingAfter[i] = string(b)
 		}
 	}
 	return &v1.PipelinePagination{

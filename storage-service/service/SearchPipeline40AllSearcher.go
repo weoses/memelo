@@ -30,7 +30,7 @@ func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query stri
 
 func NewAllSearcher(m storage.MetadataStorageService) SearchPipelineStep {
 	return &AllSearcher{
-		SearcherBase: SearcherBase{Name: "all_searcher", Index: 20},
+		SearcherBase: SearcherBase{Name: "all", Index: 20},
 		metadata:     m,
 	}
 }

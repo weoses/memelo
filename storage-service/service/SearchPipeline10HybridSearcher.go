@@ -41,7 +41,7 @@ func (s HybridSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 
 func NewHybridSearcher(m storage.MetadataStorageService, e ocr.LlmEmbeddingExtractor, cfg *conf.Config) SearchPipelineStep {
 	return &HybridSearcher{
-		SearcherBase: SearcherBase{Name: "hybrid_searcher", Index: 10},
+		SearcherBase: SearcherBase{Name: "hybrid", Index: 10},
 		metadata:     m,
 		embedder:     e,
 		searchConfig: cfg.Search,
