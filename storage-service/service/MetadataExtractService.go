@@ -6,15 +6,11 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
-	"github.com/weoses/memelo/common/temp"
-
-	"github.com/weoses/memelo/storage-service/entity"
 )
 
 type MetadataExtractService interface {
-	Extract(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData, checkDup bool) (*MetadataPipelineContext, error)
+	Extract(ctx context.Context, inputCtx MetadataInputContext) (*MetadataPipelineContext, error)
 }
 
 type MetadataExtractServiceImpl struct {
@@ -22,16 +18,16 @@ type MetadataExtractServiceImpl struct {
 	slogger *slog.Logger
 }
 
-func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData, checkDup bool) (*MetadataPipelineContext, error) {
-	pipelineCtx := &MetadataPipelineContext{}
-	inputCtx := MetadataInputContext{
-		AccountId: accountId,
-		Type:      typ,
-		RawInput:  raw,
+func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, inputCtx MetadataInputContext) (*MetadataPipelineContext, error) {
+	var pipelineCtx *MetadataPipelineContext
+	if inputCtx.SeedData != nil {
+		pipelineCtx = inputCtx.SeedData
+	} else {
+		pipelineCtx = &MetadataPipelineContext{}
 	}
 
 	for _, step := range c.steps {
-		if !slices.Contains(step.GetAllowedPipelineTypes(), typ) {
+		if !slices.Contains(step.GetAllowedPipelineTypes(), inputCtx.Type) {
 			continue
 		}
 
@@ -39,7 +35,7 @@ func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, accountId uuid
 			helper.QuietClose(pipelineCtx, c.slogger)
 			return nil, fmt.Errorf("create pipeline: step failed (pos=%d): %w", step.GetPos(), err)
 		}
-		if checkDup && pipelineCtx.Duplicate != nil {
+		if inputCtx.CheckDuplicates && pipelineCtx.Duplicate != nil {
 			return pipelineCtx, nil
 		}
 	}

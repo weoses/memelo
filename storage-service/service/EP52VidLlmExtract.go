@@ -28,6 +28,9 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 		Result         ocr.MediaExtractResult
 	}
 
+	if !inputContext.ComputeExtractor {
+		return nil
+	}
 	if len(pCtx.VideoSlices) == 0 {
 		return errors.New("no video slices")
 	}

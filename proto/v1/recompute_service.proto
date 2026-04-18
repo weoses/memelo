@@ -4,20 +4,43 @@ import "proto/v1/common.proto";
 option go_package = "github.com/weoses/memelo/gen/proto/v1";
 package proto.memelo.v1;
 
-
+import "google/protobuf/struct.proto";
 
 message RecomputeRequest {
-  optional string account_id = 1;
-  optional string id = 2;
-  bool recompute_ocr_data = 3;
-  bool recompute_thumbnail = 4;
-  bool recompute_embedding = 5;
+  google.protobuf.Struct query = 1;
+  bool compute_hash = 2;
+  bool compute_extractor = 3;
+  bool compute_embedding = 4;
+  bool check_duplicates = 5;
 }
 
-message RecomputeStatus {
-  int32 processed = 1;
+message RecomputeJob {
+  string job_id = 1;
+}
+
+message RecomputeError {
+  string object_id  = 1;
+  string error_text = 2;
+}
+
+message RecomputeJobStatus {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_PENDING = 1;
+    STATE_RUNNING = 2;
+    STATE_DONE = 3;
+    STATE_FAILED = 4;
+  }
+
+  string job_id = 1;
+  State state = 2;
+  int32 processed = 3;
+  int32 total = 4;
+  repeated RecomputeError errors = 5;
+  string last_id = 6;
 }
 
 service RecomputeService {
-  rpc RecomputeOcrData(RecomputeRequest) returns (stream RecomputeStatus);
+  rpc StartRecompute(RecomputeRequest) returns (RecomputeJob);
+  rpc GetRecomputeStatus(RecomputeJob) returns (RecomputeJobStatus);
 }

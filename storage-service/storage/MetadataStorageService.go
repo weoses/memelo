@@ -128,6 +128,8 @@ type MetadataStorageService interface {
 
 	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error
+
+	QueryByRaw(ctx context.Context, rawQuery map[string]interface{}, sortKey entity.ElasticSortKey, pageSize int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 }
 
 type ElasticMetadataStorageServiceImpl struct {
@@ -460,6 +462,42 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		"response", render.Render(response))
 
 	return err
+}
+
+func (e *ElasticMetadataStorageServiceImpl) QueryByRaw(
+	ctx context.Context,
+	rawQuery map[string]interface{},
+	sortKey entity.ElasticSortKey,
+	pageSize int,
+) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
+	e.slogger.InfoContext(ctx, "QueryByRaw start", "pageSize", pageSize)
+
+	body := map[string]interface{}{
+		"query": rawQuery,
+		"sort":  []map[string]interface{}{{"ImageId": map[string]interface{}{"order": "asc"}}},
+		"size":  pageSize,
+	}
+	if sortKey != nil {
+		body["search_after"] = []interface{}{sortKey[0]}
+	}
+
+	jsonBytes, err := json.Marshal(body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("QueryByRaw: marshal body failed: %w", err)
+	}
+
+	result, err := e.client.Search().Index(e.indexName).Raw(bytes.NewReader(jsonBytes)).Do(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("QueryByRaw: search failed: %w", err)
+	}
+
+	results, err := e.unmarshalResults(result)
+	if err != nil {
+		return nil, nil, fmt.Errorf("QueryByRaw: unmarshal failed: %w", err)
+	}
+
+	e.slogger.InfoContext(ctx, "QueryByRaw done", "count", len(results))
+	return results, extractSortKey(result), nil
 }
 
 func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(

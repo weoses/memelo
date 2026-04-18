@@ -89,6 +89,7 @@ func main() {
 		fx.Provide(service.NewExportService),
 		fx.Provide(service.NewMemeCrudService),
 
+		fx.Provide(service.NewInMemoryRecomputeJobStorage),
 		fx.Provide(service.NewRecomputeService),
 		fx.Provide(api.NewRecomputeGrpcApi),
 

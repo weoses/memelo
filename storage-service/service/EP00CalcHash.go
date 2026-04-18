@@ -18,6 +18,9 @@ type CalcHashPipelineStep struct {
 }
 
 func (c *CalcHashPipelineStep) Do(_ context.Context, inputContext MetadataInputContext, pipelineContext *MetadataPipelineContext) error {
+	if !inputContext.ComputeHash && pipelineContext.Hash != "" {
+		return nil
+	}
 	hash, err := calcRawHash(inputContext.RawInput)
 	if err != nil {
 		return fmt.Errorf("create pipeline: error calculating hash: %w", err)

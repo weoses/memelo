@@ -15,6 +15,9 @@ type ImgLlmExtractPipelineStep struct {
 }
 
 func (s *ImgLlmExtractPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
+	if !inputContext.ComputeExtractor {
+		return nil
+	}
 	result, err := s.extractor.ProcessImage(ctx, pCtx.ImageOriginalJpeg)
 	if err != nil {
 		return fmt.Errorf("llm image extraction failed: %w", err)
