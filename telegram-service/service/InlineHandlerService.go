@@ -1,8 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/base64"
+	"encoding/gob"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -73,25 +75,26 @@ func parseOffset(offset string) *entity.PaginationOffset {
 	if offset == "" {
 		return nil
 	}
-	var p entity.PaginationOffset
-	if err := json.Unmarshal([]byte(offset), &p); err != nil {
+	raw, err := base64.StdEncoding.DecodeString(offset)
+	if err != nil {
 		return nil
 	}
-	return &entity.PaginationOffset{Searcher: p.Searcher, SortingAfter: p.SortingAfter}
+	var p entity.PaginationOffset
+	if err := gob.NewDecoder(bytes.NewReader(raw)).Decode(&p); err != nil {
+		return nil
+	}
+	return &p
 }
 
-func serializeOffset(qr *entity.PaginationOffset) string {
-	if qr == nil {
+func serializeOffset(p *entity.PaginationOffset) string {
+	if p == nil || (p.Searcher == "" && len(p.SortingAfter) == 0) {
 		return ""
 	}
-	if qr.Searcher == "" && len(qr.SortingAfter) == 0 {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(p); err != nil {
 		return ""
 	}
-	b, err := json.Marshal(entity.PaginationOffset{Searcher: qr.Searcher, SortingAfter: qr.SortingAfter})
-	if err != nil {
-		return ""
-	}
-	return string(b)
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
 // ProcessQuery implements InlineService.
