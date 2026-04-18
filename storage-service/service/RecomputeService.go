@@ -18,7 +18,6 @@ const recomputePageSize = 50
 
 type RecomputeParams struct {
 	Query            map[string]interface{}
-	ComputeHash      bool
 	ComputeExtractor bool
 	ComputeEmbedding bool
 	CheckDuplicates  bool
@@ -160,7 +159,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		RawInput:         rawImgS3Backed,
 		SeedData:         seed,
 		CheckDuplicates:  params.CheckDuplicates,
-		ComputeHash:      params.ComputeHash,
+		ComputeHash:      false,
 		ComputeExtractor: params.ComputeExtractor,
 		ComputeEmbedding: params.ComputeEmbedding,
 	})

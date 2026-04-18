@@ -23,7 +23,6 @@ func (r *RecomputeGrpcApiImpl) StartRecompute(ctx context.Context, req *v1.Recom
 
 	jobId, err := r.recomputeService.StartRecompute(ctx, service.RecomputeParams{
 		Query:            query,
-		ComputeHash:      req.ComputeHash,
 		ComputeExtractor: req.ComputeExtractor,
 		ComputeEmbedding: req.ComputeEmbedding,
 		CheckDuplicates:  req.CheckDuplicates,

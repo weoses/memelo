@@ -80,7 +80,6 @@ func (RecomputeJobStatus_State) EnumDescriptor() ([]byte, []int) {
 type RecomputeRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Query            *structpb.Struct       `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-	ComputeHash      bool                   `protobuf:"varint,2,opt,name=compute_hash,json=computeHash,proto3" json:"compute_hash,omitempty"`
 	ComputeExtractor bool                   `protobuf:"varint,3,opt,name=compute_extractor,json=computeExtractor,proto3" json:"compute_extractor,omitempty"`
 	ComputeEmbedding bool                   `protobuf:"varint,4,opt,name=compute_embedding,json=computeEmbedding,proto3" json:"compute_embedding,omitempty"`
 	CheckDuplicates  bool                   `protobuf:"varint,5,opt,name=check_duplicates,json=checkDuplicates,proto3" json:"check_duplicates,omitempty"`
@@ -123,13 +122,6 @@ func (x *RecomputeRequest) GetQuery() *structpb.Struct {
 		return x.Query
 	}
 	return nil
-}
-
-func (x *RecomputeRequest) GetComputeHash() bool {
-	if x != nil {
-		return x.ComputeHash
-	}
-	return false
 }
 
 func (x *RecomputeRequest) GetComputeExtractor() bool {
@@ -337,10 +329,9 @@ var File_proto_v1_recompute_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_recompute_service_proto_rawDesc = "" +
 	"\n" +
-	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xe9\x01\n" +
+	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xc6\x01\n" +
 	"\x10RecomputeRequest\x12-\n" +
-	"\x05query\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x05query\x12!\n" +
-	"\fcompute_hash\x18\x02 \x01(\bR\vcomputeHash\x12+\n" +
+	"\x05query\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x05query\x12+\n" +
 	"\x11compute_extractor\x18\x03 \x01(\bR\x10computeExtractor\x12+\n" +
 	"\x11compute_embedding\x18\x04 \x01(\bR\x10computeEmbedding\x12)\n" +
 	"\x10check_duplicates\x18\x05 \x01(\bR\x0fcheckDuplicates\"%\n" +

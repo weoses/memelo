@@ -7,5 +7,11 @@ linters:
     - errchkjson
     - errorlint
     - goconst
-
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - errcheck
+          - errchkjson
 version: "2"

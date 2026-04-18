@@ -539,8 +539,13 @@ func (e *ElasticMetadataStorageServiceImpl) hashQuery(
 	hash string,
 ) *types.Query {
 	query := types.NewQuery()
-	query.QueryString = types.NewQueryStringQuery()
-	query.QueryString.Query = fmt.Sprintf("CalcHash: \"%s\"", hash)
+	query.Match = map[string]types.MatchQuery{
+		"Hash": {
+			Query:     hash,
+			Fuzziness: 0,
+			Operator:  &operator.And,
+		},
+	}
 	return query
 }
 
