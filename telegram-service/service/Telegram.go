@@ -66,15 +66,15 @@ func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-
 			return
 		case update := <-updates:
 			if update.InlineQuery != nil {
-				s.handleInlineRequest(ctx, &update)
+				go s.handleInlineRequest(ctx, &update)
 			} else if update.Message != nil {
 				if update.Message.IsCommand() {
-					s.handleCommand(ctx, update.Message)
+					go s.handleCommand(ctx, update.Message)
 				} else {
-					s.handleMessage(ctx, update.Message)
+					go s.handleMessage(ctx, update.Message)
 				}
 			} else if update.ChosenInlineResult != nil {
-				s.handleChosenResult(ctx, &update)
+				go s.handleChosenResult(ctx, &update)
 			}
 		}
 	}
