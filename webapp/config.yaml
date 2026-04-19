@@ -1,0 +1,11 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :7003
+
+storage-service:
+  Uri: "http://localhost:7001"
+
+account:
+  Id: "00000000-0000-0000-0000-000000000000"
