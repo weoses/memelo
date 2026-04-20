@@ -12,23 +12,23 @@ export default function MemeCard({ meme, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className="relative aspect-square overflow-hidden rounded-lg bg-gray-800
+      className="relative w-full h-full overflow-hidden rounded-lg bg-gray-800
                  hover:ring-2 hover:ring-purple-500 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
     >
       {thumb ? (
         <img
           src={thumb}
           alt={meme.caption || 'meme'}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover block"
           loading="lazy"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
+        <div className="w-full h-24 flex items-center justify-center text-gray-600 text-xs">
           no preview
         </div>
       )}
       {isVideo && (
-        <span className="absolute bottom-1 right-1 bg-black/60 rounded px-1 py-0.5 text-xs text-white">
+        <span className="absolute top-1 right-1 bg-black/60 rounded px-1 py-0.5 text-xs text-white">
           ▶
         </span>
       )}

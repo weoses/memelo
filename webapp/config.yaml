@@ -9,3 +9,13 @@ storage-service:
 
 account:
   Id: "00000000-0000-0000-0000-000000000000"
+
+temp-storage:
+  Endpoint:
+  AccessKey:
+  SecretKey:
+  Bucket:
+  Secure:
+
+jwt:
+  Secret: "change-me-in-production"

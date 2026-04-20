@@ -18,11 +18,17 @@ import (
 
 type SaveOptions func(options *SaveOptionsParameter)
 
+type PresignedPostData struct {
+	URL        string
+	FormFields map[string]string
+}
+
 type S3OperationsAdapter interface {
 	Save(ctx context.Context, path string, data temp.Data, options ...SaveOptions) error
 	Read(ctx context.Context, path string) (temp.Data, error)
 	GetUrl(ctx context.Context, path string) (string, error)
 	GetPresignedUrl(ctx context.Context, path string) (string, error)
+	GetPresignedPostUrl(ctx context.Context, path string, mime string, size int64) (PresignedPostData, error)
 	Delete(ctx context.Context, path string) error
 	IsGs() bool
 }
@@ -174,6 +180,23 @@ func (m *S3OperationsAdapterService) GetUrl(ctx context.Context, path string) (s
 	u := fmt.Sprintf("%s://%s/%s/%s", scheme, m.Endpoint, m.BucketName, path)
 	m.slogger.DebugContext(ctx, "service GetUrl", "object", path, "url", u)
 	return u, nil
+}
+
+func (m *S3OperationsAdapterService) GetPresignedPostUrl(ctx context.Context, path string, mime string, size int64) (PresignedPostData, error) {
+	m.slogger.InfoContext(ctx, "service PresignedPostPolicy", "object", path)
+	policy := minio.NewPostPolicy()
+	_ = policy.SetBucket(m.BucketName)
+	_ = policy.SetKey(path)
+	_ = policy.SetExpires(time.Now().Add(time.Hour * 5))
+	_ = policy.SetContentType(mime)
+	_ = policy.SetContentLengthRange(size, size)
+	u, formData, err := m.client.PresignedPostPolicy(ctx, policy)
+	if err != nil {
+		m.slogger.ErrorContext(ctx, "service PresignedPostPolicy failed", "object", path, "error", err)
+		return PresignedPostData{}, err
+	}
+	m.slogger.DebugContext(ctx, "service PresignedPostPolicy ok", "object", path)
+	return PresignedPostData{URL: u.String(), FormFields: formData}, nil
 }
 
 func (m *S3OperationsAdapterService) Delete(ctx context.Context, path string) error {

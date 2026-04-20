@@ -15,11 +15,17 @@ type AccountConfig struct {
 	Id string
 }
 
+type JwtConfig struct {
+	Secret string
+}
+
 type Config struct {
-	Server         *commonconfig.ServerConfig  `mapstructure:"server"`
-	Log            *commonconfig.LoggingConfig `mapstructure:"log"`
-	StorageService *StorageServiceConfig       `mapstructure:"storage-service"`
-	Account        *AccountConfig              `mapstructure:"account"`
+	Server         *commonconfig.ServerConfig       `mapstructure:"server"`
+	Log            *commonconfig.LoggingConfig      `mapstructure:"log"`
+	StorageService *StorageServiceConfig            `mapstructure:"storage-service"`
+	Account        *AccountConfig                   `mapstructure:"account"`
+	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
+	Jwt            *JwtConfig                       `mapstructure:"jwt"`
 }
 
 func NewConfig() (*Config, error) {

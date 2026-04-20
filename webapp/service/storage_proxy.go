@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -26,6 +25,7 @@ type MemeResult struct {
 	OriginalW    int32    `json:"original_w"`
 	OriginalH    int32    `json:"original_h"`
 	SortingId    int64    `json:"sorting_id"`
+	Status       string   `json:"status"`
 }
 
 type Pagination struct {
@@ -40,7 +40,7 @@ type SearchResult struct {
 
 type StorageProxy interface {
 	Search(ctx context.Context, accountId, query string, afterId *Pagination, limit int32) (*SearchResult, error)
-	Upload(ctx context.Context, accountId string, filename string, r io.Reader, mime string) (*MemeResult, error)
+	UploadByS3Path(ctx context.Context, accountId, s3path, mime string) (*MemeResult, error)
 }
 
 type storageProxy struct {
@@ -89,25 +89,25 @@ func (s *storageProxy) Search(ctx context.Context, accountId, query string, afte
 	return result, nil
 }
 
-func (s *storageProxy) Upload(ctx context.Context, accountId string, filename string, r io.Reader, mime string) (*MemeResult, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("reading upload: %w", err)
-	}
-
+func (s *storageProxy) UploadByS3Path(ctx context.Context, accountId, s3path, mime string) (*MemeResult, error) {
 	req := &v1.CreateMemeRequest{AccountId: accountId}
 	if strings.HasPrefix(mime, "video/") {
-		req.Video = &v1.MediaDataDto{Data: data}
+		req.Video = &v1.MediaDataDto{S3Path: &s3path}
 	} else {
-		req.Image = &v1.MediaDataDto{Data: data}
+		req.Image = &v1.MediaDataDto{S3Path: &s3path}
 	}
 
 	resp, err := s.cl.CreateMeme(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("create meme failed: %w", err)
+		return nil, fmt.Errorf("create meme by s3path failed: %w", err)
 	}
-
 	result := dtoToResult(resp.GetResult())
+	switch resp.GetStatus() {
+	case v1.CreateMemeStatus_STATUS_DUPLICATE:
+		result.Status = "duplicate"
+	default:
+		result.Status = "new"
+	}
 	return &result, nil
 }
 
