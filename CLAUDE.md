@@ -17,6 +17,8 @@ Dependency injection is done with `go.uber.org/fx`. New providers go in `storage
 
 **Proto/API types must not leak into the service layer.** The `api/` package owns all proto↔service mapping. Services define their own input/output structs (e.g. `RecomputeParams`, `RecomputeState`).
 
+**Service/database types must not be returned by the API layer.** The `api/` package defines its own response DTOs (e.g. `MemeResponse`, `SearchResponse`) and maps from service types before serializing. Handlers must never pass service structs directly to `c.JSON`.
+
 ## Media extraction pipeline
 
 Pipeline steps live in `storage-service/service/EP*.go`, named by position (e.g. `EP00`, `EP10`, …). Steps are registered in `main.go` with `fx` group tag `pipeline_steps` and sorted by `GetPos()` inside `NewImageMetadataExtractService`.

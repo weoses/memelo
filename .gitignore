@@ -7,3 +7,6 @@ config.yml
 node_modules/
 frontend/dist/
 
+/webapp/frontend/dist/assets/index-CEvNPUSV.js
+/webapp/frontend/dist/assets/index-Dka3Avk2.css
+/webapp/frontend/dist/index.html

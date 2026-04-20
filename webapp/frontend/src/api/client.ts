@@ -11,6 +11,7 @@ export interface Meme {
   original_w: number
   original_h: number
   sorting_id: number
+  status: string
 }
 
 export interface Pagination {
@@ -38,10 +39,59 @@ export async function searchMemes(
   return res.json()
 }
 
-export async function uploadMeme(file: File): Promise<Meme> {
-  const form = new FormData()
-  form.append('file', file)
-  const res = await fetch('/api/memes', { method: 'POST', body: form })
-  if (!res.ok) throw new Error(`upload failed: ${res.status}`)
+export interface UploadUrlResponse {
+  upload_url: string
+  form_fields: Record<string, string>
+  token: string
+}
+
+export async function getUploadUrl(
+  filename: string,
+  mime: string,
+  length: number,
+): Promise<UploadUrlResponse> {
+  const params = new URLSearchParams({ filename, mime, length: String(length) })
+  const res = await fetch(`/api/memes/get-upload-url?${params}`)
+  if (!res.ok) throw new Error(`get upload url failed: ${res.status}`)
+  return res.json()
+}
+
+export function uploadToS3Post(
+  url: string,
+  formFields: Record<string, string>,
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData()
+    for (const [key, value] of Object.entries(formFields)) {
+      form.append(key, value)
+    }
+    form.append('file', file)
+
+    const xhr = new XMLHttpRequest()
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100))
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve()
+      } else {
+        reject(new Error(`S3 upload failed: ${xhr.status}`))
+      }
+    }
+    xhr.onerror = () => reject(new Error('network error'))
+    xhr.open('POST', url)
+    xhr.send(form)
+  })
+}
+
+export async function parseByToken(token: string): Promise<Meme> {
+  const res = await fetch('/api/memes/parse-by-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) throw new Error(`parse by token failed: ${res.status}`)
   return res.json()
 }

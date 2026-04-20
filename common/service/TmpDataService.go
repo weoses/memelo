@@ -11,12 +11,20 @@ import (
 	"github.com/weoses/memelo/common/temp"
 )
 
+type UploadUrlResult struct {
+	S3Path     string
+	URL        string
+	FormFields map[string]string
+}
+
 type TmpDataService interface {
 	ByBytes(ctx context.Context, mime string, data []byte) (temp.S3BackedData, error)
 	ByReader(ctx context.Context, mime string, reader io.Reader) (temp.S3BackedData, error)
 
 	WrapData(context.Context, string, temp.Data) (temp.S3BackedData, error)
 	WrapS3Path(context.Context, string) (temp.S3BackedData, error)
+
+	GetUploadUrl(ctx context.Context, mime string, size int64) (UploadUrlResult, error)
 }
 
 type TmpDataServiceImpl struct {
@@ -62,6 +70,15 @@ func (s *TmpDataServiceImpl) WrapS3Path(ctx context.Context, path string) (temp.
 		s.ops.GetPresignedUrl,
 		s.ops.Delete,
 	), nil
+}
+
+func (s *TmpDataServiceImpl) GetUploadUrl(ctx context.Context, mime string, size int64) (UploadUrlResult, error) {
+	path := uuid.NewString() + "." + strings.Split(mime, "/")[1]
+	data, err := s.ops.GetPresignedPostUrl(ctx, path, mime, size)
+	if err != nil {
+		return UploadUrlResult{}, fmt.Errorf("presigned post failed: %w", err)
+	}
+	return UploadUrlResult{S3Path: path, URL: data.URL, FormFields: data.FormFields}, nil
 }
 
 func NewTmpDataS3Service(ops storage.S3OperationsAdapter) (TmpDataService, error) {
