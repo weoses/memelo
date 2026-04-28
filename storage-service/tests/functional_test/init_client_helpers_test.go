@@ -76,5 +76,9 @@ func (c *TestClient) GetRecomputeStatus(ctx context.Context, jobID string) (*v1.
 	return c.recompute.GetRecomputeStatus(ctx, &v1.RecomputeJob{JobId: jobID})
 }
 
+func (c *TestClient) UpdateMeme(ctx context.Context, req *v1.UpdateMemeRequest) (*v1.UpdateMemeResponse, error) {
+	return c.search.UpdateMeme(ctx, req)
+}
+
 func (c *TestClient) Tags() v1connect.TagsServiceClient           { return c.tags }
 func (c *TestClient) Recompute() v1connect.RecomputeServiceClient { return c.recompute }

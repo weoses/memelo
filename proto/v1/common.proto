@@ -4,6 +4,15 @@ syntax = "proto3";
 option go_package = "github.com/weoses/memelo/gen/proto/v1";
 package proto.memelo.v1;
 
+message ResultData {
+
+}
+
+message TimeCodeResultData {
+  int32 start = 1;
+  int32 end = 2;
+  ResultData data = 3;
+}
 
 message ImageDto {
   string url = 1;
@@ -19,7 +28,10 @@ message MemeDto {
   repeated string tags = 5;
   string type = 6;
   string caption = 7;
-  int64 sortingId = 8;
+  string audio_transcript = 8;
+  string on_screen_text = 9;
+  string audio_track = 10;
+//  repeated TimeCodeResultData result_data_by_time = 10;
 }
 message PipelinePagination {
   string searcher = 1;

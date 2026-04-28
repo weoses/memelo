@@ -25,6 +25,64 @@ type SearchServiceApi struct {
 	slogger     *slog.Logger
 }
 
+func (api *SearchServiceApi) UpdateMeme(ctx context.Context, req *v1.UpdateMemeRequest) (*v1.UpdateMemeResponse, error) {
+	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
+
+	accountId, err := uuid.Parse(req.AccountId)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+	}
+
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Id: %w", err)
+	}
+
+	var originalData temp.S3BackedData
+	if req.Original != nil {
+		var closeable bool
+		originalData, closeable, err = api.toData(ctx, req.Original)
+		if err != nil {
+			return nil, fmt.Errorf("error reading original media: %w", err)
+		}
+		if closeable {
+			defer helper.QuietClose(originalData, api.slogger)
+		}
+	}
+
+	var thumbnailData temp.S3BackedData
+	if req.Thumbnail != nil {
+		var closeable bool
+		thumbnailData, closeable, err = api.toData(ctx, req.Thumbnail)
+		if err != nil {
+			return nil, fmt.Errorf("error reading thumbnail: %w", err)
+		}
+		if closeable {
+			defer helper.QuietClose(thumbnailData, api.slogger)
+		}
+	}
+
+	result, err := api.crud.UpdateMeme(ctx, service.UpdateMemeInput{
+		Id:              id,
+		AccountId:       accountId,
+		OnScreenText:    req.OnScreenText,
+		AudioTranscript: req.AudioTranscription,
+		Caption:         req.Caption,
+		AudioTrack:      req.AudioTrack,
+		Original:        originalData,
+		Thumbnail:       thumbnailData,
+	})
+	if errors.Is(err, service.ErrMemeNotFound) {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if err != nil {
+		api.slogger.ErrorContext(ctx, "UpdateMeme error", "id", req.Id, "err", err)
+		return nil, err
+	}
+
+	return &v1.UpdateMemeResponse{Result: api.metadataToMemeDto(result)}, nil
+}
+
 func (api *SearchServiceApi) DeleteAll(ctx context.Context, request *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
 	ctx = context.WithValue(ctx, key.AccountId, request.AccountId)
 
@@ -82,9 +140,8 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 			ImageWidth:  helper.Addr(int32(urls.Metadata.ThumbSize.Width)),
 			ImageHeight: helper.Addr(int32(urls.Metadata.ThumbSize.Height)),
 		},
-		Tags:      urls.Metadata.Tags,
-		Type:      string(urls.Metadata.Type),
-		SortingId: urls.Metadata.Created,
+		Tags: urls.Metadata.Tags,
+		Type: string(urls.Metadata.Type),
 	}
 
 	if urls.Metadata.ImageSize != nil {
@@ -94,7 +151,28 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 
 	if urls.Metadata.ResultData != nil {
 		dto.Caption = urls.Metadata.ResultData.Caption
+		dto.OnScreenText = urls.Metadata.ResultData.OnScreenText
+		dto.AudioTranscript = urls.Metadata.ResultData.AudioTranscript
+		dto.AudioTrack = urls.Metadata.ResultData.AudioTrack
 	}
+
+	// TODO not now
+	//if urls.Metadata.ResultPerVideoSlices != nil {
+	//	dto.ResultDataByTime = helper.TransformSlice(
+	//		urls.Metadata.ResultPerVideoSlices,
+	//		make([]*v1.TimeCodeResultData, 0),
+	//		func(slice entity.ResultPerVideoSlice) *v1.TimeCodeResultData {
+	//			return &v1.TimeCodeResultData{
+	//				Start: int32(slice.SliceStartTime),
+	//				End:   int32(slice.SliceEndTime),
+	//				Data: &v1.ResultData{
+	//					OnScreenText:    slice.Result.OnScreenText,
+	//					AudioTranscript: slice.Result.AudioTranscript,
+	//					AudioTrack:      slice.Result.AudioTrack,
+	//				},
+	//			}
+	//		})
+	//}
 
 	return dto
 }

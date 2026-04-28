@@ -539,6 +539,150 @@ func (x *DeleteMemeResponse) GetId() string {
 	return ""
 }
 
+type UpdateMemeRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OnScreenText       *string                `protobuf:"bytes,2,opt,name=on_screen_text,json=onScreenText,proto3,oneof" json:"on_screen_text,omitempty"`
+	AudioTranscription *string                `protobuf:"bytes,3,opt,name=audio_transcription,json=audioTranscription,proto3,oneof" json:"audio_transcription,omitempty"`
+	Caption            *string                `protobuf:"bytes,4,opt,name=caption,proto3,oneof" json:"caption,omitempty"`
+	AudioTrack         *string                `protobuf:"bytes,5,opt,name=audio_track,json=audioTrack,proto3,oneof" json:"audio_track,omitempty"`
+	Original           *MediaDataDto          `protobuf:"bytes,6,opt,name=original,proto3,oneof" json:"original,omitempty"`
+	Thumbnail          *MediaDataDto          `protobuf:"bytes,7,opt,name=thumbnail,proto3,oneof" json:"thumbnail,omitempty"`
+	AccountId          string                 `protobuf:"bytes,8,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *UpdateMemeRequest) Reset() {
+	*x = UpdateMemeRequest{}
+	mi := &file_proto_v1_search_service_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateMemeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateMemeRequest) ProtoMessage() {}
+
+func (x *UpdateMemeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_search_service_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateMemeRequest.ProtoReflect.Descriptor instead.
+func (*UpdateMemeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpdateMemeRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateMemeRequest) GetOnScreenText() string {
+	if x != nil && x.OnScreenText != nil {
+		return *x.OnScreenText
+	}
+	return ""
+}
+
+func (x *UpdateMemeRequest) GetAudioTranscription() string {
+	if x != nil && x.AudioTranscription != nil {
+		return *x.AudioTranscription
+	}
+	return ""
+}
+
+func (x *UpdateMemeRequest) GetCaption() string {
+	if x != nil && x.Caption != nil {
+		return *x.Caption
+	}
+	return ""
+}
+
+func (x *UpdateMemeRequest) GetAudioTrack() string {
+	if x != nil && x.AudioTrack != nil {
+		return *x.AudioTrack
+	}
+	return ""
+}
+
+func (x *UpdateMemeRequest) GetOriginal() *MediaDataDto {
+	if x != nil {
+		return x.Original
+	}
+	return nil
+}
+
+func (x *UpdateMemeRequest) GetThumbnail() *MediaDataDto {
+	if x != nil {
+		return x.Thumbnail
+	}
+	return nil
+}
+
+func (x *UpdateMemeRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+type UpdateMemeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *MemeDto               `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateMemeResponse) Reset() {
+	*x = UpdateMemeResponse{}
+	mi := &file_proto_v1_search_service_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateMemeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateMemeResponse) ProtoMessage() {}
+
+func (x *UpdateMemeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_search_service_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateMemeResponse.ProtoReflect.Descriptor instead.
+func (*UpdateMemeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpdateMemeResponse) GetResult() *MemeDto {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
 var File_proto_v1_search_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_search_service_proto_rawDesc = "" +
@@ -578,12 +722,33 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"$\n" +
 	"\x12DeleteMemeResponse\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id*P\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xcc\x03\n" +
+	"\x11UpdateMemeRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12)\n" +
+	"\x0eon_screen_text\x18\x02 \x01(\tH\x00R\fonScreenText\x88\x01\x01\x124\n" +
+	"\x13audio_transcription\x18\x03 \x01(\tH\x01R\x12audioTranscription\x88\x01\x01\x12\x1d\n" +
+	"\acaption\x18\x04 \x01(\tH\x02R\acaption\x88\x01\x01\x12$\n" +
+	"\vaudio_track\x18\x05 \x01(\tH\x03R\n" +
+	"audioTrack\x88\x01\x01\x12>\n" +
+	"\boriginal\x18\x06 \x01(\v2\x1d.proto.memelo.v1.MediaDataDtoH\x04R\boriginal\x88\x01\x01\x12@\n" +
+	"\tthumbnail\x18\a \x01(\v2\x1d.proto.memelo.v1.MediaDataDtoH\x05R\tthumbnail\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\b \x01(\tR\taccountIdB\x11\n" +
+	"\x0f_on_screen_textB\x16\n" +
+	"\x14_audio_transcriptionB\n" +
+	"\n" +
+	"\b_captionB\x0e\n" +
+	"\f_audio_trackB\v\n" +
+	"\t_originalB\f\n" +
+	"\n" +
+	"_thumbnail\"F\n" +
+	"\x12UpdateMemeResponse\x120\n" +
+	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result*P\n" +
 	"\x10CreateMemeStatus\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"STATUS_NEW\x10\x01\x12\x14\n" +
-	"\x10STATUS_DUPLICATE\x10\x022\xb6\x03\n" +
+	"\x10STATUS_DUPLICATE\x10\x022\x8d\x04\n" +
 	"\rSearchService\x12U\n" +
 	"\n" +
 	"SearchMeme\x12\".proto.memelo.v1.SearchMemeRequest\x1a#.proto.memelo.v1.SearchMemeResponse\x12U\n" +
@@ -591,7 +756,9 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"CreateMeme\x12\".proto.memelo.v1.CreateMemeRequest\x1a#.proto.memelo.v1.CreateMemeResponse\x12L\n" +
 	"\aGetMeme\x12\x1f.proto.memelo.v1.GetMemeRequest\x1a .proto.memelo.v1.GetMemeResponse\x12U\n" +
 	"\n" +
-	"DeleteMeme\x12\".proto.memelo.v1.DeleteMemeRequest\x1a#.proto.memelo.v1.DeleteMemeResponse\x12R\n" +
+	"DeleteMeme\x12\".proto.memelo.v1.DeleteMemeRequest\x1a#.proto.memelo.v1.DeleteMemeResponse\x12U\n" +
+	"\n" +
+	"UpdateMeme\x12\".proto.memelo.v1.UpdateMemeRequest\x1a#.proto.memelo.v1.UpdateMemeResponse\x12R\n" +
 	"\tDeleteAll\x12!.proto.memelo.v1.DeleteAllRequest\x1a\".proto.memelo.v1.DeleteAllResponseB\xae\x01\n" +
 	"\x13com.proto.memelo.v1B\x12SearchServiceProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
@@ -608,7 +775,7 @@ func file_proto_v1_search_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_v1_search_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_v1_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_proto_v1_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_proto_v1_search_service_proto_goTypes = []any{
 	(CreateMemeStatus)(0),      // 0: proto.memelo.v1.CreateMemeStatus
 	(*MediaDataDto)(nil),       // 1: proto.memelo.v1.MediaDataDto
@@ -620,35 +787,42 @@ var file_proto_v1_search_service_proto_goTypes = []any{
 	(*GetMemeResponse)(nil),    // 7: proto.memelo.v1.GetMemeResponse
 	(*DeleteMemeRequest)(nil),  // 8: proto.memelo.v1.DeleteMemeRequest
 	(*DeleteMemeResponse)(nil), // 9: proto.memelo.v1.DeleteMemeResponse
-	(*PipelinePagination)(nil), // 10: proto.memelo.v1.PipelinePagination
-	(*MemeDto)(nil),            // 11: proto.memelo.v1.MemeDto
-	(*DeleteAllRequest)(nil),   // 12: proto.memelo.v1.DeleteAllRequest
-	(*DeleteAllResponse)(nil),  // 13: proto.memelo.v1.DeleteAllResponse
+	(*UpdateMemeRequest)(nil),  // 10: proto.memelo.v1.UpdateMemeRequest
+	(*UpdateMemeResponse)(nil), // 11: proto.memelo.v1.UpdateMemeResponse
+	(*PipelinePagination)(nil), // 12: proto.memelo.v1.PipelinePagination
+	(*MemeDto)(nil),            // 13: proto.memelo.v1.MemeDto
+	(*DeleteAllRequest)(nil),   // 14: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil),  // 15: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_search_service_proto_depIdxs = []int32{
-	10, // 0: proto.memelo.v1.SearchMemeRequest.after_id:type_name -> proto.memelo.v1.PipelinePagination
-	11, // 1: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
-	10, // 2: proto.memelo.v1.SearchMemeResponse.last_id:type_name -> proto.memelo.v1.PipelinePagination
+	12, // 0: proto.memelo.v1.SearchMemeRequest.after_id:type_name -> proto.memelo.v1.PipelinePagination
+	13, // 1: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
+	12, // 2: proto.memelo.v1.SearchMemeResponse.last_id:type_name -> proto.memelo.v1.PipelinePagination
 	1,  // 3: proto.memelo.v1.CreateMemeRequest.image:type_name -> proto.memelo.v1.MediaDataDto
 	1,  // 4: proto.memelo.v1.CreateMemeRequest.video:type_name -> proto.memelo.v1.MediaDataDto
-	11, // 5: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	13, // 5: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
 	0,  // 6: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
-	11, // 7: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	2,  // 8: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
-	4,  // 9: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
-	6,  // 10: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
-	8,  // 11: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
-	12, // 12: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
-	3,  // 13: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
-	5,  // 14: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
-	7,  // 15: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
-	9,  // 16: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
-	13, // 17: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	13, // 7: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	1,  // 8: proto.memelo.v1.UpdateMemeRequest.original:type_name -> proto.memelo.v1.MediaDataDto
+	1,  // 9: proto.memelo.v1.UpdateMemeRequest.thumbnail:type_name -> proto.memelo.v1.MediaDataDto
+	13, // 10: proto.memelo.v1.UpdateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	2,  // 11: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
+	4,  // 12: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
+	6,  // 13: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
+	8,  // 14: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
+	10, // 15: proto.memelo.v1.SearchService.UpdateMeme:input_type -> proto.memelo.v1.UpdateMemeRequest
+	14, // 16: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
+	3,  // 17: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
+	5,  // 18: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
+	7,  // 19: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
+	9,  // 20: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
+	11, // 21: proto.memelo.v1.SearchService.UpdateMeme:output_type -> proto.memelo.v1.UpdateMemeResponse
+	15, // 22: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_search_service_proto_init() }
@@ -659,13 +833,14 @@ func file_proto_v1_search_service_proto_init() {
 	file_proto_v1_common_proto_init()
 	file_proto_v1_search_service_proto_msgTypes[0].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[3].OneofWrappers = []any{}
+	file_proto_v1_search_service_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_search_service_proto_rawDesc), len(file_proto_v1_search_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
