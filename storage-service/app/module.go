@@ -78,6 +78,7 @@ func Module() fx.Option {
 		fx.Provide(storage2.NewTmpDataServiceS3Adapter),
 		fx.Provide(storage2.NewTmpDataService),
 		fx.Provide(service.NewExportService),
+		fx.Provide(service.NewMediaEncoderService),
 		fx.Provide(service.NewMemeCrudService),
 
 		fx.Provide(service.NewInMemoryRecomputeJobStorage),
@@ -86,17 +87,15 @@ func Module() fx.Option {
 
 		fx.Provide(fx.Annotate(service.NewCalcHashPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewImageCheckDuplicateByHashPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
-		fx.Provide(fx.Annotate(service.NewImageToJpegPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
+		fx.Provide(fx.Annotate(service.NewEncodeOriginalPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewImageCalcEmbeddingPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewCheckDuplicateByEmbeddingPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewImgLlmExtractPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
-		fx.Provide(fx.Annotate(service.NewImageCreateThumbnailPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
+		fx.Provide(fx.Annotate(service.NewCreateThumbnailPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewCalcTagsPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
-		fx.Provide(fx.Annotate(service.NewVidToMp4PipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewVidSlicePipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewVidCalcEmbeddingsPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewVidLlmExtractPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
-		fx.Provide(fx.Annotate(service.NewVidCreateThumbnailPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewImageMetadataExtractService, fx.ParamTags(`group:"pipeline_steps"`))),
 
 		fx.Provide(fx.Annotate(service.NewIdSearcher, fx.ResultTags(`group:"searchers"`))),

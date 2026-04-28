@@ -15,6 +15,8 @@ import (
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
 
+var ErrMemeNotFound = errors.New("meme not found")
+
 const (
 	UNSPECIFIED = iota
 	NEW
@@ -37,9 +39,21 @@ type SearchResult struct {
 	AfterID *PipelineAfterID
 }
 
+type UpdateMemeInput struct {
+	Id              uuid.UUID
+	AccountId       uuid.UUID
+	OnScreenText    *string
+	AudioTranscript *string
+	Caption         *string
+	AudioTrack      *string
+	Original        temp.S3BackedData
+	Thumbnail       temp.S3BackedData
+}
+
 type MemeCrudService interface {
 	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error)
+	UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAll(ctx context.Context, accountId uuid.UUID) error
 }
@@ -49,6 +63,7 @@ type MemeCrudServiceImpl struct {
 	metadataStorageService storage2.MetadataStorageService
 	metadataExtractService MetadataExtractService
 	searchService          SearchService
+	encoder                MediaEncoderService
 	slogger                *slog.Logger
 }
 
@@ -148,6 +163,85 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
+func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error) {
+	existing, err := m.metadataStorageService.GetById(ctx, input.AccountId, input.Id)
+	if err != nil {
+		return nil, fmt.Errorf("get metadata failed: %w", err)
+	}
+	if existing == nil {
+		return nil, ErrMemeNotFound
+	}
+
+	if existing.ResultData == nil {
+		existing.ResultData = &entity.Result{}
+	}
+
+	llmChanged := false
+	if input.OnScreenText != nil {
+		existing.ResultData.OnScreenText = *input.OnScreenText
+		llmChanged = true
+	}
+	if input.AudioTranscript != nil {
+		existing.ResultData.AudioTranscript = *input.AudioTranscript
+		llmChanged = true
+	}
+	if input.Caption != nil {
+		existing.ResultData.Caption = *input.Caption
+	}
+	if input.AudioTrack != nil {
+		existing.ResultData.AudioTrack = *input.AudioTrack
+		llmChanged = true
+	}
+
+	if input.Original != nil {
+		encoded, size, err := m.encoder.GetEncoderByType(existing.Type).EncodeOriginal(ctx, input.Original)
+		if err != nil {
+			return nil, fmt.Errorf("encode original failed: %w", err)
+		}
+		defer helper.QuietClose(encoded, m.slogger)
+
+		err = m.imageStorageService.Save(ctx, existing.S3Id, storageMediaType(existing.Type, SavedOriginal), encoded)
+		if err != nil {
+			return nil, fmt.Errorf("save encoded original failed: %w", err)
+		}
+		existing.ImageSize = &size
+	}
+
+	if input.Thumbnail != nil {
+		// thumbnails are always images regardless of meme type
+		thumb, size, err := m.encoder.GetEncoderByType(entity.ImageMetadataType).EncodeThumbnail(ctx, input.Thumbnail)
+		if err != nil {
+			return nil, fmt.Errorf("encode thumbnail failed: %w", err)
+		}
+		defer helper.QuietClose(thumb, m.slogger)
+
+		err = m.imageStorageService.Save(ctx, existing.S3Id, storageMediaType(existing.Type, SavedThumb), thumb)
+		if err != nil {
+			return nil, fmt.Errorf("save thumbnail failed: %w", err)
+		}
+		existing.ThumbSize = &size
+	}
+
+	if llmChanged {
+		existing.Result = fmt.Sprintf("%s %s %s",
+			existing.ResultData.OnScreenText,
+			existing.ResultData.AudioTranscript,
+			existing.ResultData.AudioTrack)
+	}
+
+	existing.ManuallyUpdated = true
+
+	if err = m.metadataStorageService.Save(ctx, existing); err != nil {
+		return nil, fmt.Errorf("save metadata failed: %w", err)
+	}
+
+	results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{existing})
+	if err != nil {
+		return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
+	}
+	return results[0], nil
+}
+
 func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
 	metadata, err := m.metadataStorageService.GetById(ctx, accountId, id)
 	if err != nil {
@@ -236,12 +330,14 @@ func NewMemeCrudService(
 	metadataStore storage2.MetadataStorageService,
 	imageMetadataExtract MetadataExtractService,
 	searchService SearchService,
+	encoder MediaEncoderService,
 ) MemeCrudService {
 	return &MemeCrudServiceImpl{
 		imageStorageService:    imageStore,
 		metadataStorageService: metadataStore,
 		metadataExtractService: imageMetadataExtract,
 		searchService:          searchService,
+		encoder:                encoder,
 		slogger:                slog.With("service", "MemeCrudService"),
 	}
 }

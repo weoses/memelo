@@ -56,6 +56,20 @@ message DeleteMemeResponse {
   string id = 1;
 }
 
+message UpdateMemeRequest {
+  string id = 1;
+  optional string on_screen_text = 2;
+  optional string audio_transcription = 3;
+  optional string caption = 4;
+  optional string audio_track = 5;
+  optional MediaDataDto original = 6;
+  optional MediaDataDto thumbnail = 7;
+  string account_id = 8;
+}
+
+message UpdateMemeResponse {
+  MemeDto result = 1;
+}
 
 
 service SearchService {
@@ -63,6 +77,7 @@ service SearchService {
   rpc CreateMeme(CreateMemeRequest) returns (CreateMemeResponse);
   rpc GetMeme(GetMemeRequest) returns (GetMemeResponse);
   rpc DeleteMeme(DeleteMemeRequest) returns (DeleteMemeResponse);
+  rpc UpdateMeme(UpdateMemeRequest) returns (UpdateMemeResponse);
 
   rpc DeleteAll(DeleteAllRequest) returns (DeleteAllResponse);
 }

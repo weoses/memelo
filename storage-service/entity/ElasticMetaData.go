@@ -27,4 +27,6 @@ type ElasticImageMetaData struct {
 	ResultData *Result
 
 	ResultPerVideoSlices []ResultPerVideoSlice
+
+	ManuallyUpdated bool
 }

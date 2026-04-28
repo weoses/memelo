@@ -21,6 +21,102 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ResultData struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResultData) Reset() {
+	*x = ResultData{}
+	mi := &file_proto_v1_common_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResultData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResultData) ProtoMessage() {}
+
+func (x *ResultData) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_common_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResultData.ProtoReflect.Descriptor instead.
+func (*ResultData) Descriptor() ([]byte, []int) {
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{0}
+}
+
+type TimeCodeResultData struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Start         int32                  `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
+	End           int32                  `protobuf:"varint,2,opt,name=end,proto3" json:"end,omitempty"`
+	Data          *ResultData            `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TimeCodeResultData) Reset() {
+	*x = TimeCodeResultData{}
+	mi := &file_proto_v1_common_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimeCodeResultData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimeCodeResultData) ProtoMessage() {}
+
+func (x *TimeCodeResultData) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_common_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimeCodeResultData.ProtoReflect.Descriptor instead.
+func (*TimeCodeResultData) Descriptor() ([]byte, []int) {
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *TimeCodeResultData) GetStart() int32 {
+	if x != nil {
+		return x.Start
+	}
+	return 0
+}
+
+func (x *TimeCodeResultData) GetEnd() int32 {
+	if x != nil {
+		return x.End
+	}
+	return 0
+}
+
+func (x *TimeCodeResultData) GetData() *ResultData {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
 type ImageDto struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
@@ -32,7 +128,7 @@ type ImageDto struct {
 
 func (x *ImageDto) Reset() {
 	*x = ImageDto{}
-	mi := &file_proto_v1_common_proto_msgTypes[0]
+	mi := &file_proto_v1_common_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +140,7 @@ func (x *ImageDto) String() string {
 func (*ImageDto) ProtoMessage() {}
 
 func (x *ImageDto) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_v1_common_proto_msgTypes[0]
+	mi := &file_proto_v1_common_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +153,7 @@ func (x *ImageDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImageDto.ProtoReflect.Descriptor instead.
 func (*ImageDto) Descriptor() ([]byte, []int) {
-	return file_proto_v1_common_proto_rawDescGZIP(), []int{0}
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ImageDto) GetUrl() string {
@@ -82,22 +178,24 @@ func (x *ImageDto) GetImageHeight() int32 {
 }
 
 type MemeDto struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OcrResult      string                 `protobuf:"bytes,2,opt,name=ocr_result,json=ocrResult,proto3" json:"ocr_result,omitempty"`
-	ImageThumbnail *ImageDto              `protobuf:"bytes,3,opt,name=image_thumbnail,json=imageThumbnail,proto3" json:"image_thumbnail,omitempty"`
-	MediaOriginal  *ImageDto              `protobuf:"bytes,4,opt,name=media_original,json=mediaOriginal,proto3" json:"media_original,omitempty"`
-	Tags           []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
-	Type           string                 `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
-	Caption        string                 `protobuf:"bytes,7,opt,name=caption,proto3" json:"caption,omitempty"`
-	SortingId      int64                  `protobuf:"varint,8,opt,name=sortingId,proto3" json:"sortingId,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OcrResult       string                 `protobuf:"bytes,2,opt,name=ocr_result,json=ocrResult,proto3" json:"ocr_result,omitempty"`
+	ImageThumbnail  *ImageDto              `protobuf:"bytes,3,opt,name=image_thumbnail,json=imageThumbnail,proto3" json:"image_thumbnail,omitempty"`
+	MediaOriginal   *ImageDto              `protobuf:"bytes,4,opt,name=media_original,json=mediaOriginal,proto3" json:"media_original,omitempty"`
+	Tags            []string               `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	Type            string                 `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
+	Caption         string                 `protobuf:"bytes,7,opt,name=caption,proto3" json:"caption,omitempty"`
+	AudioTranscript string                 `protobuf:"bytes,8,opt,name=audio_transcript,json=audioTranscript,proto3" json:"audio_transcript,omitempty"`
+	OnScreenText    string                 `protobuf:"bytes,9,opt,name=on_screen_text,json=onScreenText,proto3" json:"on_screen_text,omitempty"`
+	AudioTrack      string                 `protobuf:"bytes,10,opt,name=audio_track,json=audioTrack,proto3" json:"audio_track,omitempty"` //  repeated TimeCodeResultData result_data_by_time = 10;
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *MemeDto) Reset() {
 	*x = MemeDto{}
-	mi := &file_proto_v1_common_proto_msgTypes[1]
+	mi := &file_proto_v1_common_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -109,7 +207,7 @@ func (x *MemeDto) String() string {
 func (*MemeDto) ProtoMessage() {}
 
 func (x *MemeDto) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_v1_common_proto_msgTypes[1]
+	mi := &file_proto_v1_common_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -122,7 +220,7 @@ func (x *MemeDto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MemeDto.ProtoReflect.Descriptor instead.
 func (*MemeDto) Descriptor() ([]byte, []int) {
-	return file_proto_v1_common_proto_rawDescGZIP(), []int{1}
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *MemeDto) GetId() string {
@@ -174,11 +272,25 @@ func (x *MemeDto) GetCaption() string {
 	return ""
 }
 
-func (x *MemeDto) GetSortingId() int64 {
+func (x *MemeDto) GetAudioTranscript() string {
 	if x != nil {
-		return x.SortingId
+		return x.AudioTranscript
 	}
-	return 0
+	return ""
+}
+
+func (x *MemeDto) GetOnScreenText() string {
+	if x != nil {
+		return x.OnScreenText
+	}
+	return ""
+}
+
+func (x *MemeDto) GetAudioTrack() string {
+	if x != nil {
+		return x.AudioTrack
+	}
+	return ""
 }
 
 type PipelinePagination struct {
@@ -191,7 +303,7 @@ type PipelinePagination struct {
 
 func (x *PipelinePagination) Reset() {
 	*x = PipelinePagination{}
-	mi := &file_proto_v1_common_proto_msgTypes[2]
+	mi := &file_proto_v1_common_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -203,7 +315,7 @@ func (x *PipelinePagination) String() string {
 func (*PipelinePagination) ProtoMessage() {}
 
 func (x *PipelinePagination) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_v1_common_proto_msgTypes[2]
+	mi := &file_proto_v1_common_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -216,7 +328,7 @@ func (x *PipelinePagination) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PipelinePagination.ProtoReflect.Descriptor instead.
 func (*PipelinePagination) Descriptor() ([]byte, []int) {
-	return file_proto_v1_common_proto_rawDescGZIP(), []int{2}
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PipelinePagination) GetSearcher() string {
@@ -242,7 +354,7 @@ type DeleteAllRequest struct {
 
 func (x *DeleteAllRequest) Reset() {
 	*x = DeleteAllRequest{}
-	mi := &file_proto_v1_common_proto_msgTypes[3]
+	mi := &file_proto_v1_common_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -254,7 +366,7 @@ func (x *DeleteAllRequest) String() string {
 func (*DeleteAllRequest) ProtoMessage() {}
 
 func (x *DeleteAllRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_v1_common_proto_msgTypes[3]
+	mi := &file_proto_v1_common_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +379,7 @@ func (x *DeleteAllRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAllRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAllRequest) Descriptor() ([]byte, []int) {
-	return file_proto_v1_common_proto_rawDescGZIP(), []int{3}
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteAllRequest) GetAccountId() string {
@@ -285,7 +397,7 @@ type DeleteAllResponse struct {
 
 func (x *DeleteAllResponse) Reset() {
 	*x = DeleteAllResponse{}
-	mi := &file_proto_v1_common_proto_msgTypes[4]
+	mi := &file_proto_v1_common_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +409,7 @@ func (x *DeleteAllResponse) String() string {
 func (*DeleteAllResponse) ProtoMessage() {}
 
 func (x *DeleteAllResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_v1_common_proto_msgTypes[4]
+	mi := &file_proto_v1_common_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,21 +422,27 @@ func (x *DeleteAllResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAllResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAllResponse) Descriptor() ([]byte, []int) {
-	return file_proto_v1_common_proto_rawDescGZIP(), []int{4}
+	return file_proto_v1_common_proto_rawDescGZIP(), []int{6}
 }
 
 var File_proto_v1_common_proto protoreflect.FileDescriptor
 
 const file_proto_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/v1/common.proto\x12\x0fproto.memelo.v1\"\x8b\x01\n" +
+	"\x15proto/v1/common.proto\x12\x0fproto.memelo.v1\"\f\n" +
+	"\n" +
+	"ResultData\"m\n" +
+	"\x12TimeCodeResultData\x12\x14\n" +
+	"\x05start\x18\x01 \x01(\x05R\x05start\x12\x10\n" +
+	"\x03end\x18\x02 \x01(\x05R\x03end\x12/\n" +
+	"\x04data\x18\x03 \x01(\v2\x1b.proto.memelo.v1.ResultDataR\x04data\"\x8b\x01\n" +
 	"\bImageDto\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12$\n" +
 	"\vimage_width\x18\x02 \x01(\x05H\x00R\n" +
 	"imageWidth\x88\x01\x01\x12&\n" +
 	"\fimage_height\x18\x03 \x01(\x05H\x01R\vimageHeight\x88\x01\x01B\x0e\n" +
 	"\f_image_widthB\x0f\n" +
-	"\r_image_height\"\x9e\x02\n" +
+	"\r_image_height\"\xf2\x02\n" +
 	"\aMemeDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -333,8 +451,12 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"\x0emedia_original\x18\x04 \x01(\v2\x19.proto.memelo.v1.ImageDtoR\rmediaOriginal\x12\x12\n" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\x12\x12\n" +
 	"\x04type\x18\x06 \x01(\tR\x04type\x12\x18\n" +
-	"\acaption\x18\a \x01(\tR\acaption\x12\x1c\n" +
-	"\tsortingId\x18\b \x01(\x03R\tsortingId\"U\n" +
+	"\acaption\x18\a \x01(\tR\acaption\x12)\n" +
+	"\x10audio_transcript\x18\b \x01(\tR\x0faudioTranscript\x12$\n" +
+	"\x0eon_screen_text\x18\t \x01(\tR\fonScreenText\x12\x1f\n" +
+	"\vaudio_track\x18\n" +
+	" \x01(\tR\n" +
+	"audioTrack\"U\n" +
 	"\x12PipelinePagination\x12\x1a\n" +
 	"\bsearcher\x18\x01 \x01(\tR\bsearcher\x12#\n" +
 	"\rsorting_after\x18\x02 \x03(\tR\fsortingAfter\"1\n" +
@@ -356,22 +478,25 @@ func file_proto_v1_common_proto_rawDescGZIP() []byte {
 	return file_proto_v1_common_proto_rawDescData
 }
 
-var file_proto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_proto_v1_common_proto_goTypes = []any{
-	(*ImageDto)(nil),           // 0: proto.memelo.v1.ImageDto
-	(*MemeDto)(nil),            // 1: proto.memelo.v1.MemeDto
-	(*PipelinePagination)(nil), // 2: proto.memelo.v1.PipelinePagination
-	(*DeleteAllRequest)(nil),   // 3: proto.memelo.v1.DeleteAllRequest
-	(*DeleteAllResponse)(nil),  // 4: proto.memelo.v1.DeleteAllResponse
+	(*ResultData)(nil),         // 0: proto.memelo.v1.ResultData
+	(*TimeCodeResultData)(nil), // 1: proto.memelo.v1.TimeCodeResultData
+	(*ImageDto)(nil),           // 2: proto.memelo.v1.ImageDto
+	(*MemeDto)(nil),            // 3: proto.memelo.v1.MemeDto
+	(*PipelinePagination)(nil), // 4: proto.memelo.v1.PipelinePagination
+	(*DeleteAllRequest)(nil),   // 5: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil),  // 6: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_common_proto_depIdxs = []int32{
-	0, // 0: proto.memelo.v1.MemeDto.image_thumbnail:type_name -> proto.memelo.v1.ImageDto
-	0, // 1: proto.memelo.v1.MemeDto.media_original:type_name -> proto.memelo.v1.ImageDto
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // 0: proto.memelo.v1.TimeCodeResultData.data:type_name -> proto.memelo.v1.ResultData
+	2, // 1: proto.memelo.v1.MemeDto.image_thumbnail:type_name -> proto.memelo.v1.ImageDto
+	2, // 2: proto.memelo.v1.MemeDto.media_original:type_name -> proto.memelo.v1.ImageDto
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_common_proto_init() }
@@ -379,14 +504,14 @@ func file_proto_v1_common_proto_init() {
 	if File_proto_v1_common_proto != nil {
 		return
 	}
-	file_proto_v1_common_proto_msgTypes[0].OneofWrappers = []any{}
+	file_proto_v1_common_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_common_proto_rawDesc), len(file_proto_v1_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
