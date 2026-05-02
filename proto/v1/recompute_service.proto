@@ -18,7 +18,7 @@ message RecomputeJob {
 }
 
 message RecomputeError {
-  string object_id  = 1;
+  string object_id = 1;
   string error_text = 2;
 }
 
@@ -39,7 +39,19 @@ message RecomputeJobStatus {
   string last_id = 6;
 }
 
+message RecomputeOneRequest {
+  string media_id = 1;
+  bool compute_extractor = 3;
+  bool compute_embedding = 4;
+  bool check_duplicates = 5;
+  string account_id = 6;
+}
+message RecomputeOneResponse {
+  bool success = 1;
+}
+
 service RecomputeService {
-  rpc StartRecompute(RecomputeRequest) returns (RecomputeJob);
-  rpc GetRecomputeStatus(RecomputeJob) returns (RecomputeJobStatus);
+  rpc StartRecomputeJob(RecomputeRequest) returns (RecomputeJob);
+  rpc GetRecomputeJobStatus(RecomputeJob) returns (RecomputeJobStatus);
+  rpc RecomputeById(RecomputeOneRequest) returns (RecomputeOneResponse);
 }

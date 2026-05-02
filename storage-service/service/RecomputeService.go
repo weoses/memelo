@@ -26,6 +26,7 @@ type RecomputeParams struct {
 type RecomputeService interface {
 	StartRecompute(ctx context.Context, params RecomputeParams) (string, error)
 	GetJobStatus(ctx context.Context, jobId string) (*RecomputeJobState, error)
+	RecomputeOneById(ctx context.Context, accountId string, id string, params RecomputeParams) error
 }
 
 type RecomputeServiceImpl struct {
@@ -220,6 +221,25 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		return fmt.Errorf("save metadata failed: %w", err)
 	}
 	return nil
+}
+
+func (r *RecomputeServiceImpl) RecomputeOneById(ctx context.Context, accountId string, id string, params RecomputeParams) error {
+	accountUuid, err := uuid.Parse(accountId)
+	if err != nil {
+		return fmt.Errorf("invalid account_id: %w", err)
+	}
+	idUuid, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid media_id: %w", err)
+	}
+	data, err := r.metadataStorageService.GetById(ctx, accountUuid, idUuid)
+	if err != nil {
+		return fmt.Errorf("fetch metadata failed: %w", err)
+	}
+	if data == nil {
+		return fmt.Errorf("media not found: %s", id)
+	}
+	return r.recomputeOne(ctx, data, params)
 }
 
 func NewRecomputeService(

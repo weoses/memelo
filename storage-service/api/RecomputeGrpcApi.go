@@ -15,7 +15,19 @@ type RecomputeGrpcApiImpl struct {
 	recomputeService service.RecomputeService
 }
 
-func (r *RecomputeGrpcApiImpl) StartRecompute(ctx context.Context, req *v1.RecomputeRequest) (*v1.RecomputeJob, error) {
+func (r *RecomputeGrpcApiImpl) RecomputeById(ctx context.Context, request *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error) {
+	err := r.recomputeService.RecomputeOneById(ctx, request.AccountId, request.MediaId, service.RecomputeParams{
+		ComputeExtractor: request.ComputeExtractor,
+		ComputeEmbedding: request.ComputeEmbedding,
+		CheckDuplicates:  request.CheckDuplicates,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("recompute by id failed: %w", err)
+	}
+	return &v1.RecomputeOneResponse{Success: true}, nil
+}
+
+func (r *RecomputeGrpcApiImpl) StartRecomputeJob(ctx context.Context, req *v1.RecomputeRequest) (*v1.RecomputeJob, error) {
 	var query map[string]interface{}
 	if req.Query != nil {
 		query = req.Query.AsMap()
@@ -33,7 +45,7 @@ func (r *RecomputeGrpcApiImpl) StartRecompute(ctx context.Context, req *v1.Recom
 	return &v1.RecomputeJob{JobId: jobId}, nil
 }
 
-func (r *RecomputeGrpcApiImpl) GetRecomputeStatus(ctx context.Context, req *v1.RecomputeJob) (*v1.RecomputeJobStatus, error) {
+func (r *RecomputeGrpcApiImpl) GetRecomputeJobStatus(ctx context.Context, req *v1.RecomputeJob) (*v1.RecomputeJobStatus, error) {
 	job, err := r.recomputeService.GetJobStatus(ctx, req.JobId)
 	if err != nil {
 		return nil, fmt.Errorf("get recompute status failed: %w", err)
