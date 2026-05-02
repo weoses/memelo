@@ -3,19 +3,22 @@ package api
 import "github.com/weoses/memelo/webapp/service"
 
 type MemeResponse struct {
-	Id           string   `json:"id"`
-	Caption      string   `json:"caption"`
-	Type         string   `json:"type"`
-	OcrResult    string   `json:"ocr_result"`
-	Tags         []string `json:"tags"`
-	ThumbnailURL string   `json:"thumbnail_url"`
-	ThumbnailW   int32    `json:"thumbnail_w"`
-	ThumbnailH   int32    `json:"thumbnail_h"`
-	OriginalURL  string   `json:"original_url"`
-	OriginalW    int32    `json:"original_w"`
-	OriginalH    int32    `json:"original_h"`
-	SortingId    int64    `json:"sorting_id"`
-	Status       string   `json:"status"`
+	Id              string   `json:"id"`
+	Caption         string   `json:"caption"`
+	Type            string   `json:"type"`
+	OcrResult       string   `json:"ocr_result"`
+	OnScreenText    string   `json:"on_screen_text"`
+	AudioTranscript string   `json:"audio_transcript"`
+	AudioTrack      string   `json:"audio_track"`
+	Tags            []string `json:"tags"`
+	ThumbnailURL    string   `json:"thumbnail_url"`
+	ThumbnailW      int32    `json:"thumbnail_w"`
+	ThumbnailH      int32    `json:"thumbnail_h"`
+	OriginalURL     string   `json:"original_url"`
+	OriginalW       int32    `json:"original_w"`
+	OriginalH       int32    `json:"original_h"`
+	Status          string   `json:"status"`
+	Edited          bool     `json:"edited"`
 }
 
 type PaginationResponse struct {
@@ -36,19 +39,22 @@ type UploadUrlResponse struct {
 
 func memeToResponse(m service.MemeResult) MemeResponse {
 	return MemeResponse{
-		Id:           m.Id,
-		Caption:      m.Caption,
-		Type:         m.Type,
-		OcrResult:    m.OcrResult,
-		Tags:         m.Tags,
-		ThumbnailURL: m.ThumbnailURL,
-		ThumbnailW:   m.ThumbnailW,
-		ThumbnailH:   m.ThumbnailH,
-		OriginalURL:  m.OriginalURL,
-		OriginalW:    m.OriginalW,
-		OriginalH:    m.OriginalH,
-		SortingId:    m.SortingId,
-		Status:       m.Status,
+		Id:              m.Id,
+		Caption:         m.Caption,
+		Type:            m.Type,
+		OcrResult:       m.OcrResult,
+		OnScreenText:    m.OnScreenText,
+		AudioTranscript: m.AudioTranscript,
+		AudioTrack:      m.AudioTrack,
+		Tags:            m.Tags,
+		ThumbnailURL:    m.ThumbnailURL,
+		ThumbnailW:      m.ThumbnailW,
+		ThumbnailH:      m.ThumbnailH,
+		OriginalURL:     m.OriginalURL,
+		OriginalW:       m.OriginalW,
+		OriginalH:       m.OriginalH,
+		Status:          m.Status,
+		Edited:          m.Edited,
 	}
 }
 

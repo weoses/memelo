@@ -131,7 +131,7 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobStat
 }
 
 func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData, params RecomputeParams) error {
-	if data.ManuallyUpdated {
+	if data.Edited {
 		r.slogger.InfoContext(ctx, "recompute: skipping manually-updated entity", "imageId", data.ImageId)
 		return nil
 	}

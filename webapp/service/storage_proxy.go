@@ -13,19 +13,31 @@ import (
 )
 
 type MemeResult struct {
-	Id           string   `json:"id"`
-	Caption      string   `json:"caption"`
-	Type         string   `json:"type"`
-	OcrResult    string   `json:"ocr_result"`
-	Tags         []string `json:"tags"`
-	ThumbnailURL string   `json:"thumbnail_url"`
-	ThumbnailW   int32    `json:"thumbnail_w"`
-	ThumbnailH   int32    `json:"thumbnail_h"`
-	OriginalURL  string   `json:"original_url"`
-	OriginalW    int32    `json:"original_w"`
-	OriginalH    int32    `json:"original_h"`
-	SortingId    int64    `json:"sorting_id"`
-	Status       string   `json:"status"`
+	Id              string   `json:"id"`
+	Caption         string   `json:"caption"`
+	Type            string   `json:"type"`
+	OcrResult       string   `json:"ocr_result"`
+	OnScreenText    string   `json:"on_screen_text"`
+	AudioTranscript string   `json:"audio_transcript"`
+	AudioTrack      string   `json:"audio_track"`
+	Tags            []string `json:"tags"`
+	ThumbnailURL    string   `json:"thumbnail_url"`
+	ThumbnailW      int32    `json:"thumbnail_w"`
+	ThumbnailH      int32    `json:"thumbnail_h"`
+	OriginalURL     string   `json:"original_url"`
+	OriginalW       int32    `json:"original_w"`
+	OriginalH       int32    `json:"original_h"`
+	Status          string   `json:"status"`
+	Edited          bool     `json:"edited"`
+}
+
+type UpdateParams struct {
+	Caption         *string
+	OnScreenText    *string
+	AudioTranscript *string
+	AudioTrack      *string
+	OriginalS3Path  *string
+	ThumbnailS3Path *string
 }
 
 type Pagination struct {
@@ -41,6 +53,7 @@ type SearchResult struct {
 type StorageProxy interface {
 	Search(ctx context.Context, accountId, query string, afterId *Pagination, limit int32) (*SearchResult, error)
 	UploadByS3Path(ctx context.Context, accountId, s3path, mime string) (*MemeResult, error)
+	UpdateMeme(ctx context.Context, accountId, id string, params UpdateParams) (*MemeResult, error)
 }
 
 type storageProxy struct {
@@ -111,17 +124,43 @@ func (s *storageProxy) UploadByS3Path(ctx context.Context, accountId, s3path, mi
 	return &result, nil
 }
 
+func (s *storageProxy) UpdateMeme(ctx context.Context, accountId, id string, params UpdateParams) (*MemeResult, error) {
+	req := &v1.UpdateMemeRequest{
+		Id:        id,
+		AccountId: accountId,
+	}
+	req.Caption = params.Caption
+	req.OnScreenText = params.OnScreenText
+	req.AudioTranscription = params.AudioTranscript
+	req.AudioTrack = params.AudioTrack
+	if params.OriginalS3Path != nil {
+		req.Original = &v1.MediaDataDto{S3Path: params.OriginalS3Path}
+	}
+	if params.ThumbnailS3Path != nil {
+		req.Thumbnail = &v1.MediaDataDto{S3Path: params.ThumbnailS3Path}
+	}
+
+	resp, err := s.cl.UpdateMeme(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("update meme failed: %w", err)
+	}
+	result := dtoToResult(resp.GetResult())
+	return &result, nil
+}
+
 func dtoToResult(dto *v1.MemeDto) MemeResult {
 	if dto == nil {
 		return MemeResult{}
 	}
 	r := MemeResult{
-		Id:        dto.GetId(),
-		Caption:   dto.GetCaption(),
-		Type:      dto.GetType(),
-		OcrResult: dto.GetOcrResult(),
-		Tags:      dto.GetTags(),
-		SortingId: dto.GetSortingId(),
+		Id:              dto.GetId(),
+		Caption:         dto.GetCaption(),
+		Type:            dto.GetType(),
+		OcrResult:       dto.GetOcrResult(),
+		OnScreenText:    dto.GetOnScreenText(),
+		AudioTranscript: dto.GetAudioTranscript(),
+		AudioTrack:      dto.GetAudioTrack(),
+		Tags:            dto.GetTags(),
 	}
 	if thumb := dto.GetImageThumbnail(); thumb != nil {
 		r.ThumbnailURL = thumb.GetUrl()
@@ -133,5 +172,6 @@ func dtoToResult(dto *v1.MemeDto) MemeResult {
 		r.OriginalW = orig.GetImageWidth()
 		r.OriginalH = orig.GetImageHeight()
 	}
+	r.Edited = dto.GetEdited()
 	return r
 }

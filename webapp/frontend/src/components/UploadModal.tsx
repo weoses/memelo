@@ -48,7 +48,7 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
 
   return (
     <Modal onClose={onClose} canClose={canClose}>
-      <Dialog title="Upload meme" onClose={onClose} canClose={canClose} className="w-full max-w-md">
+      <Dialog title="Upload meme" onClose={onClose} canClose={canClose} className="w-full max-w-md overflow-hidden">
         <div className="p-5">
           {/* Idle — drop zone */}
           {phase === 'idle' && (

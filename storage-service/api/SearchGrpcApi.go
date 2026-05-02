@@ -140,8 +140,9 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 			ImageWidth:  helper.Addr(int32(urls.Metadata.ThumbSize.Width)),
 			ImageHeight: helper.Addr(int32(urls.Metadata.ThumbSize.Height)),
 		},
-		Tags: urls.Metadata.Tags,
-		Type: string(urls.Metadata.Type),
+		Tags:   urls.Metadata.Tags,
+		Type:   string(urls.Metadata.Type),
+		Edited: urls.Metadata.Edited,
 	}
 
 	if urls.Metadata.ImageSize != nil {

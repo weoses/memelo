@@ -188,7 +188,8 @@ type MemeDto struct {
 	Caption         string                 `protobuf:"bytes,7,opt,name=caption,proto3" json:"caption,omitempty"`
 	AudioTranscript string                 `protobuf:"bytes,8,opt,name=audio_transcript,json=audioTranscript,proto3" json:"audio_transcript,omitempty"`
 	OnScreenText    string                 `protobuf:"bytes,9,opt,name=on_screen_text,json=onScreenText,proto3" json:"on_screen_text,omitempty"`
-	AudioTrack      string                 `protobuf:"bytes,10,opt,name=audio_track,json=audioTrack,proto3" json:"audio_track,omitempty"` //  repeated TimeCodeResultData result_data_by_time = 10;
+	AudioTrack      string                 `protobuf:"bytes,10,opt,name=audio_track,json=audioTrack,proto3" json:"audio_track,omitempty"`
+	Edited          bool                   `protobuf:"varint,11,opt,name=edited,proto3" json:"edited,omitempty"` //  repeated TimeCodeResultData result_data_by_time = 12;
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -291,6 +292,13 @@ func (x *MemeDto) GetAudioTrack() string {
 		return x.AudioTrack
 	}
 	return ""
+}
+
+func (x *MemeDto) GetEdited() bool {
+	if x != nil {
+		return x.Edited
+	}
+	return false
 }
 
 type PipelinePagination struct {
@@ -442,7 +450,7 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"imageWidth\x88\x01\x01\x12&\n" +
 	"\fimage_height\x18\x03 \x01(\x05H\x01R\vimageHeight\x88\x01\x01B\x0e\n" +
 	"\f_image_widthB\x0f\n" +
-	"\r_image_height\"\xf2\x02\n" +
+	"\r_image_height\"\x8a\x03\n" +
 	"\aMemeDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -456,7 +464,8 @@ const file_proto_v1_common_proto_rawDesc = "" +
 	"\x0eon_screen_text\x18\t \x01(\tR\fonScreenText\x12\x1f\n" +
 	"\vaudio_track\x18\n" +
 	" \x01(\tR\n" +
-	"audioTrack\"U\n" +
+	"audioTrack\x12\x16\n" +
+	"\x06edited\x18\v \x01(\bR\x06edited\"U\n" +
 	"\x12PipelinePagination\x12\x1a\n" +
 	"\bsearcher\x18\x01 \x01(\tR\bsearcher\x12#\n" +
 	"\rsorting_after\x18\x02 \x03(\tR\fsortingAfter\"1\n" +

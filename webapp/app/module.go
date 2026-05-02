@@ -51,6 +51,8 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS) {
 	e.GET("/api/memes", h.SearchMemes)
 	e.GET("/api/memes/get-upload-url", h.GetUploadUrl)
 	e.POST("/api/memes/parse-by-token", h.ParseByToken)
+	e.PATCH("/api/memes/:id", h.UpdateMeme)
+	e.POST("/api/memes/:id/update-media/:field", h.UpdateMemeMedia)
 	e.GET("/api/health", h.Health)
 
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{

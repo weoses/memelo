@@ -20,6 +20,7 @@ type GetUploadUrlResult struct {
 type UploadService interface {
 	GetUploadUrl(ctx context.Context, mime string, size int64) (*GetUploadUrlResult, error)
 	ParseByToken(ctx context.Context, accountId, token string) (*MemeResult, error)
+	DecodeUploadToken(tokenStr string) (s3path, mime string, err error)
 }
 
 type uploadService struct {
@@ -62,7 +63,7 @@ func (s *uploadService) GetUploadUrl(ctx context.Context, mime string, size int6
 	}, nil
 }
 
-func (s *uploadService) ParseByToken(ctx context.Context, accountId, tokenStr string) (*MemeResult, error) {
+func (s *uploadService) DecodeUploadToken(tokenStr string) (string, string, error) {
 	token, err := jwt.Parse(tokenStr,
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -71,22 +72,30 @@ func (s *uploadService) ParseByToken(ctx context.Context, accountId, tokenStr st
 			return s.jwtSecret, nil
 		})
 	if err != nil || !token.Valid {
-		return nil, fmt.Errorf("invalid token: %w", err)
+		return "", "", fmt.Errorf("invalid token: %w", err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
+		return "", "", fmt.Errorf("invalid token claims")
 	}
 
 	s3path, ok := claims["s3path"].(string)
 	if !ok || s3path == "" {
-		return nil, fmt.Errorf("missing s3path claim")
+		return "", "", fmt.Errorf("missing s3path claim")
 	}
 	mime, ok := claims["mime"].(string)
 	if !ok || mime == "" {
-		return nil, fmt.Errorf("missing mime claim")
+		return "", "", fmt.Errorf("missing mime claim")
 	}
 
+	return s3path, mime, nil
+}
+
+func (s *uploadService) ParseByToken(ctx context.Context, accountId, tokenStr string) (*MemeResult, error) {
+	s3path, mime, err := s.DecodeUploadToken(tokenStr)
+	if err != nil {
+		return nil, err
+	}
 	return s.proxy.UploadByS3Path(ctx, accountId, s3path, mime)
 }

@@ -3,9 +3,10 @@ import { Meme } from '../api/client'
 interface Props {
   meme: Meme
   onClick: () => void
+  isEdited?: boolean
 }
 
-export default function MemeCard({ meme, onClick }: Props) {
+export default function MemeCard({ meme, onClick, isEdited }: Props) {
   const isVideo = meme.type === 'video'
   const thumb = meme.thumbnail_url || meme.original_url
 
@@ -32,11 +33,12 @@ export default function MemeCard({ meme, onClick }: Props) {
           ▶
         </span>
       )}
-      {meme.caption && (
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 p-1">
-          <p className="text-xs text-white truncate">{meme.caption}</p>
-        </div>
+      {isEdited && (
+        <span className="absolute top-1 left-1 bg-yellow-500/80 rounded px-1 py-0.5 text-xs text-black font-medium">
+          Edited
+        </span>
       )}
+
     </button>
   )
 }

@@ -11,7 +11,7 @@ interface Props {
 export default function Dialog({ onClose, title, canClose = true, children, className = '' }: Props) {
   return (
     <div
-      className={`relative bg-gray-900 rounded-xl shadow-2xl overflow-hidden ${className}`}
+      className={`relative bg-gray-900 rounded-xl shadow-2xl ${className}`}
       onClick={e => e.stopPropagation()}
     >
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">

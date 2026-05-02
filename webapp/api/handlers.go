@@ -93,3 +93,72 @@ func (h *Handlers) ParseByToken(c echo.Context) error {
 	}
 	return c.JSON(http.StatusCreated, memeToResponse(*result))
 }
+
+func (h *Handlers) UpdateMeme(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
+	}
+
+	var body struct {
+		Caption         *string `json:"caption"`
+		OnScreenText    *string `json:"on_screen_text"`
+		AudioTranscript *string `json:"audio_transcript"`
+		AudioTrack      *string `json:"audio_track"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
+	}
+
+	params := service.UpdateParams{
+		Caption:         body.Caption,
+		OnScreenText:    body.OnScreenText,
+		AudioTranscript: body.AudioTranscript,
+		AudioTrack:      body.AudioTrack,
+	}
+	result, err := h.proxy.UpdateMeme(c.Request().Context(), h.accountId, id, params)
+	if err != nil {
+		h.log.Error("update meme failed", "error", err)
+		return echo.NewHTTPError(http.StatusBadGateway, "upstream update failed")
+	}
+	return c.JSON(http.StatusOK, memeToResponse(*result))
+}
+
+func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
+	}
+
+	field := c.Param("field")
+	if field != "original" && field != "thumbnail" {
+		return echo.NewHTTPError(http.StatusBadRequest, "field must be 'original' or 'thumbnail'")
+	}
+
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := c.Bind(&body); err != nil || body.Token == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing token")
+	}
+
+	s3path, _, err := h.upload.DecodeUploadToken(body.Token)
+	if err != nil {
+		h.log.Error("decode upload token failed", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid or expired token")
+	}
+
+	params := service.UpdateParams{}
+	if field == "original" {
+		params.OriginalS3Path = &s3path
+	} else {
+		params.ThumbnailS3Path = &s3path
+	}
+
+	result, err := h.proxy.UpdateMeme(c.Request().Context(), h.accountId, id, params)
+	if err != nil {
+		h.log.Error("update meme media failed", "error", err)
+		return echo.NewHTTPError(http.StatusBadGateway, "upstream update failed")
+	}
+	return c.JSON(http.StatusOK, memeToResponse(*result))
+}
