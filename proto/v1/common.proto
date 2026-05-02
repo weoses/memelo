@@ -31,7 +31,8 @@ message MemeDto {
   string audio_transcript = 8;
   string on_screen_text = 9;
   string audio_track = 10;
-//  repeated TimeCodeResultData result_data_by_time = 10;
+  bool edited = 11;
+//  repeated TimeCodeResultData result_data_by_time = 12;
 }
 message PipelinePagination {
   string searcher = 1;

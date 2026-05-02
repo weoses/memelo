@@ -9,6 +9,7 @@ interface Props {
   query: string
   onSelect: (m: Meme, index: number, list: Meme[]) => void
   prependMeme?: Meme | null
+  updatedMeme?: Meme | null
 }
 
 interface RowItem { meme: Meme; w: number; h: number }
@@ -26,18 +27,22 @@ function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
   let bucket: Meme[] = []
   let bucketW = 0
 
-  const flush = () => {
+  const flush = (last = false) => {
     if (!bucket.length) return
-    const gutters = (bucket.length - 1) * GUTTER
-    const totalNatural = bucket.reduce((s, m) => s + clamp(m), 0)
-    const scale = (containerWidth - gutters) / totalNatural
-    const h = Math.round(ROW_HEIGHT * scale)
-    let remaining = containerWidth - gutters
-    rows.push(bucket.map((m, i) => {
-      const w = i === bucket.length - 1 ? remaining : Math.round(clamp(m) * scale)
-      remaining -= w
-      return { meme: m, w, h }
-    }))
+    if (last) {
+      rows.push(bucket.map(m => ({ meme: m, w: clamp(m), h: ROW_HEIGHT })))
+    } else {
+      const gutters = (bucket.length - 1) * GUTTER
+      const totalNatural = bucket.reduce((s, m) => s + clamp(m), 0)
+      const scale = (containerWidth - gutters) / totalNatural
+      const h = Math.round(ROW_HEIGHT * scale)
+      let remaining = containerWidth - gutters
+      rows.push(bucket.map((m, i) => {
+        const w = i === bucket.length - 1 ? remaining : Math.round(clamp(m) * scale)
+        remaining -= w
+        return { meme: m, w, h }
+      }))
+    }
     bucket = []
     bucketW = 0
   }
@@ -49,12 +54,12 @@ function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
     bucketW += (bucket.length > 0 ? GUTTER : 0) + nw
     bucket.push(m)
   }
-  flush()
+  flush(true)
 
   return rows
 }
 
-export default function MemeGrid({ query, onSelect, prependMeme }: Props) {
+export default function MemeGrid({ query, onSelect, prependMeme, updatedMeme }: Props) {
   const [memes, setMemes] = useState<Meme[]>([])
   const [nextPage, setNextPage] = useState<Pagination | null>(null)
   const [loading, setLoading] = useState(false)
@@ -81,8 +86,15 @@ export default function MemeGrid({ query, onSelect, prependMeme }: Props) {
   }, [query])
 
   useEffect(() => {
-    if (prependMeme) setMemes(prev => [prependMeme, ...prev])
+    setMemes(prev => {
+      return prependMeme ? [prependMeme, ...prev] : prev
+    })
   }, [prependMeme])
+
+  useEffect(() => {
+    if (!updatedMeme) return
+    setMemes(prev => prev.map(m => m.id === updatedMeme.id ? updatedMeme : m))
+  }, [updatedMeme])
 
   const loadMore = useCallback(async (page: Pagination | null, isReset: boolean) => {
     if (loadingRef.current) return
@@ -137,7 +149,11 @@ export default function MemeGrid({ query, onSelect, prependMeme }: Props) {
             <div key={rowIdx} className="flex" style={{ gap: GUTTER, height: row[0]?.h }}>
               {row.map(({ meme, w, h }) => (
                 <div key={meme.id} style={{ width: w, height: h, flexShrink: 0 }}>
-                  <MemeCard meme={meme} onClick={() => onSelect(meme, memes.indexOf(meme), memes)} />
+                  <MemeCard
+                    meme={meme}
+                    onClick={() => onSelect(meme, memes.indexOf(meme), memes)}
+                    isEdited={meme.edited}
+                  />
                 </div>
               ))}
             </div>

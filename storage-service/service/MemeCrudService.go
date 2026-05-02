@@ -229,7 +229,7 @@ func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeIn
 			existing.ResultData.AudioTrack)
 	}
 
-	existing.ManuallyUpdated = true
+	existing.Edited = true
 
 	if err = m.metadataStorageService.Save(ctx, existing); err != nil {
 		return nil, fmt.Errorf("save metadata failed: %w", err)

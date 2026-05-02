@@ -13,14 +13,21 @@ export default function App() {
   const [memesList, setMemesList] = useState<Meme[]>([])
   const [uploadOpen, setUploadOpen] = useState(false)
   const [prependMeme, setPrependMeme] = useState<Meme | null>(null)
+  const [updatedMeme, setUpdatedMeme] = useState<Meme | null>(null)
 
-  const handleQueryChange = useCallback((q: string) => setQuery(q), [])
+  const handleQueryChange = useCallback((q: string) => { setQuery(q); setPrependMeme(null) }, [])
   const handleUploaded = useCallback((meme: Meme) => setPrependMeme(meme), [])
 
   const handleSelect = useCallback((m: Meme, index: number, list: Meme[]) => {
     setSelected(m)
     setSelectedIndex(index)
     setMemesList(list)
+  }, [])
+
+  const handleUpdate = useCallback((updated: Meme) => {
+    setSelected(updated)
+    setMemesList(prev => prev.map(m => m.id === updated.id ? updated : m))
+    setUpdatedMeme(updated)
   }, [])
 
   const handlePrev = useCallback(() => {
@@ -45,7 +52,7 @@ export default function App() {
         <UploadButton onOpen={() => setUploadOpen(true)} />
       </header>
       <main className="flex-1 p-4">
-        <MemeGrid query={query} onSelect={handleSelect} prependMeme={prependMeme} />
+        <MemeGrid query={query} onSelect={handleSelect} prependMeme={prependMeme} updatedMeme={updatedMeme} />
       </main>
       {uploadOpen && (
         <UploadModal
@@ -59,6 +66,8 @@ export default function App() {
           onClose={() => setSelected(null)}
           onPrev={selectedIndex > 0 ? handlePrev : undefined}
           onNext={selectedIndex < memesList.length - 1 ? handleNext : undefined}
+          onUpdate={handleUpdate}
+          isEdited={selected.edited}
         />
       )}
     </div>

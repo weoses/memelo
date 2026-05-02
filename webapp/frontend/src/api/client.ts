@@ -3,6 +3,9 @@ export interface Meme {
   caption: string
   type: string
   ocr_result: string
+  on_screen_text: string
+  audio_transcript: string
+  audio_track: string
   tags: string[]
   thumbnail_url: string
   thumbnail_w: number
@@ -12,6 +15,7 @@ export interface Meme {
   original_h: number
   sorting_id: number
   status: string
+  edited: boolean
 }
 
 export interface Pagination {
@@ -93,5 +97,32 @@ export async function parseByToken(token: string): Promise<Meme> {
     body: JSON.stringify({ token }),
   })
   if (!res.ok) throw new Error(`parse by token failed: ${res.status}`)
+  return res.json()
+}
+
+export async function updateMeme(
+  id: string,
+  fields: { caption?: string; on_screen_text?: string; audio_transcript?: string; audio_track?: string },
+): Promise<Meme> {
+  const res = await fetch(`/api/memes/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) throw new Error(`update meme failed: ${res.status}`)
+  return res.json()
+}
+
+export async function updateMemeMedia(
+  id: string,
+  token: string,
+  field: 'original' | 'thumbnail',
+): Promise<Meme> {
+  const res = await fetch(`/api/memes/${id}/update-media/${field}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) throw new Error(`update meme media failed: ${res.status}`)
   return res.json()
 }

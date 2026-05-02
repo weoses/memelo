@@ -28,5 +28,5 @@ type ElasticImageMetaData struct {
 
 	ResultPerVideoSlices []ResultPerVideoSlice
 
-	ManuallyUpdated bool
+	Edited bool
 }

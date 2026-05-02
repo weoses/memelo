@@ -108,7 +108,6 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 			}
 			result.Type = dto.GetType()
 			result.Caption = dto.GetCaption()
-			result.SortingId = dto.GetSortingId()
 			return result
 		})
 
