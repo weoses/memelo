@@ -69,11 +69,11 @@ func (c *TestClient) DeleteMeme(ctx context.Context, accountID, memeID string) e
 }
 
 func (c *TestClient) StartRecompute(ctx context.Context, req *v1.RecomputeRequest) (*v1.RecomputeJob, error) {
-	return c.recompute.StartRecompute(ctx, req)
+	return c.recompute.StartRecomputeJob(ctx, req)
 }
 
 func (c *TestClient) GetRecomputeStatus(ctx context.Context, jobID string) (*v1.RecomputeJobStatus, error) {
-	return c.recompute.GetRecomputeStatus(ctx, &v1.RecomputeJob{JobId: jobID})
+	return c.recompute.GetRecomputeJobStatus(ctx, &v1.RecomputeJob{JobId: jobID})
 }
 
 func (c *TestClient) UpdateMeme(ctx context.Context, req *v1.UpdateMemeRequest) (*v1.UpdateMemeResponse, error) {
