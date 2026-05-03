@@ -20,6 +20,8 @@ type MessageHandlerService interface {
 	ProcessCommandAddTag(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
+const parseMode = "Markdown"
+
 type MessageHandlerResponse struct {
 	Message   string
 	ParseMode string
@@ -60,7 +62,7 @@ func (m MessageHandlerServiceImpl) ProcessCommandAddTag(ctx context.Context, mes
 
 	return &MessageHandlerResponse{
 		Message:   fmt.Sprintf("Tag `%s` created", name),
-		ParseMode: "Markdown",
+		ParseMode: parseMode,
 	}, nil
 }
 
@@ -101,7 +103,7 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 
 	return &MessageHandlerResponse{
 		Message: fmt.Sprintf(
-			"```Text\n%s\n```\n"+
+			" Text: ```\n%s\n```\n"+
 				" Tags: ```%s```\n"+
 				" Caption: `%s`\n"+
 				" ID: `%s` \n"+
@@ -111,7 +113,7 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 			result.Caption,
 			result.Id,
 			result.DuplicateStatus),
-		ParseMode: "Markdown",
+		ParseMode: parseMode,
 	}, nil
 }
 
@@ -152,7 +154,7 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 			result.Id,
 			result.DuplicateStatus,
 			strings.Join(result.Tags, ", ")),
-		ParseMode: "Markdown",
+		ParseMode: parseMode,
 	}, nil
 }
 
