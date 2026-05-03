@@ -23,7 +23,7 @@ server {
         proxy_read_timeout   {{ nginx_proxy_read_timeout }};
     }
 
-    location /.proxy/webapp/ {
+    location /.proxy/webapp-service/ {
         client_max_body_size {{ nginx_max_body_size }};
         auth_basic           "{{ nginx_htpasswd_realm }}";
         auth_basic_user_file {{ nginx_htpasswd_file }};

@@ -1,3 +1,5 @@
+const BASE = import.meta.env.BASE_URL
+
 export interface Meme {
   id: string
   caption: string
@@ -38,7 +40,7 @@ export async function searchMemes(
     params.set('after_searcher', page.searcher)
     page.sorting_after.forEach(v => params.append('after_sorting', v))
   }
-  const res = await fetch(`/api/memes?${params}`)
+  const res = await fetch(`${BASE}api/memes?${params}`)
   if (!res.ok) throw new Error(`search failed: ${res.status}`)
   return res.json()
 }
@@ -55,7 +57,7 @@ export async function getUploadUrl(
   length: number,
 ): Promise<UploadUrlResponse> {
   const params = new URLSearchParams({ filename, mime, length: String(length) })
-  const res = await fetch(`/api/memes/get-upload-url?${params}`)
+  const res = await fetch(`${BASE}api/memes/get-upload-url?${params}`)
   if (!res.ok) throw new Error(`get upload url failed: ${res.status}`)
   return res.json()
 }
@@ -91,7 +93,7 @@ export function uploadToS3Post(
 }
 
 export async function parseByToken(token: string): Promise<Meme> {
-  const res = await fetch('/api/memes/parse-by-token', {
+  const res = await fetch(`${BASE}api/memes/parse-by-token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
@@ -104,7 +106,7 @@ export async function updateMeme(
   id: string,
   fields: { caption?: string; on_screen_text?: string; audio_transcript?: string; audio_track?: string },
 ): Promise<Meme> {
-  const res = await fetch(`/api/memes/${id}`, {
+  const res = await fetch(`${BASE}api/memes/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(fields),
@@ -118,7 +120,7 @@ export async function updateMemeMedia(
   token: string,
   field: 'original' | 'thumbnail',
 ): Promise<Meme> {
-  const res = await fetch(`/api/memes/${id}/update-media/${field}`, {
+  const res = await fetch(`${BASE}api/memes/${id}/update-media/${field}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
