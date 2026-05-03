@@ -10,6 +10,7 @@ import (
 
 type CreateThumbnailPipelineStep struct {
 	BasePipelineStep
+
 	encoderService MediaEncoderService
 }
 

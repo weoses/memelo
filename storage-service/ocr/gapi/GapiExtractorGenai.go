@@ -14,6 +14,11 @@ import (
 	"google.golang.org/genai"
 )
 
+const onScreenTextProp = "on_screen_text"
+const audioTranscriptProp = "audio_transcript"
+const audioTrackProp = "audio_track"
+const captionProp = "caption"
+
 type GeminiExtractor struct {
 	client  *genai.Client
 	cfg     *conf.GeminiExtractorConfig
@@ -48,6 +53,7 @@ func NewGeminiExtractor(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 
 func (g *GeminiExtractor) buildTool() *genai.Tool {
 	c := g.cfg
+
 	return &genai.Tool{
 		FunctionDeclarations: []*genai.FunctionDeclaration{{
 			Name:        "extract_metadata",
@@ -55,13 +61,13 @@ func (g *GeminiExtractor) buildTool() *genai.Tool {
 			Parameters: &genai.Schema{
 				Type: genai.TypeObject,
 				Properties: map[string]*genai.Schema{
-					"on_screen_text":   {Type: genai.TypeString, Description: c.OutputToolOnScreenTextDesc},
-					"audio_transcript": {Type: genai.TypeString, Description: c.OutputToolTranscriptionDesc},
-					"audio_track":      {Type: genai.TypeString, Description: c.OutputToolAudioTrackDesc},
-					"caption":          {Type: genai.TypeString, Description: c.OutputToolCaptionDesc},
+					onScreenTextProp:    {Type: genai.TypeString, Description: c.OutputToolOnScreenTextDesc},
+					audioTranscriptProp: {Type: genai.TypeString, Description: c.OutputToolTranscriptionDesc},
+					audioTrackProp:      {Type: genai.TypeString, Description: c.OutputToolAudioTrackDesc},
+					captionProp:         {Type: genai.TypeString, Description: c.OutputToolCaptionDesc},
 				},
-				Required:         []string{"caption"},
-				PropertyOrdering: []string{"on_screen_text", "audio_transcript", "audio_track", "caption"},
+				Required:         []string{captionProp},
+				PropertyOrdering: []string{onScreenTextProp, audioTranscriptProp, audioTrackProp, captionProp},
 			},
 		}},
 	}
@@ -142,10 +148,10 @@ func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType 
 				args := part.FunctionCall.Args
 				g.slogger.InfoContext(ctx, "process done")
 				return &ocr.MediaExtractResult{
-					OnScreenText:    stringArg(args, "on_screen_text"),
-					AudioTranscript: stringArg(args, "audio_transcript"),
-					AudioTrack:      stringArg(args, "audio_track"),
-					Caption:         stringArg(args, "caption"),
+					OnScreenText:    stringArg(args, onScreenTextProp),
+					AudioTranscript: stringArg(args, audioTranscriptProp),
+					AudioTrack:      stringArg(args, audioTrackProp),
+					Caption:         stringArg(args, captionProp),
 				}, nil
 			}
 		}
@@ -162,8 +168,11 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 	sb.WriteString(g.cfg.CombinePrompt)
 	sb.WriteString("\n\n")
 	for i, r := range results {
-		fmt.Fprintf(&sb, "Segment %d:\non_screen_text: %s\naudio_transcript: %s\naudio_track: %s\ncaption: %s\n\n",
+		_, err := fmt.Fprintf(&sb, "Segment %d:\non_screen_text: %s\naudio_transcript: %s\naudio_track: %s\ncaption: %s\n\n",
 			i+1, r.OnScreenText, r.AudioTranscript, r.AudioTrack, r.Caption)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fprintf prompt: %w", err)
+		}
 	}
 
 	g.slogger.DebugContext(ctx, "combine prompt", "prompt", sb.String())
@@ -191,10 +200,10 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 				args := part.FunctionCall.Args
 				g.slogger.InfoContext(ctx, "combine results done")
 				return &ocr.MediaExtractResult{
-					OnScreenText:    stringArg(args, "on_screen_text"),
-					AudioTranscript: stringArg(args, "audio_transcript"),
-					AudioTrack:      stringArg(args, "audio_track"),
-					Caption:         stringArg(args, "caption"),
+					OnScreenText:    stringArg(args, onScreenTextProp),
+					AudioTranscript: stringArg(args, audioTranscriptProp),
+					AudioTrack:      stringArg(args, audioTrackProp),
+					Caption:         stringArg(args, captionProp),
 				}, nil
 			}
 		}

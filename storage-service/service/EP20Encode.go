@@ -9,6 +9,7 @@ import (
 
 type EncodeOriginalPipelineStep struct {
 	BasePipelineStep
+
 	encoderService MediaEncoderService
 }
 

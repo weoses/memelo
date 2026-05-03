@@ -27,12 +27,14 @@ import (
 //go:embed migrations/metadata
 var metadataMigrationFS embed.FS
 
-const MaxFuzzy = 10
+const imageIdField = "ImageId"
+const createdField = "Created"
+const scoreField = "_score"
 
 // sort field slices used to build / extract sort keys
-var sortFieldsCreated = []string{"Created"}
-var sortFieldsScore = []string{"_score", "ImageId"}
-var sortFieldsImageId = []string{"ImageId"}
+var sortFieldsCreated = []string{createdField}
+var sortFieldsScore = []string{scoreField, imageIdField}
+var sortFieldsImageId = []string{imageIdField}
 
 // extractSortKey builds an ElasticSortKey from the last hit's Sort values,
 // using sortFields to name the values in order.
@@ -154,6 +156,22 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 
 	q := e.accountIdQuery(accountId)
 
+	result, err := e.runQuery(ctx, q, pageSize, sortKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchByAccountId end", "count", len(result.Hits.Hits))
+
+	results, err := e.unmarshalResults(result)
+	if err != nil {
+		return nil, nil, fmt.Errorf("search_pipeline by account id failed: accountId=%s  sortKey=%v: %w", accountId.String(), sortKey, err)
+	}
+
+	return results, extractSortKey(result), nil
+}
+
+func (e *ElasticMetadataStorageServiceImpl) runQuery(ctx context.Context, q *types.Query, pageSize int, sortKey entity.ElasticSortKey) (*search.Response, error) {
 	searchRequest := e.client.Search().
 		Index(e.indexName).
 		Query(q).
@@ -166,17 +184,9 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 
 	result, err := searchRequest.Do(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("elastic: failed to search_pipeline: response=%s : %w", render.Render(result), err)
+		return nil, fmt.Errorf("elastic: failed to search_pipeline: response=%s : %w", render.Render(result), err)
 	}
-
-	e.slogger.InfoContext(ctx, "ElasticMetadataStorageServiceImpl.searchByAccountId end", "count", len(result.Hits.Hits))
-
-	results, err := e.unmarshalResults(result)
-	if err != nil {
-		return nil, nil, fmt.Errorf("search_pipeline by account id failed: accountId=%s  sortKey=%v: %w", accountId.String(), sortKey, err)
-	}
-
-	return results, extractSortKey(result), nil
+	return result, err
 }
 
 func (e *ElasticMetadataStorageServiceImpl) GetAll(
@@ -474,7 +484,7 @@ func (e *ElasticMetadataStorageServiceImpl) QueryByRaw(
 
 	body := map[string]interface{}{
 		"query": rawQuery,
-		"sort":  []map[string]interface{}{{"ImageId": map[string]interface{}{"order": "asc"}}},
+		"sort":  []map[string]interface{}{{imageIdField: map[string]interface{}{"order": "asc"}}},
 		"size":  pageSize,
 	}
 	if sortKey != nil {

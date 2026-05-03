@@ -72,6 +72,7 @@ func (e *ImageEncoderImpl) EncodeOriginal(ctx context.Context, raw temp.S3Backed
 	return s3Jpeg, entity.Sizes{Width: w, Height: h}, nil
 }
 
+//nolint:dupl // a bit same logic for all media, but...
 func (e *ImageEncoderImpl) EncodeThumbnail(ctx context.Context, raw temp.S3BackedData) (temp.S3BackedData, entity.Sizes, error) {
 	jpeg, err := e.imageConverter.Convert2Jpeg(ctx, raw)
 	if err != nil {
@@ -121,6 +122,7 @@ func (e *VideoEncoderImpl) EncodeOriginal(ctx context.Context, raw temp.S3Backed
 	return s3Mp4, entity.Sizes{Width: w, Height: h}, nil
 }
 
+//nolint:dupl // a bit same logic for all media, but...
 func (e *VideoEncoderImpl) EncodeThumbnail(ctx context.Context, raw temp.S3BackedData) (temp.S3BackedData, entity.Sizes, error) {
 	frame, err := e.frameExtractor.ExtractOneFrame(ctx, raw)
 	if err != nil {
