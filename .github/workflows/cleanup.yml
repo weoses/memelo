@@ -1,0 +1,25 @@
+name: cleanup.yml
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ "storage", "telegram", "webapp"]
+      max-parallel: 10
+    steps:
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: "${{matrix.service}}-service"
+          package-type: 'container'
+          ignore-versions: "^v.*"
+          min-versions-to-keep: 20
+
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: "${{matrix.service}}-service"
+          package-type: 'container'
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: 'true'
