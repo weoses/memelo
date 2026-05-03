@@ -97,7 +97,7 @@ services:
         condition: service_healthy
 
   webapp:
-    image: ghcr.io/weoses/webapp:${RELEASE_VERSION:-latest}
+    image: ghcr.io/weoses/webapp-service:${RELEASE_VERSION:-latest}
     environment:
       SERVER_LISTENADDRESS: :${WEBAPP_SERVICE_PORT}
       STORAGE_SERVICE_URI: http://storage-service:${STORAGE_SERVICE_PORT}
