@@ -29,7 +29,9 @@
     path: "{{ nginx_htpasswd_file }}"
     name: "{{ nginx_htpasswd_user }}"
     password: "{{ nginx_htpasswd_password }}"
-    mode: "0640"
+    owner: www-data
+    group: www-data
+    mode: "0660"
 
 
 - name: Check if proxy domain TLS certificate exists

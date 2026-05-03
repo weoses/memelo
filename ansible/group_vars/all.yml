@@ -32,7 +32,7 @@ repo_url:
 nginx_log_dir: /var/log/nginx
 nginx_max_body_size: 100M
 nginx_proxy_read_timeout: 600
-nginx_htpasswd_file: /etc/apache2/.htpasswd
+nginx_htpasswd_file: /etc/nginx/.htpasswd
 nginx_htpasswd_realm: "Proxy"
 
 # Ports
