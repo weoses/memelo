@@ -14,14 +14,12 @@ interface Props {
 
 interface RowItem { meme: Meme; w: number; h: number }
 
-function naturalWidth(m: Meme): number {
-  const ratio = m.thumbnail_w && m.thumbnail_h ? m.thumbnail_w / m.thumbnail_h : 1
-  return Math.round(ratio * ROW_HEIGHT)
-}
 
 function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
-  const maxItemW = Math.floor(containerWidth * 0.25)
-  const clamp = (m: Meme) => Math.min(naturalWidth(m), maxItemW)
+  const rowHeight = containerWidth < 480 ? 140 : containerWidth < 768 ? 170 : ROW_HEIGHT
+  const maxFraction = containerWidth < 480 ? 0.30 : containerWidth < 768 ? 0.34 : 0.25
+  const maxItemW = Math.floor(containerWidth * maxFraction)
+  const clamp = (m: Meme) => Math.min(Math.round((m.thumbnail_w && m.thumbnail_h ? m.thumbnail_w / m.thumbnail_h : 1) * rowHeight), maxItemW)
 
   const rows: RowItem[][] = []
   let bucket: Meme[] = []
@@ -30,12 +28,12 @@ function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
   const flush = (last = false) => {
     if (!bucket.length) return
     if (last) {
-      rows.push(bucket.map(m => ({ meme: m, w: clamp(m), h: ROW_HEIGHT })))
+      rows.push(bucket.map(m => ({ meme: m, w: clamp(m), h: rowHeight })))
     } else {
       const gutters = (bucket.length - 1) * GUTTER
       const totalNatural = bucket.reduce((s, m) => s + clamp(m), 0)
       const scale = (containerWidth - gutters) / totalNatural
-      const h = Math.round(ROW_HEIGHT * scale)
+      const h = Math.round(rowHeight * scale)
       let remaining = containerWidth - gutters
       rows.push(bucket.map((m, i) => {
         const w = i === bucket.length - 1 ? remaining : Math.round(clamp(m) * scale)
