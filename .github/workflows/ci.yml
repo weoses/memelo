@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: ${{matrix.service}}-service/go.mod
-
+          cache-dependency-path: '**/go.sum'
       - name: Go tests
         uses: robherley/go-test-action@v0
         with:
@@ -52,11 +52,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: "Build and push"
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: true
           file: Dockerfile-${{matrix.service}}-service
-          tags: ghcr.io/weoses/${{matrix.service}}-service:dev-${{ github.sha }}
+          tags: |
+            ghcr.io/weoses/${{matrix.service}}-service:dev-${{ github.sha }}
+            ghcr.io/weoses/${{matrix.service}}-service:latest
+          cache-from: type=registry,ref=ghcr.io/weoses/${{matrix.service}}-service:latest
+          cache-to: type=inline
 
   deploy:
     runs-on: ubuntu-latest
