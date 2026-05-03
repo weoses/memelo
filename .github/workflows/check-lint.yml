@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: ${{ matrix.module }}/go.mod
-          cache: false
+          cache-dependency-path: '**/go.sum'
 
       - uses: golangci/golangci-lint-action@v9
         with:
