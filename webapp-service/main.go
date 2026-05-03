@@ -12,7 +12,7 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
-//go:embed frontend/dist
+//go:embed all:frontend/dist
 var frontendDist embed.FS
 
 func main() {
