@@ -47,7 +47,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <header className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <h1 className="text-lg font-bold text-purple-400 shrink-0">Memelo</h1>
+        <h1 className="hidden sm:block text-lg font-bold text-purple-400 shrink-0">Memelo</h1>
         <SearchBar onQueryChange={handleQueryChange} />
         <UploadButton onOpen={() => setUploadOpen(true)} />
       </header>

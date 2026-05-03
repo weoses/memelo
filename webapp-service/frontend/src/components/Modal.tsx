@@ -30,7 +30,7 @@ export default function Modal({ onClose, canClose = true, children }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/75 flex items-end sm:items-center justify-center sm:p-4"
       onClick={() => { if (canClose) onClose() }}
     >
       {children}

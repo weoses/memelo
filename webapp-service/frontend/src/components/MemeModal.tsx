@@ -16,8 +16,9 @@ function computeMediaHeight(meme: Meme): number | null {
   const srcW = meme.original_w || meme.thumbnail_w
   const srcH = meme.original_h || meme.thumbnail_h
   if (!srcW || !srcH) return null
-  const dialogW = Math.min(window.innerWidth - 64, 768)
-  const maxH = window.innerHeight * 0.6
+  const isMobile = window.innerWidth < 640
+  const dialogW = isMobile ? window.innerWidth : Math.min(window.innerWidth - 64, 768)
+  const maxH = window.innerHeight * (isMobile ? 0.45 : 0.6)
   return Math.round(Math.min(dialogW / (srcW / srcH), maxH))
 }
 
@@ -167,6 +168,72 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const replaceTargetRef = useRef<'original' | 'thumbnail'>('original')
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const swipeWrapRef = useRef<HTMLDivElement>(null)
+  const touchState = useRef<{
+    startX: number; startY: number
+    atTop: boolean
+    dir: 'none' | 'h' | 'v'
+    dragging: boolean
+  } | null>(null)
+
+  // Non-passive so we can preventDefault and block iOS overscroll rubber-banding during drag
+  useEffect(() => {
+    const el = swipeWrapRef.current
+    if (!el) return
+    const onMove = (e: TouchEvent) => {
+      if (!touchState.current) return
+      const dx = e.touches[0].clientX - touchState.current.startX
+      const dy = e.touches[0].clientY - touchState.current.startY
+      const ax = Math.abs(dx), ay = Math.abs(dy)
+      if (touchState.current.dir === 'none' && (ax > 8 || ay > 8))
+        touchState.current.dir = ay > ax ? 'v' : 'h'
+      if (touchState.current.dir === 'v' && dy > 0 && touchState.current.atTop) {
+        e.preventDefault()
+        touchState.current.dragging = true
+        el.style.transform = `translateY(${dy}px)`
+        el.style.opacity = String(Math.max(0, 1 - dy / 350))
+      }
+    }
+    el.addEventListener('touchmove', onMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onMove)
+  }, [])
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const scrollEl = swipeWrapRef.current?.querySelector('.overflow-y-auto') as HTMLElement | null
+    touchState.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      atTop: (scrollEl?.scrollTop ?? 0) === 0,
+      dir: 'none',
+      dragging: false,
+    }
+    if (swipeWrapRef.current) swipeWrapRef.current.style.transition = 'none'
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchState.current) return
+    const { startX, startY, dragging, dir } = touchState.current
+    const dx = e.changedTouches[0].clientX - startX
+    const dy = e.changedTouches[0].clientY - startY
+    const ax = Math.abs(dx), ay = Math.abs(dy)
+    touchState.current = null
+    const el = swipeWrapRef.current
+    if (dragging && el) {
+      if (dy > 150) {
+        el.style.transition = 'transform 0.25s ease, opacity 0.25s ease'
+        el.style.transform = 'translateY(100%)'
+        el.style.opacity = '0'
+        setTimeout(onClose, 250)
+      } else {
+        el.style.transition = 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease'
+        el.style.transform = 'translateY(0)'
+        el.style.opacity = '1'
+      }
+    } else if (dir === 'h' && ax > 50 && ax > ay) {
+      if (dx < 0) onNext?.()
+      else onPrev?.()
+    }
+  }
 
   useEffect(() => {
     if (!dropdownOpen) return
@@ -226,7 +293,7 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
       {onPrev && (
         <button
           onClick={e => { e.stopPropagation(); onPrev() }}
-          className="fixed left-3 top-1/2 -translate-y-1/2 z-[60] flex items-center justify-center
+          className="hidden sm:flex fixed left-3 top-1/2 -translate-y-1/2 z-[60] items-center justify-center
                      w-11 h-11 rounded-full bg-black/60 hover:bg-purple-600/80 backdrop-blur-sm
                      text-white transition-all duration-150 hover:scale-110 focus:outline-none"
           aria-label="Previous"
@@ -239,7 +306,7 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
       {onNext && (
         <button
           onClick={e => { e.stopPropagation(); onNext() }}
-          className="fixed right-3 top-1/2 -translate-y-1/2 z-[60] flex items-center justify-center
+          className="hidden sm:flex fixed right-3 top-1/2 -translate-y-1/2 z-[60] items-center justify-center
                      w-11 h-11 rounded-full bg-black/60 hover:bg-purple-600/80 backdrop-blur-sm
                      text-white transition-all duration-150 hover:scale-110 focus:outline-none"
           aria-label="Next"
@@ -249,7 +316,17 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
           </svg>
         </button>
       )}
-      <Dialog onClose={onClose} className="max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div
+        ref={swipeWrapRef}
+        className="relative w-full sm:max-w-3xl"
+        onClick={e => e.stopPropagation()}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="sm:hidden absolute -top-5 left-0 right-0 flex justify-center pointer-events-none">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
+        </div>
+      <Dialog onClose={onClose} className="w-full max-h-[90dvh] sm:max-h-[90vh] overflow-y-auto">
         <div className="relative w-full bg-black flex items-center justify-center overflow-hidden" style={mediaStyle}>
           {!loaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -273,6 +350,30 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
               style={{ opacity: loaded ? 1 : 0 }}
               onLoad={() => setLoaded(true)}
             />
+          )}
+          {onPrev && (
+            <button
+              onClick={e => { e.stopPropagation(); onPrev() }}
+              className="sm:hidden absolute left-2 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center
+                         w-9 h-9 rounded-full bg-black/60 text-white"
+              aria-label="Previous"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <path d="M13 4l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
+          {onNext && (
+            <button
+              onClick={e => { e.stopPropagation(); onNext() }}
+              className="sm:hidden absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center
+                         w-9 h-9 rounded-full bg-black/60 text-white"
+              aria-label="Next"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           )}
         </div>
         <div className="flex items-center justify-between px-3 py-1.5">
@@ -353,6 +454,7 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
           )}
         </div>
       </Dialog>
+      </div>
     </Modal>
   )
 }
