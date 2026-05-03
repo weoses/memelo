@@ -25,29 +25,23 @@
     dest: "{{ deploy_path }}/docker-compose.deploy.yml"
     mode: "0644"
 
-- name: Stop existing containers
-  command: docker compose -f docker-compose.deploy.yml -p memelo down
-  args:
-    chdir: "{{ deploy_path }}"
+- name: Stop and remove existing containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ deploy_path }}"
+    files:
+      - docker-compose.deploy.yml
+    project_name: memelo
+    state: absent
+    remove_orphans: true
   ignore_errors: true
 
-- name: Remove any leftover containers
-  shell: |
-    CONTAINERS=$(docker ps -q -f "name=memelo")
-    for id in $CONTAINERS; do
-      echo "Removing leftover container $id"
-      docker stop "$id"
-      docker rm "$id"
-    done
-  args:
-    chdir: "{{ deploy_path }}"
-
-- name: Pull new images
-  command: docker compose -f docker-compose.deploy.yml -p memelo pull
-  args:
-    chdir: "{{ deploy_path }}"
-
-- name: Start services
-  command: docker compose -f docker-compose.deploy.yml -p memelo up -d --wait --wait-timeout 300
-  args:
-    chdir: "{{ deploy_path }}"
+- name: Pull images and start services
+  community.docker.docker_compose_v2:
+    project_src: "{{ deploy_path }}"
+    files:
+      - docker-compose.deploy.yml
+    project_name: memelo
+    state: present
+    pull: always
+    wait: true
+    wait_timeout: 300

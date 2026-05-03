@@ -1,0 +1,35 @@
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /app/webapp/frontend
+COPY webapp-service/frontend/package.json ./webapp-service/frontend/package-lock.json ./
+RUN npm ci
+COPY webapp-service/frontend ./
+RUN npm run build
+
+
+FROM golang:1.25.0-alpine AS builder
+
+WORKDIR /app
+RUN apk add --update --no-cache bash curl gcc g++ musl-dev libc6-compat
+
+COPY ./gen gen/
+COPY ./common common/
+COPY webapp-service ./webapp
+
+COPY --from=frontend-builder /app/webapp/frontend/dist ./webapp/frontend/dist
+
+WORKDIR /app/webapp
+RUN go build -a -installsuffix cgo -o output.bin
+
+
+FROM alpine:latest
+
+WORKDIR /app
+RUN apk add curl
+COPY --from=builder /app/webapp/output.bin webapp
+
+WORKDIR /app/config
+ENV APPLICATION_CONFIGPATH "/app/config"
+
+WORKDIR /app
+ENTRYPOINT [ "/app/webapp" ]
