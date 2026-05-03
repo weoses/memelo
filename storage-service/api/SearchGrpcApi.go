@@ -261,8 +261,30 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 	}, nil
 }
 
-func (api *SearchServiceApi) GetMeme(context.Context, *v1.GetMemeRequest) (*v1.GetMemeResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetMeme is not implemented"))
+func (api *SearchServiceApi) GetMeme(ctx context.Context, req *v1.GetMemeRequest) (*v1.GetMemeResponse, error) {
+	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
+
+	accountId, err := uuid.Parse(req.AccountId)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+	}
+
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Id: %w", err)
+	}
+
+	api.slogger.InfoContext(ctx, "GetMeme request", "id", id)
+	result, err := api.crud.GetMeme(ctx, accountId, id)
+	if errors.Is(err, service.ErrMemeNotFound) {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if err != nil {
+		api.slogger.ErrorContext(ctx, "GetMeme error", "id", req.Id, "err", err)
+		return nil, err
+	}
+
+	return &v1.GetMemeResponse{Result: api.metadataToMemeDto(result)}, nil
 }
 
 func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto) (temp.S3BackedData, bool, error) {

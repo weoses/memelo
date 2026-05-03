@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"connectrpc.com/connect"
 	"github.com/labstack/echo/v4"
 	"github.com/weoses/memelo/webapp/conf"
 	"github.com/weoses/memelo/webapp/service"
@@ -92,6 +93,19 @@ func (h *Handlers) ParseByToken(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid or expired token")
 	}
 	return c.JSON(http.StatusCreated, memeToResponse(*result))
+}
+
+func (h *Handlers) GetMeme(c echo.Context) error {
+	id := c.Param("id")
+	result, err := h.proxy.GetMeme(c.Request().Context(), h.accountId, id)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return echo.NewHTTPError(http.StatusNotFound, "meme not found")
+		}
+		h.log.Error("get meme failed", "error", err)
+		return echo.NewHTTPError(http.StatusBadGateway, "upstream error")
+	}
+	return c.JSON(http.StatusOK, memeToResponse(*result))
 }
 
 func (h *Handlers) UpdateMeme(c echo.Context) error {
