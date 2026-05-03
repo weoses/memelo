@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 
 interface Props {
   onQueryChange: (q: string) => void
+  initialValue?: string
 }
 
-export default function SearchBar({ onQueryChange }: Props) {
-  const [value, setValue] = useState('')
+export default function SearchBar({ onQueryChange, initialValue }: Props) {
+  const [value, setValue] = useState(initialValue ?? '')
 
   useEffect(() => {
     const t = setTimeout(() => onQueryChange(value), 400)

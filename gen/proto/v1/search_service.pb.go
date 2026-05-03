@@ -358,6 +358,7 @@ func (x *CreateMemeResponse) GetStatus() CreateMemeStatus {
 type GetMemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -395,6 +396,13 @@ func (*GetMemeRequest) Descriptor() ([]byte, []int) {
 func (x *GetMemeRequest) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *GetMemeRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
 	}
 	return ""
 }
@@ -712,9 +720,11 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\x06_video\"\x81\x01\n" +
 	"\x12CreateMemeResponse\x120\n" +
 	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\x129\n" +
-	"\x06status\x18\x02 \x01(\x0e2!.proto.memelo.v1.CreateMemeStatusR\x06status\" \n" +
+	"\x06status\x18\x02 \x01(\x0e2!.proto.memelo.v1.CreateMemeStatusR\x06status\"?\n" +
 	"\x0eGetMemeRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"C\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\"C\n" +
 	"\x0fGetMemeResponse\x120\n" +
 	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\"B\n" +
 	"\x11DeleteMemeRequest\x12\x1d\n" +

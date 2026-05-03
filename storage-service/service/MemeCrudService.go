@@ -53,6 +53,7 @@ type UpdateMemeInput struct {
 type MemeCrudService interface {
 	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error)
+	GetMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*MetadataWithUrls, error)
 	UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAll(ctx context.Context, accountId uuid.UUID) error
@@ -238,6 +239,21 @@ func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeIn
 	results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{existing})
 	if err != nil {
 		return nil, fmt.Errorf("add urls to elastic entities failed: %w", err)
+	}
+	return results[0], nil
+}
+
+func (m *MemeCrudServiceImpl) GetMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*MetadataWithUrls, error) {
+	existing, err := m.metadataStorageService.GetById(ctx, accountId, id)
+	if err != nil {
+		return nil, fmt.Errorf("get metadata failed: %w", err)
+	}
+	if existing == nil {
+		return nil, ErrMemeNotFound
+	}
+	results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{existing})
+	if err != nil {
+		return nil, fmt.Errorf("add urls failed: %w", err)
 	}
 	return results[0], nil
 }

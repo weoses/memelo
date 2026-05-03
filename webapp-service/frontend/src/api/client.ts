@@ -102,6 +102,13 @@ export async function parseByToken(token: string): Promise<Meme> {
   return res.json()
 }
 
+export async function getMeme(id: string): Promise<Meme | null> {
+  const res = await fetch(`${BASE}api/memes/${id}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`get meme failed: ${res.status}`)
+  return res.json()
+}
+
 export async function updateMeme(
   id: string,
   fields: { caption?: string; on_screen_text?: string; audio_transcript?: string; audio_track?: string },

@@ -41,6 +41,7 @@ message CreateMemeResponse {
 
 message GetMemeRequest{
   string id = 1;
+  string account_id = 2;
 }
 
 message GetMemeResponse {

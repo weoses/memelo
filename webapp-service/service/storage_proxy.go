@@ -53,6 +53,7 @@ type SearchResult struct {
 type StorageProxy interface {
 	Search(ctx context.Context, accountId, query string, afterId *Pagination, limit int32) (*SearchResult, error)
 	UploadByS3Path(ctx context.Context, accountId, s3path, mime string) (*MemeResult, error)
+	GetMeme(ctx context.Context, accountId, id string) (*MemeResult, error)
 	UpdateMeme(ctx context.Context, accountId, id string, params UpdateParams) (*MemeResult, error)
 }
 
@@ -121,6 +122,15 @@ func (s *storageProxy) UploadByS3Path(ctx context.Context, accountId, s3path, mi
 	default:
 		result.Status = "new"
 	}
+	return &result, nil
+}
+
+func (s *storageProxy) GetMeme(ctx context.Context, accountId, id string) (*MemeResult, error) {
+	resp, err := s.cl.GetMeme(ctx, &v1.GetMemeRequest{AccountId: accountId, Id: id})
+	if err != nil {
+		return nil, fmt.Errorf("get meme failed: %w", err)
+	}
+	result := dtoToResult(resp.GetResult())
 	return &result, nil
 }
 
