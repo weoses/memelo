@@ -56,7 +56,7 @@ jobs:
         with:
           push: true
           file: Dockerfile-${{matrix.service}}-service
-          tags: ghcr.io/weoses/${{matrix.service}}:dev-${{ github.sha }}
+          tags: ghcr.io/weoses/${{matrix.service}}-service:dev-${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
