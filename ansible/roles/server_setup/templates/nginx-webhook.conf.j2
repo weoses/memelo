@@ -1,0 +1,17 @@
+server {
+    listen 443 ssl;
+    server_name {{ webhook_domain }};
+    ssl_certificate     /etc/letsencrypt/live/{{ webhook_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ webhook_domain }}/privkey.pem;
+
+    access_log {{ nginx_log_dir }}/{{ webhook_domain }}-access.log;
+    error_log  {{ nginx_log_dir }}/{{ webhook_domain }}-error.log;
+
+    location /telegram-service/webhook {
+        proxy_pass           http://localhost:{{ telegram_service_port }}/webhook;
+        proxy_set_header     Host $host;
+        proxy_set_header     X-Forwarded-Host $host;
+        client_max_body_size {{ nginx_max_body_size }};
+        proxy_read_timeout   {{ nginx_proxy_read_timeout }};
+    }
+}

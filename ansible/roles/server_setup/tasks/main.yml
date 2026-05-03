@@ -1,0 +1,86 @@
+---
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+      - python3-passlib
+    state: present
+
+    update_cache: true
+
+- name: Enable and start nginx
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: started
+
+
+- name: Ensure htpasswd directory exists
+  ansible.builtin.file:
+    path: "{{ nginx_htpasswd_file | dirname }}"
+    state: directory
+    mode: "0755"
+
+
+- name: Create htpasswd entry
+  community.general.htpasswd:
+    path: "{{ nginx_htpasswd_file }}"
+    name: "{{ nginx_htpasswd_user }}"
+    password: "{{ nginx_htpasswd_password }}"
+    mode: "0640"
+
+
+- name: Check if proxy domain TLS certificate exists
+  ansible.builtin.stat:
+    path: /etc/letsencrypt/live/{{ proxy_domain }}/fullchain.pem
+  register: proxy_cert
+
+- name: Obtain TLS certificate for proxy domain
+  ansible.builtin.command:
+    cmd: certbot --nginx -d {{ proxy_domain }} --non-interactive --agree-tos -m {{ certbot_email }}
+  when: not proxy_cert.stat.exists
+  become: true
+
+- name: Check if webhook TLS certificate exists
+  ansible.builtin.stat:
+    path: /etc/letsencrypt/live/{{ webhook_domain }}/fullchain.pem
+  register: webhook_cert
+
+- name: Obtain TLS certificate for webhook domain
+  ansible.builtin.command:
+    cmd: certbot --nginx -d {{ webhook_domain }} --non-interactive --agree-tos -m {{ certbot_email }}
+  when: not webhook_cert.stat.exists
+  become: true
+
+- name: Deploy proxy nginx config
+  ansible.builtin.template:
+    src: nginx-proxy.conf.j2
+    dest: /etc/nginx/sites-available/{{ proxy_domain }}.conf
+    mode: "0644"
+  notify: reload nginx
+  become: true
+
+- name: Enable proxy nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/{{ proxy_domain }}.conf
+    dest: /etc/nginx/sites-enabled/{{ proxy_domain }}.conf
+    state: link
+  notify: reload nginx
+
+- name: Deploy webhook nginx config
+  ansible.builtin.template:
+    src: nginx-webhook.conf.j2
+    dest: /etc/nginx/sites-available/{{ webhook_domain }}.conf
+    mode: "0644"
+  notify: reload nginx
+  become: true
+
+- name: Enable webhook nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/{{ webhook_domain }}.conf
+    dest: /etc/nginx/sites-enabled/{{ webhook_domain }}.conf
+    state: link
+  notify: reload nginx
+  become: true
