@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"embed"
+	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
@@ -37,11 +39,23 @@ func Module() fx.Option {
 	)
 }
 
-func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS) {
+func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS, cfg *conf.Config) {
 	distFS, err := fs.Sub(dist, "frontend/dist")
 	if err != nil {
 		panic(err)
 	}
+
+	baseUrl := ""
+	if cfg.Frontend != nil {
+		baseUrl = cfg.Frontend.BaseUrl
+	}
+	cfgData, _ := json.Marshal(map[string]string{"baseUrl": baseUrl})
+	injection := fmt.Sprintf(`<script>window.__MEMELO_CONFIG__=%s;</script>`, cfgData)
+	rawHTML, err := fs.ReadFile(distFS, "index.html")
+	if err != nil {
+		panic(err)
+	}
+	indexHTML := []byte(strings.Replace(string(rawHTML), "</head>", injection+"</head>", 1))
 
 	e := echo.New()
 	e.HideBanner = true
@@ -56,10 +70,14 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS) {
 	e.POST("/api/memes/:id/update-media/:field", h.UpdateMemeMedia)
 	e.GET("/api/health", h.Health)
 
+	e.GET("/*", func(c echo.Context) error {
+		return c.HTMLBlob(http.StatusOK, indexHTML)
+	})
+
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
 		Root:       "/",
-		Index:      "index.html",
-		HTML5:      true,
+		Index:      "",
+		HTML5:      false,
 		Filesystem: http.FS(distFS),
 		Skipper: func(c echo.Context) bool {
 			return strings.HasPrefix(c.Request().URL.Path, "/api")
