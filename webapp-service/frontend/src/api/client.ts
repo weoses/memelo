@@ -54,12 +54,14 @@ export interface UploadUrlResponse {
 }
 
 export async function getUploadUrl(
-  filename: string,
   mime: string,
   length: number,
 ): Promise<UploadUrlResponse> {
-  const params = new URLSearchParams({ filename, mime, length: String(length) })
-  const res = await fetch(`${BASE}api/memes/get-upload-url?${params}`)
+  const res = await fetch(`${BASE}api/memes/get-upload-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mime, length }),
+  })
   if (!res.ok) throw new Error(`get upload url failed: ${res.status}`)
   return res.json()
 }

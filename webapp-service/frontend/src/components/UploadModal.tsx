@@ -23,7 +23,7 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
     setPhase('uploading')
     setProgress(0)
     try {
-      const { upload_url, form_fields, token } = await getUploadUrl(file.name, file.type, file.size)
+      const { upload_url, form_fields, token } = await getUploadUrl(file.type, file.size)
       await uploadToS3Post(upload_url, form_fields, file, setProgress)
       const meme = await parseByToken(token)
       if (meme.status === 'duplicate') {

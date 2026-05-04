@@ -212,7 +212,7 @@ export default function MemeModal({ index, onClose, onPrev, onNext }: Props) {
     setMediaUploading(true)
     setMediaError(null)
     try {
-      const { upload_url, form_fields, token } = await getUploadUrl(file.name, file.type, file.size)
+      const { upload_url, form_fields, token } = await getUploadUrl(file.type, file.size)
       await uploadToS3Post(upload_url, form_fields, file)
       const updated = await updateMemeMediaApi(meme.id, token, replaceTargetRef.current)
       updateMemeInStore(updated)
