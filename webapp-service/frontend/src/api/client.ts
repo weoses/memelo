@@ -1,4 +1,5 @@
-const BASE = import.meta.env.BASE_URL
+const _cfg = (window as Window & { __MEMELO_CONFIG__?: { baseUrl?: string } }).__MEMELO_CONFIG__
+const BASE = _cfg?.baseUrl ? _cfg.baseUrl.replace(/\/$/, '') + '/' : ''
 
 export interface Meme {
   id: string

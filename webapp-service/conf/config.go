@@ -19,6 +19,10 @@ type JwtConfig struct {
 	Secret string
 }
 
+type FrontendConfig struct {
+	BaseUrl string
+}
+
 type Config struct {
 	Server         *commonconfig.ServerConfig       `mapstructure:"server"`
 	Log            *commonconfig.LoggingConfig      `mapstructure:"log"`
@@ -26,6 +30,7 @@ type Config struct {
 	Account        *AccountConfig                   `mapstructure:"account"`
 	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
 	Jwt            *JwtConfig                       `mapstructure:"jwt"`
+	Frontend       *FrontendConfig                  `mapstructure:"frontend"`
 }
 
 func NewConfig() (*Config, error) {

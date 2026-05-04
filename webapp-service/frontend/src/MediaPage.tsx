@@ -7,8 +7,10 @@ import UploadModal from './components/UploadModal'
 import MemeModal from './components/MemeModal'
 import { Meme } from './api/client'
 import { useMediaStore } from './store/mediaStore'
+const _cfg = (window as Window & { __MEMELO_CONFIG__?: { baseUrl?: string } }).__MEMELO_CONFIG__
+const BASE = _cfg?.baseUrl ? _cfg.baseUrl.replace(/\/$/, '') + '/' : ''
 
-const MEDIA_PAGE_PATH = '/media'
+const MEDIA_PAGE_PATH = `${BASE}media`
 
 function mediaUrl(query?: string, id?: string): string {
   const params = new URLSearchParams()

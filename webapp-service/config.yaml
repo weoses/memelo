@@ -19,3 +19,6 @@ temp-storage:
 
 jwt:
   Secret: "change-me-in-production"
+
+frontend:
+  BaseUrl:

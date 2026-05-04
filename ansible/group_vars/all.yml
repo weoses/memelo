@@ -39,3 +39,5 @@ nginx_htpasswd_realm: "Proxy"
 storage_service_port: 7001
 telegram_service_port: 7002
 webapp_service_port: 7003
+
+webapp_base_url: "/.proxy/webapp-service"
