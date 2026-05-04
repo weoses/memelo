@@ -58,20 +58,21 @@ func (h *Handlers) SearchMemes(c echo.Context) error {
 }
 
 func (h *Handlers) GetUploadUrl(c echo.Context) error {
-	mime := c.QueryParam("mime")
-	if mime == "" {
+	var body struct {
+		Mime   string `json:"mime"`
+		Length int64  `json:"length"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+	}
+	if body.Mime == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing mime param")
 	}
-	lengthStr := c.QueryParam("length")
-	if lengthStr == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "missing length param")
-	}
-	size, err := strconv.ParseInt(lengthStr, 10, 64)
-	if err != nil || size <= 0 {
+	if body.Length <= 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid length param")
 	}
 
-	result, err := h.upload.GetUploadUrl(c.Request().Context(), mime, size)
+	result, err := h.upload.GetUploadUrl(c.Request().Context(), body.Mime, body.Length)
 	if err != nil {
 		h.log.Error("get upload url failed", "error", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate upload url")
