@@ -34,13 +34,14 @@ export async function searchMemes(
   query: string,
   page: Pagination | null,
   limit = 20,
+  signal?: AbortSignal,
 ): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query, limit: String(limit) })
   if (page) {
     params.set('after_searcher', page.searcher)
     page.sorting_after.forEach(v => params.append('after_sorting', v))
   }
-  const res = await fetch(`${BASE}api/memes?${params}`)
+  const res = await fetch(`${BASE}api/memes?${params}`, { signal })
   if (!res.ok) throw new Error(`search failed: ${res.status}`)
   return res.json()
 }
