@@ -1,15 +1,14 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Meme, updateMeme, updateMemeMedia, getUploadUrl, uploadToS3Post } from '../api/client'
+import { Meme, updateMeme as updateMemeApi, updateMemeMedia as updateMemeMediaApi, getUploadUrl, uploadToS3Post } from '../api/client'
+import { useMediaStore } from '../store/mediaStore'
 import Modal from './Modal'
 import Dialog from './Dialog'
 
 interface Props {
-  meme: Meme
+  index: number
   onClose: () => void
   onPrev?: () => void
   onNext?: () => void
-  onUpdate: (meme: Meme) => void
-  isEdited?: boolean
 }
 
 function computeMediaHeight(meme: Meme): number | null {
@@ -158,16 +157,20 @@ function FieldRow({ label, value, fieldKey, onSave, readOnly, copyable }: FieldR
   )
 }
 
-export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isEdited }: Props) {
-  const isVideo = meme.type === 'video'
-  const [loaded, setLoaded] = useState(isVideo)
+export default function MemeModal({ index, onClose, onPrev, onNext }: Props) {
+  const meme = useMediaStore(s => index >= 0 ? s.memes[index] : s.detachedMeme)
+  const updateMemeInStore = useMediaStore(s => s.updateMeme)
+
+  const isVideo = meme?.type === 'video'
+  const [loaded, setLoaded] = useState(isVideo ?? false)
   const [mediaUploading, setMediaUploading] = useState(false)
   const [mediaError, setMediaError] = useState<string | null>(null)
-  const mediaHeight = useMemo(() => computeMediaHeight(meme), [meme.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const mediaHeight = useMemo(() => meme ? computeMediaHeight(meme) : null, [meme?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const replaceTargetRef = useRef<'original' | 'thumbnail'>('original')
   const dropdownRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!dropdownOpen) return
     const handler = (e: MouseEvent) => {
@@ -179,7 +182,7 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
 
   useEffect(() => {
     if (!isVideo) setLoaded(false)
-  }, [meme.id, isVideo]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [meme?.id, isVideo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -190,9 +193,11 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
     return () => window.removeEventListener('keydown', handler)
   }, [onPrev, onNext])
 
+  if (!meme) return null
+
   const handleFieldSave = async (key: EditableField, value: string) => {
-    const updated = await updateMeme(meme.id, { [key]: value })
-    onUpdate(updated)
+    const updated = await updateMemeApi(meme.id, { [key]: value })
+    updateMemeInStore(updated)
   }
 
   const triggerReplace = (target: 'original' | 'thumbnail') => {
@@ -209,8 +214,8 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
     try {
       const { upload_url, form_fields, token } = await getUploadUrl(file.name, file.type, file.size)
       await uploadToS3Post(upload_url, form_fields, file)
-      const updated = await updateMemeMedia(meme.id, token, replaceTargetRef.current)
-      onUpdate(updated)
+      const updated = await updateMemeMediaApi(meme.id, token, replaceTargetRef.current)
+      updateMemeInStore(updated)
     } catch {
       setMediaError('Media replacement failed')
     } finally {
@@ -303,7 +308,7 @@ export default function MemeModal({ meme, onClose, onPrev, onNext, onUpdate, isE
         </div>
         <div className="flex items-center justify-between px-3 py-1.5">
           <div>
-            {isEdited && (
+            {meme.edited && (
               <span className="text-xs bg-yellow-500/20 text-yellow-400 rounded px-1.5 py-0.5">Edited</span>
             )}
           </div>

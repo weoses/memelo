@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { searchMemes, Meme, Pagination } from '../api/client'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { Meme } from '../api/client'
+import { useMediaStore } from '../store/mediaStore'
 import MemeCard from './MemeCard'
 
 const ROW_HEIGHT = 220
@@ -7,13 +9,10 @@ const GUTTER = 4
 
 interface Props {
   query: string
-  onSelect: (m: Meme, index: number, list: Meme[]) => void
-  prependMeme?: Meme | null
-  updatedMeme?: Meme | null
+  onSelect: (index: number) => void
 }
 
-interface RowItem { meme: Meme; w: number; h: number }
-
+interface RowItem { meme: Meme; w: number; h: number; index: number }
 
 function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
   const rowHeight = containerWidth < 480 ? 140 : containerWidth < 768 ? 170 : ROW_HEIGHT
@@ -22,49 +21,48 @@ function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
   const clamp = (m: Meme) => Math.min(Math.round((m.thumbnail_w && m.thumbnail_h ? m.thumbnail_w / m.thumbnail_h : 1) * rowHeight), maxItemW)
 
   const rows: RowItem[][] = []
-  let bucket: Meme[] = []
+  let bucket: { m: Meme; flatIdx: number }[] = []
   let bucketW = 0
 
   const flush = (last = false) => {
     if (!bucket.length) return
     if (last) {
-      rows.push(bucket.map(m => ({ meme: m, w: clamp(m), h: rowHeight })))
+      rows.push(bucket.map(({ m, flatIdx }) => ({ meme: m, w: clamp(m), h: rowHeight, index: flatIdx })))
     } else {
       const gutters = (bucket.length - 1) * GUTTER
-      const totalNatural = bucket.reduce((s, m) => s + clamp(m), 0)
+      const totalNatural = bucket.reduce((s, { m }) => s + clamp(m), 0)
       const scale = (containerWidth - gutters) / totalNatural
       const h = Math.round(rowHeight * scale)
       let remaining = containerWidth - gutters
-      rows.push(bucket.map((m, i) => {
+      rows.push(bucket.map(({ m, flatIdx }, i) => {
         const w = i === bucket.length - 1 ? remaining : Math.round(clamp(m) * scale)
         remaining -= w
-        return { meme: m, w, h }
+        return { meme: m, w, h, index: flatIdx }
       }))
     }
     bucket = []
     bucketW = 0
   }
 
+  let flatIdx = 0
   for (const m of memes) {
     const nw = clamp(m)
     const needed = bucketW + (bucket.length > 0 ? GUTTER : 0) + nw
     if (bucket.length > 0 && needed > containerWidth) flush()
     bucketW += (bucket.length > 0 ? GUTTER : 0) + nw
-    bucket.push(m)
+    bucket.push({ m, flatIdx })
+    flatIdx++
   }
   flush(true)
 
   return rows
 }
 
-export default function MemeGrid({ query, onSelect, prependMeme, updatedMeme }: Props) {
-  const [memes, setMemes] = useState<Meme[]>([])
-  const [nextPage, setNextPage] = useState<Pagination | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
+export default function MemeGrid({ query, onSelect }: Props) {
+  const { memes, loading, load, loadMore } = useMediaStore(
+    useShallow(s => ({ memes: s.memes, loading: s.loading, load: s.load, loadMore: s.loadMore }))
+  )
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const loadingRef = useRef(false)
-  const resetRef = useRef(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
@@ -77,58 +75,18 @@ export default function MemeGrid({ query, onSelect, prependMeme, updatedMeme }: 
   }, [])
 
   useEffect(() => {
-    setMemes([])
-    setNextPage(null)
-    setHasMore(true)
-    resetRef.current = true
-  }, [query])
-
-  useEffect(() => {
-    setMemes(prev => {
-      return prependMeme ? [prependMeme, ...prev] : prev
-    })
-  }, [prependMeme])
-
-  useEffect(() => {
-    if (!updatedMeme) return
-    setMemes(prev => prev.map(m => m.id === updatedMeme.id ? updatedMeme : m))
-  }, [updatedMeme])
-
-  const loadMore = useCallback(async (page: Pagination | null, isReset: boolean) => {
-    if (loadingRef.current) return
-    loadingRef.current = true
-    setLoading(true)
-    try {
-      const resp = await searchMemes(query, page)
-      setMemes(prev => isReset ? resp.memes : [...prev, ...resp.memes])
-      setNextPage(resp.next_page)
-      setHasMore(resp.memes.length > 0 && resp.next_page !== null)
-    } catch (e) {
-      console.error('search error', e)
-    } finally {
-      loadingRef.current = false
-      setLoading(false)
-    }
-  }, [query])
-
-  useEffect(() => {
-    if (resetRef.current) {
-      resetRef.current = false
-      void loadMore(null, true)
-    }
-  }, [query, loadMore])
+    load(query)
+  }, [query, load])
 
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
     const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
-        void loadMore(nextPage, false)
-      }
+      if (entries[0].isIntersecting) void loadMore()
     }, { rootMargin: '300px' })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [hasMore, loadMore, nextPage])
+  }, [loadMore, memes.length])
 
   const rows = useMemo(
     () => containerWidth > 0 ? buildRows(memes, containerWidth) : [],
@@ -145,11 +103,11 @@ export default function MemeGrid({ query, onSelect, prependMeme, updatedMeme }: 
         <div className="flex flex-col" style={{ gap: GUTTER }}>
           {rows.map((row, rowIdx) => (
             <div key={rowIdx} className="flex" style={{ gap: GUTTER, height: row[0]?.h }}>
-              {row.map(({ meme, w, h }) => (
+              {row.map(({ meme, w, h, index }) => (
                 <div key={meme.id} style={{ width: w, height: h, flexShrink: 0 }}>
                   <MemeCard
                     meme={meme}
-                    onClick={() => onSelect(meme, memes.indexOf(meme), memes)}
+                    onClick={() => onSelect(index)}
                     isEdited={meme.edited}
                   />
                 </div>
