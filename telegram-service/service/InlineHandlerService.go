@@ -4,18 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 
-	"github.com/google/uuid"
-	"github.com/weoses/memelo/common/helper"
-	"github.com/weoses/memelo/telegram-service/entity"
 	"github.com/weoses/memelo/telegram-service/util"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/telegram-service/conf"
 )
 
-const inlineDeletePrefix = "!del"
+const inlineDeletePrefix = "/delete"
+const randomPrefix = "/random"
 
 type InlineHandlerService interface {
 	ProcessQuery(
@@ -34,39 +31,24 @@ type InineHandlerServiceImpl struct {
 	storage     StorageConnector
 	config      *conf.Config
 	log         *slog.Logger
+	factory     QueryProcessorFactory
 }
 
 func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, request *tgbotapi.ChosenInlineResult) error {
-	if !strings.HasPrefix(request.Query, inlineDeletePrefix) {
-		return nil
-	}
-	var accountId uuid.UUID
-	var imageIdUuid uuid.UUID
-	var err error
-
-	imageId := request.ResultID
 	userId := request.From.ID
-	i.log.InfoContext(ctx, "Inline result : del query:",
+	i.log.InfoContext(ctx, "Inline result chosen",
 		"userId", userId,
 		"query", request.Query,
 		"messageId", request.InlineMessageID)
 
-	accountId, err = i.userAccount.MapUserToAccount(ctx, userId)
+	processor := i.factory.GetProcessor(request.Query)
+
+	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
 	if err != nil {
-		return fmt.Errorf("ProcessChosenInlineQuery: MapUserToAccount failed, userId=%d, err=%w", userId, err)
+		return fmt.Errorf("ProcessChosenInlineQuery: MapUserToAccount failed, userId=%d: %w", userId, err)
 	}
 
-	imageIdUuid, err = uuid.Parse(imageId)
-	if err != nil {
-		return fmt.Errorf("failed to parse uuid %w", err)
-	}
-	err = i.storage.DeleteMeme(ctx, accountId, imageIdUuid)
-	if err != nil {
-		return fmt.Errorf("ProcessChosenInlineQuery: DeleteMeme failed, accountId=%s, memeId=%s err=%w",
-			accountId, imageIdUuid, err)
-	}
-
-	return nil
+	return processor.ProcessChosenQuery(ctx, accountId, request.ResultID)
 }
 
 // ProcessQuery implements InlineService.
@@ -75,110 +57,31 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	request *tgbotapi.InlineQuery,
 ) (*tgbotapi.InlineConfig, error) {
 	userId := request.From.ID
-	query := request.Query
-	delQuery := false
 
 	i.log.InfoContext(ctx, "ProcessQuery start:",
 		"query", request.Query,
 		"offset", request.Offset)
-
-	if strings.HasPrefix(query, inlineDeletePrefix) {
-		query = strings.TrimPrefix(query, inlineDeletePrefix)
-		delQuery = true
-	}
-
-	query = strings.TrimSpace(query)
 
 	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	params := entity.SearchParams{
-		Query:      query,
-		Pagination: util.ParseOffset(request.Offset),
-	}
+	processor := i.factory.GetProcessor(request.Query)
 
-	searchResult, err := i.storage.ProcessSearchQuery(
-		ctx,
-		accountId,
-		params,
-		i.config.Inline.PageSize,
-	)
+	result, err := processor.Process(ctx, accountId, request.Query, util.ParseOffset(request.Offset))
 	if err != nil {
-		return nil, fmt.Errorf("ProcessSearchQuery failed: %w", err)
+		return nil, fmt.Errorf("ProcessQuery: processor failed: %w", err)
 	}
 
-	results := searchResult.Results
-
-	i.log.InfoContext(ctx, "Search query result",
+	i.log.InfoContext(ctx, "Process query result",
 		"userId", userId,
 		"requestId", request.ID,
-		"resultListSize", len(results))
-
-	if results == nil {
-		retval := tgbotapi.InlineConfig{
-			InlineQueryID: request.ID,
-			CacheTime:     120,
-			IsPersonal:    true,
-		}
-		return &retval, nil
-	}
-
-	photos := helper.TransformSlice(
-		results,
-		make([]interface{}, len(results)),
-		func(item entity.MemeSearchResult) interface{} {
-			i.log.DebugContext(ctx, "SearchResultItem",
-				"id", item.Id,
-				"url", item.MediaUrl,
-			)
-
-			caption := item.Caption
-			if caption == "" {
-				caption = "media"
-			}
-
-			switch item.Type {
-			case entity.ResultTypeImage:
-				{
-					inlineChoice := tgbotapi.NewInlineQueryResultPhotoWithThumb(
-						item.Id,
-						item.MediaUrl,
-						item.ThumbUrl,
-					)
-					inlineChoice.MimeType = "image/jpeg"
-					inlineChoice.Height = item.ThumbHeight
-					inlineChoice.Width = item.ThumbWidth
-					if delQuery {
-						inlineChoice.Caption = "Deleted"
-					}
-					return inlineChoice
-				}
-
-			case entity.ResultTypeVideo:
-				{
-					inlineChoice := tgbotapi.NewInlineQueryResultVideo(
-						item.Id,
-						item.MediaUrl)
-					inlineChoice.MimeType = "video/mp4"
-					inlineChoice.ThumbURL = item.ThumbUrl
-					inlineChoice.Width = item.ThumbWidth
-					inlineChoice.Height = item.ThumbHeight
-					inlineChoice.Title = caption
-
-					if delQuery {
-						inlineChoice.Caption = "Deleted"
-					}
-					return inlineChoice
-				}
-			}
-			panic("unknown result type")
-		})
+		"resultListSize", len(result.Results))
 
 	nextOffset := ""
-	if len(results) == i.config.Inline.PageSize && i.config.Inline.PageSize > 0 {
-		nextOffset = util.SerializeOffset(searchResult.Pagination)
+	if result.Pagination != nil {
+		nextOffset = util.SerializeOffset(result.Pagination)
 	}
 
 	i.log.InfoContext(ctx, "Search next offset",
@@ -186,21 +89,20 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		"requestId", request.ID,
 		"nextOffset", nextOffset)
 
-	retval := tgbotapi.InlineConfig{
+	return &tgbotapi.InlineConfig{
 		InlineQueryID: request.ID,
-		CacheTime:     50,
+		CacheTime:     result.CacheTime,
 		IsPersonal:    true,
 		NextOffset:    nextOffset,
-	}
-	retval.Results = photos
-
-	return &retval, nil
+		Results:       result.Results,
+	}, nil
 }
 
 func NewInlineService(
 	userAccount UserAccountService,
 	storage StorageConnector,
 	config *conf.Config,
+	factory QueryProcessorFactory,
 ) InlineHandlerService {
 
 	return &InineHandlerServiceImpl{
@@ -208,5 +110,6 @@ func NewInlineService(
 		storage:     storage,
 		config:      config,
 		log:         slog.With("service", "InlineHandlerService"),
+		factory:     factory,
 	}
 }

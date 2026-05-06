@@ -691,6 +691,102 @@ func (x *UpdateMemeResponse) GetResult() *MemeDto {
 	return nil
 }
 
+type GetRandomMemeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	Type          *string                `protobuf:"bytes,2,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRandomMemeRequest) Reset() {
+	*x = GetRandomMemeRequest{}
+	mi := &file_proto_v1_search_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRandomMemeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRandomMemeRequest) ProtoMessage() {}
+
+func (x *GetRandomMemeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_search_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRandomMemeRequest.ProtoReflect.Descriptor instead.
+func (*GetRandomMemeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetRandomMemeRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *GetRandomMemeRequest) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
+}
+
+type GetRandomMemeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Result        *MemeDto               `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRandomMemeResponse) Reset() {
+	*x = GetRandomMemeResponse{}
+	mi := &file_proto_v1_search_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRandomMemeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRandomMemeResponse) ProtoMessage() {}
+
+func (x *GetRandomMemeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_v1_search_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRandomMemeResponse.ProtoReflect.Descriptor instead.
+func (*GetRandomMemeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetRandomMemeResponse) GetResult() *MemeDto {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
 var File_proto_v1_search_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_search_service_proto_rawDesc = "" +
@@ -753,12 +849,19 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\n" +
 	"_thumbnail\"F\n" +
 	"\x12UpdateMemeResponse\x120\n" +
+	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\"W\n" +
+	"\x14GetRandomMemeRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x17\n" +
+	"\x04type\x18\x02 \x01(\tH\x00R\x04type\x88\x01\x01B\a\n" +
+	"\x05_type\"I\n" +
+	"\x15GetRandomMemeResponse\x120\n" +
 	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result*P\n" +
 	"\x10CreateMemeStatus\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"STATUS_NEW\x10\x01\x12\x14\n" +
-	"\x10STATUS_DUPLICATE\x10\x022\x8d\x04\n" +
+	"\x10STATUS_DUPLICATE\x10\x022\xed\x04\n" +
 	"\rSearchService\x12U\n" +
 	"\n" +
 	"SearchMeme\x12\".proto.memelo.v1.SearchMemeRequest\x1a#.proto.memelo.v1.SearchMemeResponse\x12U\n" +
@@ -769,7 +872,8 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"DeleteMeme\x12\".proto.memelo.v1.DeleteMemeRequest\x1a#.proto.memelo.v1.DeleteMemeResponse\x12U\n" +
 	"\n" +
 	"UpdateMeme\x12\".proto.memelo.v1.UpdateMemeRequest\x1a#.proto.memelo.v1.UpdateMemeResponse\x12R\n" +
-	"\tDeleteAll\x12!.proto.memelo.v1.DeleteAllRequest\x1a\".proto.memelo.v1.DeleteAllResponseB\xae\x01\n" +
+	"\tDeleteAll\x12!.proto.memelo.v1.DeleteAllRequest\x1a\".proto.memelo.v1.DeleteAllResponse\x12^\n" +
+	"\rGetRandomMeme\x12%.proto.memelo.v1.GetRandomMemeRequest\x1a&.proto.memelo.v1.GetRandomMemeResponseB\xae\x01\n" +
 	"\x13com.proto.memelo.v1B\x12SearchServiceProtoP\x01Z%github.com/weoses/memelo/gen/proto/v1\xa2\x02\x03PMX\xaa\x02\x0fProto.Memelo.V1\xca\x02\x0fProto\\Memelo\\V1\xe2\x02\x1bProto\\Memelo\\V1\\GPBMetadata\xea\x02\x11Proto::Memelo::V1b\x06proto3"
 
 var (
@@ -785,54 +889,59 @@ func file_proto_v1_search_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_v1_search_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_v1_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_v1_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_proto_v1_search_service_proto_goTypes = []any{
-	(CreateMemeStatus)(0),      // 0: proto.memelo.v1.CreateMemeStatus
-	(*MediaDataDto)(nil),       // 1: proto.memelo.v1.MediaDataDto
-	(*SearchMemeRequest)(nil),  // 2: proto.memelo.v1.SearchMemeRequest
-	(*SearchMemeResponse)(nil), // 3: proto.memelo.v1.SearchMemeResponse
-	(*CreateMemeRequest)(nil),  // 4: proto.memelo.v1.CreateMemeRequest
-	(*CreateMemeResponse)(nil), // 5: proto.memelo.v1.CreateMemeResponse
-	(*GetMemeRequest)(nil),     // 6: proto.memelo.v1.GetMemeRequest
-	(*GetMemeResponse)(nil),    // 7: proto.memelo.v1.GetMemeResponse
-	(*DeleteMemeRequest)(nil),  // 8: proto.memelo.v1.DeleteMemeRequest
-	(*DeleteMemeResponse)(nil), // 9: proto.memelo.v1.DeleteMemeResponse
-	(*UpdateMemeRequest)(nil),  // 10: proto.memelo.v1.UpdateMemeRequest
-	(*UpdateMemeResponse)(nil), // 11: proto.memelo.v1.UpdateMemeResponse
-	(*PipelinePagination)(nil), // 12: proto.memelo.v1.PipelinePagination
-	(*MemeDto)(nil),            // 13: proto.memelo.v1.MemeDto
-	(*DeleteAllRequest)(nil),   // 14: proto.memelo.v1.DeleteAllRequest
-	(*DeleteAllResponse)(nil),  // 15: proto.memelo.v1.DeleteAllResponse
+	(CreateMemeStatus)(0),         // 0: proto.memelo.v1.CreateMemeStatus
+	(*MediaDataDto)(nil),          // 1: proto.memelo.v1.MediaDataDto
+	(*SearchMemeRequest)(nil),     // 2: proto.memelo.v1.SearchMemeRequest
+	(*SearchMemeResponse)(nil),    // 3: proto.memelo.v1.SearchMemeResponse
+	(*CreateMemeRequest)(nil),     // 4: proto.memelo.v1.CreateMemeRequest
+	(*CreateMemeResponse)(nil),    // 5: proto.memelo.v1.CreateMemeResponse
+	(*GetMemeRequest)(nil),        // 6: proto.memelo.v1.GetMemeRequest
+	(*GetMemeResponse)(nil),       // 7: proto.memelo.v1.GetMemeResponse
+	(*DeleteMemeRequest)(nil),     // 8: proto.memelo.v1.DeleteMemeRequest
+	(*DeleteMemeResponse)(nil),    // 9: proto.memelo.v1.DeleteMemeResponse
+	(*UpdateMemeRequest)(nil),     // 10: proto.memelo.v1.UpdateMemeRequest
+	(*UpdateMemeResponse)(nil),    // 11: proto.memelo.v1.UpdateMemeResponse
+	(*GetRandomMemeRequest)(nil),  // 12: proto.memelo.v1.GetRandomMemeRequest
+	(*GetRandomMemeResponse)(nil), // 13: proto.memelo.v1.GetRandomMemeResponse
+	(*PipelinePagination)(nil),    // 14: proto.memelo.v1.PipelinePagination
+	(*MemeDto)(nil),               // 15: proto.memelo.v1.MemeDto
+	(*DeleteAllRequest)(nil),      // 16: proto.memelo.v1.DeleteAllRequest
+	(*DeleteAllResponse)(nil),     // 17: proto.memelo.v1.DeleteAllResponse
 }
 var file_proto_v1_search_service_proto_depIdxs = []int32{
-	12, // 0: proto.memelo.v1.SearchMemeRequest.after_id:type_name -> proto.memelo.v1.PipelinePagination
-	13, // 1: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
-	12, // 2: proto.memelo.v1.SearchMemeResponse.last_id:type_name -> proto.memelo.v1.PipelinePagination
+	14, // 0: proto.memelo.v1.SearchMemeRequest.after_id:type_name -> proto.memelo.v1.PipelinePagination
+	15, // 1: proto.memelo.v1.SearchMemeResponse.results:type_name -> proto.memelo.v1.MemeDto
+	14, // 2: proto.memelo.v1.SearchMemeResponse.last_id:type_name -> proto.memelo.v1.PipelinePagination
 	1,  // 3: proto.memelo.v1.CreateMemeRequest.image:type_name -> proto.memelo.v1.MediaDataDto
 	1,  // 4: proto.memelo.v1.CreateMemeRequest.video:type_name -> proto.memelo.v1.MediaDataDto
-	13, // 5: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	15, // 5: proto.memelo.v1.CreateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
 	0,  // 6: proto.memelo.v1.CreateMemeResponse.status:type_name -> proto.memelo.v1.CreateMemeStatus
-	13, // 7: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	15, // 7: proto.memelo.v1.GetMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
 	1,  // 8: proto.memelo.v1.UpdateMemeRequest.original:type_name -> proto.memelo.v1.MediaDataDto
 	1,  // 9: proto.memelo.v1.UpdateMemeRequest.thumbnail:type_name -> proto.memelo.v1.MediaDataDto
-	13, // 10: proto.memelo.v1.UpdateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
-	2,  // 11: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
-	4,  // 12: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
-	6,  // 13: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
-	8,  // 14: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
-	10, // 15: proto.memelo.v1.SearchService.UpdateMeme:input_type -> proto.memelo.v1.UpdateMemeRequest
-	14, // 16: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
-	3,  // 17: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
-	5,  // 18: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
-	7,  // 19: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
-	9,  // 20: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
-	11, // 21: proto.memelo.v1.SearchService.UpdateMeme:output_type -> proto.memelo.v1.UpdateMemeResponse
-	15, // 22: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	15, // 10: proto.memelo.v1.UpdateMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	15, // 11: proto.memelo.v1.GetRandomMemeResponse.result:type_name -> proto.memelo.v1.MemeDto
+	2,  // 12: proto.memelo.v1.SearchService.SearchMeme:input_type -> proto.memelo.v1.SearchMemeRequest
+	4,  // 13: proto.memelo.v1.SearchService.CreateMeme:input_type -> proto.memelo.v1.CreateMemeRequest
+	6,  // 14: proto.memelo.v1.SearchService.GetMeme:input_type -> proto.memelo.v1.GetMemeRequest
+	8,  // 15: proto.memelo.v1.SearchService.DeleteMeme:input_type -> proto.memelo.v1.DeleteMemeRequest
+	10, // 16: proto.memelo.v1.SearchService.UpdateMeme:input_type -> proto.memelo.v1.UpdateMemeRequest
+	16, // 17: proto.memelo.v1.SearchService.DeleteAll:input_type -> proto.memelo.v1.DeleteAllRequest
+	12, // 18: proto.memelo.v1.SearchService.GetRandomMeme:input_type -> proto.memelo.v1.GetRandomMemeRequest
+	3,  // 19: proto.memelo.v1.SearchService.SearchMeme:output_type -> proto.memelo.v1.SearchMemeResponse
+	5,  // 20: proto.memelo.v1.SearchService.CreateMeme:output_type -> proto.memelo.v1.CreateMemeResponse
+	7,  // 21: proto.memelo.v1.SearchService.GetMeme:output_type -> proto.memelo.v1.GetMemeResponse
+	9,  // 22: proto.memelo.v1.SearchService.DeleteMeme:output_type -> proto.memelo.v1.DeleteMemeResponse
+	11, // 23: proto.memelo.v1.SearchService.UpdateMeme:output_type -> proto.memelo.v1.UpdateMemeResponse
+	17, // 24: proto.memelo.v1.SearchService.DeleteAll:output_type -> proto.memelo.v1.DeleteAllResponse
+	13, // 25: proto.memelo.v1.SearchService.GetRandomMeme:output_type -> proto.memelo.v1.GetRandomMemeResponse
+	19, // [19:26] is the sub-list for method output_type
+	12, // [12:19] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_search_service_proto_init() }
@@ -844,13 +953,14 @@ func file_proto_v1_search_service_proto_init() {
 	file_proto_v1_search_service_proto_msgTypes[0].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[3].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[9].OneofWrappers = []any{}
+	file_proto_v1_search_service_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_search_service_proto_rawDesc), len(file_proto_v1_search_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

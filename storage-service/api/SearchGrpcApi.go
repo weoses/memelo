@@ -287,6 +287,29 @@ func (api *SearchServiceApi) GetMeme(ctx context.Context, req *v1.GetMemeRequest
 	return &v1.GetMemeResponse{Result: api.metadataToMemeDto(result)}, nil
 }
 
+func (api *SearchServiceApi) GetRandomMeme(ctx context.Context, req *v1.GetRandomMemeRequest) (*v1.GetRandomMemeResponse, error) {
+	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
+
+	accountId, err := uuid.Parse(req.AccountId)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+	}
+
+	mediaType := entity.MetadataType(req.GetType())
+
+	api.slogger.InfoContext(ctx, "GetRandomMeme request", "accountId", req.AccountId, "type", req.GetType())
+	result, err := api.crud.GetRandomMeme(ctx, accountId, mediaType)
+	if errors.Is(err, service.ErrMemeNotFound) {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if err != nil {
+		api.slogger.ErrorContext(ctx, "GetRandomMeme error", "err", err)
+		return nil, err
+	}
+
+	return &v1.GetRandomMemeResponse{Result: api.metadataToMemeDto(result)}, nil
+}
+
 func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto) (temp.S3BackedData, bool, error) {
 	if media.GetS3Path() != "" {
 		result, err := api.dataService.WrapS3Path(ctx, media.GetS3Path())

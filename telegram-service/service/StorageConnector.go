@@ -31,6 +31,8 @@ type StorageConnector interface {
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
 
 	AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error
+
+	GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType string) (*entity.MemeSearchResult, error)
 }
 
 type StorageConnectorImpl struct {
@@ -172,6 +174,40 @@ func (s *StorageConnectorImpl) CreateVideo(ctx context.Context, data temp.S3Back
 		Tags:            response.Result.GetTags(),
 		Caption:         response.Result.GetCaption(),
 	}, nil
+}
+
+func (s *StorageConnectorImpl) GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType string) (*entity.MemeSearchResult, error) {
+	req := &v1.GetRandomMemeRequest{AccountId: accountId.String()}
+	if mediaType != "" {
+		req.Type = &mediaType
+	}
+
+	response, err := s.cl.GetRandomMeme(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("StorageConnector: GetRandomMeme failed: %w", err)
+	}
+
+	dto := response.GetResult()
+	if dto == nil {
+		return nil, nil
+	}
+
+	result := &entity.MemeSearchResult{
+		Id:      dto.GetId(),
+		Type:    dto.GetType(),
+		Caption: dto.GetCaption(),
+	}
+	if dto.GetMediaOriginal() != nil {
+		result.MediaUrl = dto.GetMediaOriginal().GetUrl()
+		result.MediaWidth = int(dto.GetMediaOriginal().GetImageWidth())
+		result.MediaHeight = int(dto.GetMediaOriginal().GetImageHeight())
+	}
+	if dto.GetImageThumbnail() != nil {
+		result.ThumbUrl = dto.GetImageThumbnail().GetUrl()
+		result.ThumbWidth = int(dto.GetImageThumbnail().GetImageWidth())
+		result.ThumbHeight = int(dto.GetImageThumbnail().GetImageHeight())
+	}
+	return result, nil
 }
 
 func NewStorageConnector(config *conf.Config) (StorageConnector, error) {

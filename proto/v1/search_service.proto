@@ -72,6 +72,14 @@ message UpdateMemeResponse {
   MemeDto result = 1;
 }
 
+message GetRandomMemeRequest {
+  string account_id = 1;
+  optional string type = 2;
+}
+
+message GetRandomMemeResponse {
+  MemeDto result = 1;
+}
 
 service SearchService {
   rpc SearchMeme(SearchMemeRequest) returns (SearchMemeResponse);
@@ -81,4 +89,6 @@ service SearchService {
   rpc UpdateMeme(UpdateMemeRequest) returns (UpdateMemeResponse);
 
   rpc DeleteAll(DeleteAllRequest) returns (DeleteAllResponse);
+
+  rpc GetRandomMeme(GetRandomMemeRequest) returns (GetRandomMemeResponse);
 }
