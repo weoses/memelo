@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -132,6 +133,8 @@ type MetadataStorageService interface {
 	DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error
 
 	QueryByRaw(ctx context.Context, rawQuery map[string]interface{}, sortKey entity.ElasticSortKey, pageSize int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
+
+	GetRandom(ctx context.Context, accountId uuid.UUID, types []entity.MetadataType) (*entity.ElasticImageMetaData, error)
 }
 
 type ElasticMetadataStorageServiceImpl struct {
@@ -615,6 +618,56 @@ func unmarshalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDa
 	var document entity.ElasticImageMetaData
 	err := json.Unmarshal(result, &document)
 	return &document, err
+}
+
+func (e *ElasticMetadataStorageServiceImpl) GetRandom(
+	ctx context.Context,
+	accountId uuid.UUID,
+	metadataTypes []entity.MetadataType,
+) (*entity.ElasticImageMetaData, error) {
+	query := types.NewQuery()
+	query.Bool = types.NewBoolQuery()
+	query.Bool.Filter = []types.Query{*e.accountIdQuery(accountId)}
+	for _, t := range metadataTypes {
+		typeQ := types.NewQuery()
+		typeQ.Match = map[string]types.MatchQuery{
+			"Type": {Query: string(t), Fuzziness: 0, Operator: &operator.And},
+		}
+		query.Bool.Filter = append(query.Bool.Filter, *typeQ)
+	}
+
+	countResp, err := e.client.Search().
+		Index(e.indexName).
+		Query(query).
+		Size(0).
+		Do(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetRandom: count failed: %w", err)
+	}
+	total := countResp.Hits.Total.Value
+	if total == 0 {
+		return nil, nil
+	}
+
+	offset := rand.Intn(int(total))
+	resp, err := e.client.Search().
+		Index(e.indexName).
+		Query(query).
+		From(offset).
+		Size(1).
+		Do(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetRandom: search failed: %w", err)
+	}
+
+	results, err := e.unmarshalResults(resp)
+	if err != nil {
+		return nil, fmt.Errorf("GetRandom: unmarshal failed: %w", err)
+	}
+	if len(results) == 0 {
+		return nil, nil
+	}
+	return results[0], nil
 }
 
 func NewElasticMetadataStorage(

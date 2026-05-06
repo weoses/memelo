@@ -57,6 +57,7 @@ type MemeCrudService interface {
 	UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAll(ctx context.Context, accountId uuid.UUID) error
+	GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error)
 }
 
 type MemeCrudServiceImpl struct {
@@ -254,6 +255,25 @@ func (m *MemeCrudServiceImpl) GetMeme(ctx context.Context, accountId uuid.UUID, 
 	results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{existing})
 	if err != nil {
 		return nil, fmt.Errorf("add urls failed: %w", err)
+	}
+	return results[0], nil
+}
+
+func (m *MemeCrudServiceImpl) GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error) {
+	var metadataTypes []entity.MetadataType
+	if mediaType != "" {
+		metadataTypes = []entity.MetadataType{mediaType}
+	}
+	result, err := m.metadataStorageService.GetRandom(ctx, accountId, metadataTypes)
+	if err != nil {
+		return nil, fmt.Errorf("GetRandomMeme: %w", err)
+	}
+	if result == nil {
+		return nil, ErrMemeNotFound
+	}
+	results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{result})
+	if err != nil {
+		return nil, fmt.Errorf("GetRandomMeme: add urls failed: %w", err)
 	}
 	return results[0], nil
 }

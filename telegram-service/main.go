@@ -67,6 +67,7 @@ func main() {
 		fx.Provide(fx.Annotate(service.NewTelegramFileResolverService, fx.From(new(*tgbotapi.BotAPI)))),
 		fx.Provide(service.NewUserAccountService),
 		fx.Provide(service.NewMessageHandlerService),
+		fx.Provide(service.NewQueryProcessorFactory),
 		fx.Provide(service.NewInlineService),
 		fx.Provide(service.NewTelegramBotService),
 		fx.Invoke(Startup),

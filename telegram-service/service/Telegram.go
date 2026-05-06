@@ -84,21 +84,6 @@ func (s *TelegramBotServiceImpl) handleCommand(ctx context.Context, requestMessa
 	s.log.InfoContext(ctx, "Bot message request")
 	s.log.DebugContext(ctx, "Bot message request details",
 		"request", requestMessage)
-
-	if requestMessage.Command() == "addtag" {
-		responseData, err := s.message.ProcessCommandAddTag(ctx, requestMessage)
-		if err != nil {
-			s.sendCommonErrorMessage(ctx, requestMessage, err)
-		}
-
-		err = s.sendCommonResponseMessage(ctx, requestMessage, responseData)
-		if err != nil {
-			s.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
-			s.sendCommonErrorMessage(ctx, requestMessage, err)
-			return
-		}
-
-	}
 }
 
 func (s *TelegramBotServiceImpl) handleMessage(ctx context.Context, requestMessage *tgbotapi.Message) {

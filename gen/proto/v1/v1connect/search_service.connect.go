@@ -49,6 +49,9 @@ const (
 	SearchServiceUpdateMemeProcedure = "/proto.memelo.v1.SearchService/UpdateMeme"
 	// SearchServiceDeleteAllProcedure is the fully-qualified name of the SearchService's DeleteAll RPC.
 	SearchServiceDeleteAllProcedure = "/proto.memelo.v1.SearchService/DeleteAll"
+	// SearchServiceGetRandomMemeProcedure is the fully-qualified name of the SearchService's
+	// GetRandomMeme RPC.
+	SearchServiceGetRandomMemeProcedure = "/proto.memelo.v1.SearchService/GetRandomMeme"
 )
 
 // SearchServiceClient is a client for the proto.memelo.v1.SearchService service.
@@ -59,6 +62,7 @@ type SearchServiceClient interface {
 	DeleteMeme(context.Context, *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error)
 	UpdateMeme(context.Context, *v1.UpdateMemeRequest) (*v1.UpdateMemeResponse, error)
 	DeleteAll(context.Context, *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error)
+	GetRandomMeme(context.Context, *v1.GetRandomMemeRequest) (*v1.GetRandomMemeResponse, error)
 }
 
 // NewSearchServiceClient constructs a client for the proto.memelo.v1.SearchService service. By
@@ -108,17 +112,24 @@ func NewSearchServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(searchServiceMethods.ByName("DeleteAll")),
 			connect.WithClientOptions(opts...),
 		),
+		getRandomMeme: connect.NewClient[v1.GetRandomMemeRequest, v1.GetRandomMemeResponse](
+			httpClient,
+			baseURL+SearchServiceGetRandomMemeProcedure,
+			connect.WithSchema(searchServiceMethods.ByName("GetRandomMeme")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // searchServiceClient implements SearchServiceClient.
 type searchServiceClient struct {
-	searchMeme *connect.Client[v1.SearchMemeRequest, v1.SearchMemeResponse]
-	createMeme *connect.Client[v1.CreateMemeRequest, v1.CreateMemeResponse]
-	getMeme    *connect.Client[v1.GetMemeRequest, v1.GetMemeResponse]
-	deleteMeme *connect.Client[v1.DeleteMemeRequest, v1.DeleteMemeResponse]
-	updateMeme *connect.Client[v1.UpdateMemeRequest, v1.UpdateMemeResponse]
-	deleteAll  *connect.Client[v1.DeleteAllRequest, v1.DeleteAllResponse]
+	searchMeme    *connect.Client[v1.SearchMemeRequest, v1.SearchMemeResponse]
+	createMeme    *connect.Client[v1.CreateMemeRequest, v1.CreateMemeResponse]
+	getMeme       *connect.Client[v1.GetMemeRequest, v1.GetMemeResponse]
+	deleteMeme    *connect.Client[v1.DeleteMemeRequest, v1.DeleteMemeResponse]
+	updateMeme    *connect.Client[v1.UpdateMemeRequest, v1.UpdateMemeResponse]
+	deleteAll     *connect.Client[v1.DeleteAllRequest, v1.DeleteAllResponse]
+	getRandomMeme *connect.Client[v1.GetRandomMemeRequest, v1.GetRandomMemeResponse]
 }
 
 // SearchMeme calls proto.memelo.v1.SearchService.SearchMeme.
@@ -175,6 +186,15 @@ func (c *searchServiceClient) DeleteAll(ctx context.Context, req *v1.DeleteAllRe
 	return nil, err
 }
 
+// GetRandomMeme calls proto.memelo.v1.SearchService.GetRandomMeme.
+func (c *searchServiceClient) GetRandomMeme(ctx context.Context, req *v1.GetRandomMemeRequest) (*v1.GetRandomMemeResponse, error) {
+	response, err := c.getRandomMeme.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // SearchServiceHandler is an implementation of the proto.memelo.v1.SearchService service.
 type SearchServiceHandler interface {
 	SearchMeme(context.Context, *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error)
@@ -183,6 +203,7 @@ type SearchServiceHandler interface {
 	DeleteMeme(context.Context, *v1.DeleteMemeRequest) (*v1.DeleteMemeResponse, error)
 	UpdateMeme(context.Context, *v1.UpdateMemeRequest) (*v1.UpdateMemeResponse, error)
 	DeleteAll(context.Context, *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error)
+	GetRandomMeme(context.Context, *v1.GetRandomMemeRequest) (*v1.GetRandomMemeResponse, error)
 }
 
 // NewSearchServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -228,6 +249,12 @@ func NewSearchServiceHandler(svc SearchServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(searchServiceMethods.ByName("DeleteAll")),
 		connect.WithHandlerOptions(opts...),
 	)
+	searchServiceGetRandomMemeHandler := connect.NewUnaryHandlerSimple(
+		SearchServiceGetRandomMemeProcedure,
+		svc.GetRandomMeme,
+		connect.WithSchema(searchServiceMethods.ByName("GetRandomMeme")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/proto.memelo.v1.SearchService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SearchServiceSearchMemeProcedure:
@@ -242,6 +269,8 @@ func NewSearchServiceHandler(svc SearchServiceHandler, opts ...connect.HandlerOp
 			searchServiceUpdateMemeHandler.ServeHTTP(w, r)
 		case SearchServiceDeleteAllProcedure:
 			searchServiceDeleteAllHandler.ServeHTTP(w, r)
+		case SearchServiceGetRandomMemeProcedure:
+			searchServiceGetRandomMemeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -273,4 +302,8 @@ func (UnimplementedSearchServiceHandler) UpdateMeme(context.Context, *v1.UpdateM
 
 func (UnimplementedSearchServiceHandler) DeleteAll(context.Context, *v1.DeleteAllRequest) (*v1.DeleteAllResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.DeleteAll is not implemented"))
+}
+
+func (UnimplementedSearchServiceHandler) GetRandomMeme(context.Context, *v1.GetRandomMemeRequest) (*v1.GetRandomMemeResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.SearchService.GetRandomMeme is not implemented"))
 }

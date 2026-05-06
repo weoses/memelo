@@ -80,5 +80,13 @@ func (c *TestClient) UpdateMeme(ctx context.Context, req *v1.UpdateMemeRequest) 
 	return c.search.UpdateMeme(ctx, req)
 }
 
+func (c *TestClient) GetRandomMeme(ctx context.Context, accountID string, mediaType string) (*v1.GetRandomMemeResponse, error) {
+	req := &v1.GetRandomMemeRequest{AccountId: accountID}
+	if mediaType != "" {
+		req.Type = &mediaType
+	}
+	return c.search.GetRandomMeme(ctx, req)
+}
+
 func (c *TestClient) Tags() v1connect.TagsServiceClient           { return c.tags }
 func (c *TestClient) Recompute() v1connect.RecomputeServiceClient { return c.recompute }
