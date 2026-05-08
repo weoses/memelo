@@ -8,6 +8,8 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
+const CreateThumbnailKey = "CreateThumbnailPipelineStep"
+
 type CreateThumbnailPipelineStep struct {
 	BasePipelineStep
 
@@ -42,6 +44,7 @@ func NewCreateThumbnailPipelineStep(encoderService MediaEncoderService) ExtractP
 		BasePipelineStep: BasePipelineStep{
 			pos: 60,
 			typ: []entity.MetadataType{entity.ImageMetadataType, entity.VideoMetadataType},
+			key: CreateThumbnailKey,
 		},
 		encoderService: encoderService,
 	}

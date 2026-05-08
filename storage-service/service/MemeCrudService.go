@@ -71,13 +71,12 @@ type MemeCrudServiceImpl struct {
 
 func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUID, mediaType entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error) {
 	pipelineResult, err := m.metadataExtractService.Extract(ctx, MetadataInputContext{
-		AccountId:        accountId,
-		Type:             mediaType,
-		RawInput:         raw,
-		CheckDuplicates:  true,
-		ComputeHash:      true,
-		ComputeExtractor: true,
-		ComputeEmbedding: true,
+		AccountId: accountId,
+		Type:      mediaType,
+		RawInput:  raw,
+		StepCallback: func(ctx context.Context, stepName string, pipelineContext *MetadataPipelineContext) bool {
+			return pipelineContext.Duplicate == nil
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("metadataService extract pipeline failed: %w", err)

@@ -11,6 +11,8 @@ message RecomputeRequest {
   bool compute_extractor = 3;
   bool compute_embedding = 4;
   bool check_duplicates = 5;
+  bool update_storage_items = 6;
+  bool include_manual_edited = 7;
 }
 
 message RecomputeJob {
@@ -41,10 +43,13 @@ message RecomputeJobStatus {
 
 message RecomputeOneRequest {
   string media_id = 1;
+  string account_id = 2;
+
   bool compute_extractor = 3;
   bool compute_embedding = 4;
   bool check_duplicates = 5;
-  string account_id = 6;
+  bool update_storage_items = 6;
+  bool include_manual_edited = 7;
 }
 message RecomputeOneResponse {
   bool success = 1;

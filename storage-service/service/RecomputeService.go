@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -17,10 +18,13 @@ const maxRecomputeWorkers = 4
 const recomputePageSize = 50
 
 type RecomputeParams struct {
-	Query            map[string]interface{}
-	ComputeExtractor bool
-	ComputeEmbedding bool
-	CheckDuplicates  bool
+	Query              map[string]interface{}
+	ComputeExtractor   bool
+	ComputeEmbedding   bool
+	UpdateStorageItems bool
+	CheckDuplicates    bool
+
+	IncludeManualEdited bool
 }
 
 type RecomputeService interface {
@@ -132,7 +136,7 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobStat
 }
 
 func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData, params RecomputeParams) error {
-	if data.Edited {
+	if (!params.IncludeManualEdited) && data.Edited {
 		r.slogger.InfoContext(ctx, "recompute: skipping manually-updated entity", "imageId", data.ImageId)
 		return nil
 	}
@@ -154,29 +158,53 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		return fmt.Errorf("wrap data failed: %w", err)
 	}
 
-	seed := &MetadataPipelineContext{
-		Hash:      data.Hash,
-		Embedding: data.EmbeddingList,
+	skipStepsMap := map[string]bool{
+		VidSliceKey:                  params.ComputeEmbedding || params.ComputeExtractor,
+		ImgCalcEmbeddingKey:          params.ComputeEmbedding,
+		VidCalcEmbeddingsKey:         params.ComputeEmbedding,
+		ImgLlmExtractKey:             params.ComputeExtractor,
+		VidLlmExtractKey:             params.ComputeExtractor,
+		CheckDuplicateByHashKey:      params.CheckDuplicates,
+		CheckDuplicateByEmbeddingKey: params.CheckDuplicates,
 	}
 
 	pipelineResult, err := r.extractService.Extract(ctx, MetadataInputContext{
-		AccountId:        data.AccountId,
-		Type:             data.Type,
-		RawInput:         rawImgS3Backed,
-		SeedData:         seed,
-		CheckDuplicates:  params.CheckDuplicates,
-		ComputeHash:      false,
-		ComputeExtractor: params.ComputeExtractor,
-		ComputeEmbedding: params.ComputeEmbedding,
+		AccountId: data.AccountId,
+		Type:      data.Type,
+		RawInput:  rawImgS3Backed,
+		StepCallback: func(ctx context.Context, stepName string, pipelineCtx *MetadataPipelineContext) bool {
+			i, ok := skipStepsMap[stepName]
+			if !ok {
+				return true
+			}
+			return i
+		},
+		SeedImageId:    &data.ImageId,
+		SeedEmbeddings: data.EmbeddingList,
 	})
+
 	if err != nil {
 		return fmt.Errorf("extract pipeline failed: %w", err)
 	}
+
 	defer helper.QuietClose(pipelineResult, r.slogger)
+
+	if params.CheckDuplicates && pipelineResult.Duplicate != nil {
+		r.slogger.InfoContext(ctx, "recompute: deleting duplicate entity",
+			"duplicateImageId", pipelineResult.Duplicate.ImageId)
+
+		errMetadataDelete := r.metadataStorageService.DeleteById(ctx, data.AccountId, pipelineResult.Duplicate.ImageId)
+		errOrigDelete := r.imageStorageService.Delete(ctx, data.S3Id, storageMediaType(data.Type, SavedOriginal))
+		errThumbDelete := r.imageStorageService.Delete(ctx, data.S3Id, storageMediaType(data.Type, SavedThumb))
+
+		if errors.Join(errMetadataDelete, errOrigDelete, errThumbDelete) != nil {
+			return fmt.Errorf("delete duplicate failed: %w", err)
+		}
+	}
 
 	data.Hash = pipelineResult.Hash
 
-	if pipelineResult.Result != nil {
+	if params.ComputeExtractor && pipelineResult.Result != nil {
 		joinedResult := fmt.Sprintf("%s %s %s",
 			pipelineResult.Result.OnScreenText,
 			pipelineResult.Result.AudioTranscript,
@@ -186,30 +214,38 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		data.ResultPerVideoSlices = pipelineResult.ResultPerVideoSlices
 	}
 
-	for i := range pipelineResult.StorageArtifacts {
-		artifact := pipelineResult.StorageArtifacts[i]
-		err = r.imageStorageService.Save(ctx, data.S3Id, storageMediaType(data.Type, artifact.Type), artifact.Data)
-		if err != nil {
-			return fmt.Errorf("save artifact with type %s failed: %w", artifact.Type, err)
+	if params.UpdateStorageItems {
+		for i := range pipelineResult.StorageArtifacts {
+			artifact := pipelineResult.StorageArtifacts[i]
+			err = r.imageStorageService.Save(ctx, data.S3Id, storageMediaType(data.Type, artifact.Type), artifact.Data)
+			if err != nil {
+				return fmt.Errorf("save artifact with type %s failed: %w", artifact.Type, err)
+			}
+		}
+
+		if pipelineResult.OriginalSize.Width > 0 {
+			data.ImageSize = &entity.Sizes{
+				Width:  pipelineResult.OriginalSize.Width,
+				Height: pipelineResult.OriginalSize.Height,
+			}
+		}
+		if pipelineResult.ThumbnailSize.Width > 0 {
+			data.ThumbSize = &entity.Sizes{
+				Width:  pipelineResult.ThumbnailSize.Width,
+				Height: pipelineResult.ThumbnailSize.Height,
+			}
 		}
 	}
 
-	if pipelineResult.OriginalSize.Width > 0 {
-		data.ImageSize = &entity.Sizes{
-			Width:  pipelineResult.OriginalSize.Width,
-			Height: pipelineResult.OriginalSize.Height,
-		}
-	}
-	if pipelineResult.ThumbnailSize.Width > 0 {
-		data.ThumbSize = &entity.Sizes{
-			Width:  pipelineResult.ThumbnailSize.Width,
-			Height: pipelineResult.ThumbnailSize.Height,
+	if params.ComputeEmbedding && len(pipelineResult.Embedding) > 0 {
+		data.EmbeddingList = []entity.EmbeddingItem{}
+		for _, v := range pipelineResult.Embedding {
+			if len(v.Data) >= 1 {
+				data.EmbeddingList = append(data.EmbeddingList, v)
+			}
 		}
 	}
 
-	if len(pipelineResult.Embedding) > 0 {
-		data.EmbeddingList = pipelineResult.Embedding
-	}
 	if len(pipelineResult.Tags) > 0 {
 		data.Tags = helper.TransformSlice(
 			pipelineResult.Tags,

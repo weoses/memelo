@@ -7,6 +7,8 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
+const EncodeOriginalKey = "EncodeOriginalPipelineStep"
+
 type EncodeOriginalPipelineStep struct {
 	BasePipelineStep
 
@@ -35,6 +37,7 @@ func NewEncodeOriginalPipelineStep(encoderService MediaEncoderService) ExtractPi
 		BasePipelineStep: BasePipelineStep{
 			pos: 20,
 			typ: []entity.MetadataType{entity.ImageMetadataType, entity.VideoMetadataType},
+			key: EncodeOriginalKey,
 		},
 		encoderService: encoderService,
 	}

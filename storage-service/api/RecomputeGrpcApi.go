@@ -17,9 +17,11 @@ type RecomputeGrpcApiImpl struct {
 
 func (r *RecomputeGrpcApiImpl) RecomputeById(ctx context.Context, request *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error) {
 	err := r.recomputeService.RecomputeOneById(ctx, request.AccountId, request.MediaId, service.RecomputeParams{
-		ComputeExtractor: request.ComputeExtractor,
-		ComputeEmbedding: request.ComputeEmbedding,
-		CheckDuplicates:  request.CheckDuplicates,
+		ComputeExtractor:    request.ComputeExtractor,
+		ComputeEmbedding:    request.ComputeEmbedding,
+		CheckDuplicates:     request.CheckDuplicates,
+		UpdateStorageItems:  request.UpdateStorageItems,
+		IncludeManualEdited: request.IncludeManualEdited,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("recompute by id failed: %w", err)
@@ -34,10 +36,12 @@ func (r *RecomputeGrpcApiImpl) StartRecomputeJob(ctx context.Context, req *v1.Re
 	}
 
 	jobId, err := r.recomputeService.StartRecompute(ctx, service.RecomputeParams{
-		Query:            query,
-		ComputeExtractor: req.ComputeExtractor,
-		ComputeEmbedding: req.ComputeEmbedding,
-		CheckDuplicates:  req.CheckDuplicates,
+		Query:               query,
+		ComputeExtractor:    req.ComputeExtractor,
+		ComputeEmbedding:    req.ComputeEmbedding,
+		CheckDuplicates:     req.CheckDuplicates,
+		UpdateStorageItems:  req.UpdateStorageItems,
+		IncludeManualEdited: req.IncludeManualEdited,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("start recompute failed: %w", err)

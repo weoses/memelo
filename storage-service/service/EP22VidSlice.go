@@ -11,7 +11,10 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
-const videoSliceOverlap = 2 * time.Second
+const (
+	VidSliceKey       = "VidSlicePipelineStep"
+	videoSliceOverlap = 2 * time.Second
+)
 
 type VidSlicePipelineStep struct {
 	BasePipelineStep
@@ -55,6 +58,7 @@ func NewVidSlicePipelineStep(slicer ocr.VideoSlicer, tmpDataService commonservic
 		BasePipelineStep: BasePipelineStep{
 			pos: 22,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
+			key: VidSliceKey,
 		},
 		slicer:         slicer,
 		tmpDataService: tmpDataService,

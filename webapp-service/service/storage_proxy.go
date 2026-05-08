@@ -55,18 +55,21 @@ type StorageProxy interface {
 	UploadByS3Path(ctx context.Context, accountId, s3path, mime string) (*MemeResult, error)
 	GetMeme(ctx context.Context, accountId, id string) (*MemeResult, error)
 	UpdateMeme(ctx context.Context, accountId, id string, params UpdateParams) (*MemeResult, error)
+	DeleteMeme(ctx context.Context, accountId, id string) error
+	RecomputeById(ctx context.Context, accountId, id string) error
 }
 
 type storageProxy struct {
-	cl  v1connect.SearchServiceClient
-	log *slog.Logger
+	searchCl    v1connect.SearchServiceClient
+	recomputeCl v1connect.RecomputeServiceClient
+	log         *slog.Logger
 }
 
 func NewStorageProxy(cfg *conf.Config) (StorageProxy, error) {
-	cl := v1connect.NewSearchServiceClient(http.DefaultClient, cfg.StorageService.Uri)
 	return &storageProxy{
-		cl:  cl,
-		log: slog.With("service", "storage_proxy"),
+		searchCl:    v1connect.NewSearchServiceClient(http.DefaultClient, cfg.StorageService.Uri),
+		recomputeCl: v1connect.NewRecomputeServiceClient(http.DefaultClient, cfg.StorageService.Uri),
+		log:         slog.With("service", "storage_proxy"),
 	}, nil
 }
 
@@ -83,7 +86,7 @@ func (s *storageProxy) Search(ctx context.Context, accountId, query string, afte
 		}
 	}
 
-	resp, err := s.cl.SearchMeme(ctx, req)
+	resp, err := s.searchCl.SearchMeme(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
@@ -111,7 +114,7 @@ func (s *storageProxy) UploadByS3Path(ctx context.Context, accountId, s3path, mi
 		req.Image = &v1.MediaDataDto{S3Path: &s3path}
 	}
 
-	resp, err := s.cl.CreateMeme(ctx, req)
+	resp, err := s.searchCl.CreateMeme(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("create meme by s3path failed: %w", err)
 	}
@@ -126,7 +129,7 @@ func (s *storageProxy) UploadByS3Path(ctx context.Context, accountId, s3path, mi
 }
 
 func (s *storageProxy) GetMeme(ctx context.Context, accountId, id string) (*MemeResult, error) {
-	resp, err := s.cl.GetMeme(ctx, &v1.GetMemeRequest{AccountId: accountId, Id: id})
+	resp, err := s.searchCl.GetMeme(ctx, &v1.GetMemeRequest{AccountId: accountId, Id: id})
 	if err != nil {
 		return nil, fmt.Errorf("get meme failed: %w", err)
 	}
@@ -150,12 +153,36 @@ func (s *storageProxy) UpdateMeme(ctx context.Context, accountId, id string, par
 		req.Thumbnail = &v1.MediaDataDto{S3Path: params.ThumbnailS3Path}
 	}
 
-	resp, err := s.cl.UpdateMeme(ctx, req)
+	resp, err := s.searchCl.UpdateMeme(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("update meme failed: %w", err)
 	}
 	result := dtoToResult(resp.GetResult())
 	return &result, nil
+}
+
+func (s *storageProxy) DeleteMeme(ctx context.Context, accountId, id string) error {
+	_, err := s.searchCl.DeleteMeme(ctx, &v1.DeleteMemeRequest{AccountId: accountId, Id: id})
+	if err != nil {
+		return fmt.Errorf("delete meme failed: %w", err)
+	}
+	return nil
+}
+
+func (s *storageProxy) RecomputeById(ctx context.Context, accountId, id string) error {
+	_, err := s.recomputeCl.RecomputeById(ctx, &v1.RecomputeOneRequest{
+		AccountId:           accountId,
+		MediaId:             id,
+		ComputeExtractor:    true,
+		ComputeEmbedding:    true,
+		CheckDuplicates:     true,
+		UpdateStorageItems:  true,
+		IncludeManualEdited: true,
+	})
+	if err != nil {
+		return fmt.Errorf("recompute by id failed: %w", err)
+	}
+	return nil
 }
 
 func dtoToResult(dto *v1.MemeDto) MemeResult {

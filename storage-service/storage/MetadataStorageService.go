@@ -95,14 +95,6 @@ type MetadataStorageService interface {
 
 	GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
 
-	GetByHash(
-		ctx context.Context,
-		accountId uuid.UUID,
-		hash string,
-		sortKey entity.ElasticSortKey,
-		pageSize int,
-	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
-
 	GetByAccountIdOrderByCreated(
 		ctx context.Context,
 		accountId uuid.UUID,
@@ -120,10 +112,20 @@ type MetadataStorageService interface {
 		pageSize int,
 	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 
+	GetDuplicatesByHash(
+		ctx context.Context,
+		accountId uuid.UUID,
+		hash string,
+		excludeIds []uuid.UUID,
+		sortKey entity.ElasticSortKey,
+		pageSize int,
+	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
+
 	GetDuplicatesByEmbeddingOrderByImageId(
 		ctx context.Context,
 		accountId uuid.UUID,
 		embedding entity.EmbeddingItem,
+		excludeIds []uuid.UUID,
 		threshold float64,
 		sortKey entity.ElasticSortKey,
 		pageSize int,
@@ -229,6 +231,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 	ctx context.Context,
 	accountId uuid.UUID,
 	embedding entity.EmbeddingItem,
+	excludeIds []uuid.UUID,
 	threshold float64,
 	sortKey entity.ElasticSortKey,
 	pageSize int,
@@ -237,6 +240,18 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 
 	accountIdFilter := e.accountIdQuery(accountId)
 	knnQuery := e.embeddingV1KnnAllQuery(embedding, accountIdFilter, pageSize)
+	if len(excludeIds) > 0 {
+		excludeQ := types.NewQuery()
+		excludeQ.Ids = types.NewIdsQuery()
+		excludeQ.Ids.Values = make([]string, len(excludeIds))
+		for i, id := range excludeIds {
+			excludeQ.Ids.Values[i] = id.String()
+		}
+		boolExclude := types.NewQuery()
+		boolExclude.Bool = types.NewBoolQuery()
+		boolExclude.Bool.MustNot = []types.Query{*excludeQ}
+		knnQuery.Filter = append(knnQuery.Filter, *boolExclude)
+	}
 
 	searchReq := e.client.Search().
 		Index(e.indexName).
@@ -347,14 +362,15 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, account
 	return data, e.validate.Struct(data)
 }
 
-func (e *ElasticMetadataStorageServiceImpl) GetByHash(
+func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByHash(
 	ctx context.Context,
 	accountId uuid.UUID,
 	hash string,
+	excludeIds []uuid.UUID,
 	sortKey entity.ElasticSortKey,
 	pageSize int,
 ) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
-	e.slogger.InfoContext(ctx, "GetByHash: call",
+	e.slogger.InfoContext(ctx, "GetDuplicatesByHash: call",
 		"hash", hash)
 
 	query := types.NewQuery()
@@ -363,6 +379,15 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	query.Bool.Must = []types.Query{
 		*e.accountIdQuery(accountId),
 		*e.hashQuery(hash),
+	}
+	if len(excludeIds) > 0 {
+		excludeQ := types.NewQuery()
+		excludeQ.Ids = types.NewIdsQuery()
+		excludeQ.Ids.Values = make([]string, len(excludeIds))
+		for i, id := range excludeIds {
+			excludeQ.Ids.Values[i] = id.String()
+		}
+		query.Bool.MustNot = []types.Query{*excludeQ}
 	}
 
 	searchRequest := e.client.Search().
@@ -389,7 +414,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByHash(
 	for i := range resultsSize {
 		item, err := unmarshalSearchResultToElasticEntity(i, result)
 		if err != nil {
-			return nil, nil, fmt.Errorf("GetByHash result unmarshall failed: id: %s error: %w", hash, err)
+			return nil, nil, fmt.Errorf("GetDuplicatesByHash result unmarshall failed: id: %s error: %w", hash, err)
 		}
 		data[i] = item
 	}

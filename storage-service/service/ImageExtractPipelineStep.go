@@ -12,12 +12,18 @@ import (
 
 type ExtractPipelineStep interface {
 	GetPos() int
+	GetKey() string
 	GetAllowedPipelineTypes() []entity.MetadataType
 	Do(ctx context.Context, inputContext MetadataInputContext, pipelineContext *MetadataPipelineContext) error
 }
 type BasePipelineStep struct {
 	pos int
 	typ []entity.MetadataType
+	key string
+}
+
+func (bp *BasePipelineStep) GetKey() string {
+	return bp.key
 }
 
 func (bp *BasePipelineStep) GetPos() int {
@@ -28,15 +34,14 @@ func (bp *BasePipelineStep) GetAllowedPipelineTypes() []entity.MetadataType {
 	return bp.typ
 }
 
+type StepCallback func(ctx context.Context, stepName string, pipelineContext *MetadataPipelineContext) bool
 type MetadataInputContext struct {
-	RawInput         temp.S3BackedData
-	AccountId        uuid.UUID
-	Type             entity.MetadataType
-	CheckDuplicates  bool
-	ComputeHash      bool
-	ComputeExtractor bool
-	ComputeEmbedding bool
-	SeedData         *MetadataPipelineContext
+	RawInput       temp.S3BackedData
+	AccountId      uuid.UUID
+	Type           entity.MetadataType
+	StepCallback   StepCallback
+	SeedImageId    *uuid.UUID
+	SeedEmbeddings []entity.EmbeddingItem
 }
 
 type MetadataStorageArtifact struct {

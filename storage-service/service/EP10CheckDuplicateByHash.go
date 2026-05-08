@@ -4,21 +4,30 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/storage"
 )
 
-type ImageCheckDuplicateByHashPipelineStep struct {
+const CheckDuplicateByHashKey = "CheckDuplicateByHashPipelineStep"
+
+type CheckDuplicateByHashPipelineStep struct {
 	BasePipelineStep
 
 	metadataService storage.MetadataStorageService
 }
 
-func (s *ImageCheckDuplicateByHashPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if !inputContext.CheckDuplicates {
-		return nil
+func (s *CheckDuplicateByHashPipelineStep) Do(
+	ctx context.Context,
+	inputContext MetadataInputContext,
+	pCtx *MetadataPipelineContext,
+) error {
+	var excludeIds []uuid.UUID
+	if inputContext.SeedImageId != nil {
+		excludeIds = append(excludeIds, *inputContext.SeedImageId)
 	}
-	items, _, err := s.metadataService.GetByHash(ctx, inputContext.AccountId, pCtx.Hash, nil, 1)
+
+	items, _, err := s.metadataService.GetDuplicatesByHash(ctx, inputContext.AccountId, pCtx.Hash, excludeIds, nil, 1)
 	if err != nil {
 		return fmt.Errorf("error getting items by hash: %w", err)
 	}
@@ -29,10 +38,11 @@ func (s *ImageCheckDuplicateByHashPipelineStep) Do(ctx context.Context, inputCon
 }
 
 func NewImageCheckDuplicateByHashPipelineStep(metadata storage.MetadataStorageService) ExtractPipelineStep {
-	return &ImageCheckDuplicateByHashPipelineStep{
+	return &CheckDuplicateByHashPipelineStep{
 		BasePipelineStep: BasePipelineStep{
 			pos: 10,
 			typ: []entity.MetadataType{entity.ImageMetadataType, entity.VideoMetadataType},
+			key: CheckDuplicateByHashKey,
 		},
 		metadataService: metadata,
 	}

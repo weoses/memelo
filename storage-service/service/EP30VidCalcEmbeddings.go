@@ -11,6 +11,8 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
+const VidCalcEmbeddingsKey = "VidCalcEmbeddingsPipelineStep"
+
 type VidCalcEmbeddingsPipelineStep struct {
 	BasePipelineStep
 
@@ -19,7 +21,7 @@ type VidCalcEmbeddingsPipelineStep struct {
 }
 
 func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if !inputContext.ComputeEmbedding && len(pCtx.Embedding) > 0 {
+	if len(pCtx.Embedding) > 0 {
 		return nil
 	}
 	if len(pCtx.VideoSlices) == 0 {
@@ -67,6 +69,7 @@ func NewVidCalcEmbeddingsPipelineStep(embedder ocr.LlmEmbeddingExtractor) Extrac
 		BasePipelineStep: BasePipelineStep{
 			pos: 30,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
+			key: VidCalcEmbeddingsKey,
 		},
 		embedder: embedder,
 		slogger:  slog.With("service", "VidCalcEmbeddingsPipelineStep"),

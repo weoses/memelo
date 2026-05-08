@@ -139,6 +139,30 @@ func (h *Handlers) UpdateMeme(c echo.Context) error {
 	return c.JSON(http.StatusOK, memeToResponse(*result))
 }
 
+func (h *Handlers) DeleteMeme(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
+	}
+	if err := h.proxy.DeleteMeme(c.Request().Context(), h.accountId, id); err != nil {
+		h.log.Error("delete meme failed", "error", err)
+		return echo.NewHTTPError(http.StatusBadGateway, "upstream delete failed")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *Handlers) RecomputeMeme(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
+	}
+	if err := h.proxy.RecomputeById(c.Request().Context(), h.accountId, id); err != nil {
+		h.log.Error("recompute meme failed", "error", err)
+		return echo.NewHTTPError(http.StatusBadGateway, "upstream recompute failed")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
 	id := c.Param("id")
 	if id == "" {

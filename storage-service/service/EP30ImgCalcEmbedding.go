@@ -8,6 +8,8 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
+const ImgCalcEmbeddingKey = "ImgCalcEmbeddingPipelineStep"
+
 type ImageCalcEmbeddingPipelineStep struct {
 	BasePipelineStep
 
@@ -15,9 +17,6 @@ type ImageCalcEmbeddingPipelineStep struct {
 }
 
 func (s *ImageCalcEmbeddingPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if !inputContext.ComputeEmbedding && len(pCtx.Embedding) > 0 {
-		return nil
-	}
 	embedding, err := s.imageEmbedder.GetImageEmbedding(ctx, pCtx.ImageOriginalJpeg)
 	if err != nil {
 		return fmt.Errorf("error getting image embedding: %w", err)
@@ -31,6 +30,7 @@ func NewImageCalcEmbeddingPipelineStep(imageEmbedder ocr.LlmEmbeddingExtractor) 
 		BasePipelineStep: BasePipelineStep{
 			typ: []entity.MetadataType{entity.ImageMetadataType},
 			pos: 30,
+			key: ImgCalcEmbeddingKey,
 		},
 		imageEmbedder: imageEmbedder}
 }
