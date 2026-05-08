@@ -2,14 +2,17 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-playground/validator/v10"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/middleware"
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/ocr/ffmpeg"
 	"github.com/weoses/memelo/storage-service/ocr/gapi"
@@ -125,11 +128,13 @@ func startup(
 	tagsApi v1connect.TagsServiceHandler,
 	recomputeApi v1connect.RecomputeServiceHandler,
 ) {
+	interceptors := connect.WithInterceptors(middleware.NewLoggingInterceptor(slog.With("service", "router")))
+
 	mux := http.NewServeMux()
-	mux.Handle(v1connect.NewSearchServiceHandler(searchApi))
-	mux.Handle(v1connect.NewExportServiceHandler(exportApi))
-	mux.Handle(v1connect.NewTagsServiceHandler(tagsApi))
-	mux.Handle(v1connect.NewRecomputeServiceHandler(recomputeApi))
+	mux.Handle(v1connect.NewSearchServiceHandler(searchApi, interceptors))
+	mux.Handle(v1connect.NewExportServiceHandler(exportApi, interceptors))
+	mux.Handle(v1connect.NewTagsServiceHandler(tagsApi, interceptors))
+	mux.Handle(v1connect.NewRecomputeServiceHandler(recomputeApi, interceptors))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})

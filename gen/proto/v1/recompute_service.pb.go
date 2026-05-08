@@ -78,13 +78,15 @@ func (RecomputeJobStatus_State) EnumDescriptor() ([]byte, []int) {
 }
 
 type RecomputeRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Query            *structpb.Struct       `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
-	ComputeExtractor bool                   `protobuf:"varint,3,opt,name=compute_extractor,json=computeExtractor,proto3" json:"compute_extractor,omitempty"`
-	ComputeEmbedding bool                   `protobuf:"varint,4,opt,name=compute_embedding,json=computeEmbedding,proto3" json:"compute_embedding,omitempty"`
-	CheckDuplicates  bool                   `protobuf:"varint,5,opt,name=check_duplicates,json=checkDuplicates,proto3" json:"check_duplicates,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Query               *structpb.Struct       `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	ComputeExtractor    bool                   `protobuf:"varint,3,opt,name=compute_extractor,json=computeExtractor,proto3" json:"compute_extractor,omitempty"`
+	ComputeEmbedding    bool                   `protobuf:"varint,4,opt,name=compute_embedding,json=computeEmbedding,proto3" json:"compute_embedding,omitempty"`
+	CheckDuplicates     bool                   `protobuf:"varint,5,opt,name=check_duplicates,json=checkDuplicates,proto3" json:"check_duplicates,omitempty"`
+	UpdateStorageItems  bool                   `protobuf:"varint,6,opt,name=update_storage_items,json=updateStorageItems,proto3" json:"update_storage_items,omitempty"`
+	IncludeManualEdited bool                   `protobuf:"varint,7,opt,name=include_manual_edited,json=includeManualEdited,proto3" json:"include_manual_edited,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RecomputeRequest) Reset() {
@@ -141,6 +143,20 @@ func (x *RecomputeRequest) GetComputeEmbedding() bool {
 func (x *RecomputeRequest) GetCheckDuplicates() bool {
 	if x != nil {
 		return x.CheckDuplicates
+	}
+	return false
+}
+
+func (x *RecomputeRequest) GetUpdateStorageItems() bool {
+	if x != nil {
+		return x.UpdateStorageItems
+	}
+	return false
+}
+
+func (x *RecomputeRequest) GetIncludeManualEdited() bool {
+	if x != nil {
+		return x.IncludeManualEdited
 	}
 	return false
 }
@@ -326,14 +342,16 @@ func (x *RecomputeJobStatus) GetLastId() string {
 }
 
 type RecomputeOneRequest struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	MediaId          string                 `protobuf:"bytes,1,opt,name=media_id,json=mediaId,proto3" json:"media_id,omitempty"`
-	ComputeExtractor bool                   `protobuf:"varint,3,opt,name=compute_extractor,json=computeExtractor,proto3" json:"compute_extractor,omitempty"`
-	ComputeEmbedding bool                   `protobuf:"varint,4,opt,name=compute_embedding,json=computeEmbedding,proto3" json:"compute_embedding,omitempty"`
-	CheckDuplicates  bool                   `protobuf:"varint,5,opt,name=check_duplicates,json=checkDuplicates,proto3" json:"check_duplicates,omitempty"`
-	AccountId        string                 `protobuf:"bytes,6,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	MediaId             string                 `protobuf:"bytes,1,opt,name=media_id,json=mediaId,proto3" json:"media_id,omitempty"`
+	AccountId           string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	ComputeExtractor    bool                   `protobuf:"varint,3,opt,name=compute_extractor,json=computeExtractor,proto3" json:"compute_extractor,omitempty"`
+	ComputeEmbedding    bool                   `protobuf:"varint,4,opt,name=compute_embedding,json=computeEmbedding,proto3" json:"compute_embedding,omitempty"`
+	CheckDuplicates     bool                   `protobuf:"varint,5,opt,name=check_duplicates,json=checkDuplicates,proto3" json:"check_duplicates,omitempty"`
+	UpdateStorageItems  bool                   `protobuf:"varint,6,opt,name=update_storage_items,json=updateStorageItems,proto3" json:"update_storage_items,omitempty"`
+	IncludeManualEdited bool                   `protobuf:"varint,7,opt,name=include_manual_edited,json=includeManualEdited,proto3" json:"include_manual_edited,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RecomputeOneRequest) Reset() {
@@ -373,6 +391,13 @@ func (x *RecomputeOneRequest) GetMediaId() string {
 	return ""
 }
 
+func (x *RecomputeOneRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
 func (x *RecomputeOneRequest) GetComputeExtractor() bool {
 	if x != nil {
 		return x.ComputeExtractor
@@ -394,11 +419,18 @@ func (x *RecomputeOneRequest) GetCheckDuplicates() bool {
 	return false
 }
 
-func (x *RecomputeOneRequest) GetAccountId() string {
+func (x *RecomputeOneRequest) GetUpdateStorageItems() bool {
 	if x != nil {
-		return x.AccountId
+		return x.UpdateStorageItems
 	}
-	return ""
+	return false
+}
+
+func (x *RecomputeOneRequest) GetIncludeManualEdited() bool {
+	if x != nil {
+		return x.IncludeManualEdited
+	}
+	return false
 }
 
 type RecomputeOneResponse struct {
@@ -449,12 +481,14 @@ var File_proto_v1_recompute_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_recompute_service_proto_rawDesc = "" +
 	"\n" +
-	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xc6\x01\n" +
+	" proto/v1/recompute_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xac\x02\n" +
 	"\x10RecomputeRequest\x12-\n" +
 	"\x05query\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x05query\x12+\n" +
 	"\x11compute_extractor\x18\x03 \x01(\bR\x10computeExtractor\x12+\n" +
 	"\x11compute_embedding\x18\x04 \x01(\bR\x10computeEmbedding\x12)\n" +
-	"\x10check_duplicates\x18\x05 \x01(\bR\x0fcheckDuplicates\"%\n" +
+	"\x10check_duplicates\x18\x05 \x01(\bR\x0fcheckDuplicates\x120\n" +
+	"\x14update_storage_items\x18\x06 \x01(\bR\x12updateStorageItems\x122\n" +
+	"\x15include_manual_edited\x18\a \x01(\bR\x13includeManualEdited\"%\n" +
 	"\fRecomputeJob\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"L\n" +
 	"\x0eRecomputeError\x12\x1b\n" +
@@ -474,14 +508,16 @@ const file_proto_v1_recompute_service_proto_rawDesc = "" +
 	"\rSTATE_RUNNING\x10\x02\x12\x0e\n" +
 	"\n" +
 	"STATE_DONE\x10\x03\x12\x10\n" +
-	"\fSTATE_FAILED\x10\x04\"\xd4\x01\n" +
+	"\fSTATE_FAILED\x10\x04\"\xba\x02\n" +
 	"\x13RecomputeOneRequest\x12\x19\n" +
-	"\bmedia_id\x18\x01 \x01(\tR\amediaId\x12+\n" +
+	"\bmedia_id\x18\x01 \x01(\tR\amediaId\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\x12+\n" +
 	"\x11compute_extractor\x18\x03 \x01(\bR\x10computeExtractor\x12+\n" +
 	"\x11compute_embedding\x18\x04 \x01(\bR\x10computeEmbedding\x12)\n" +
-	"\x10check_duplicates\x18\x05 \x01(\bR\x0fcheckDuplicates\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x06 \x01(\tR\taccountId\"0\n" +
+	"\x10check_duplicates\x18\x05 \x01(\bR\x0fcheckDuplicates\x120\n" +
+	"\x14update_storage_items\x18\x06 \x01(\bR\x12updateStorageItems\x122\n" +
+	"\x15include_manual_edited\x18\a \x01(\bR\x13includeManualEdited\"0\n" +
 	"\x14RecomputeOneResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess2\xa4\x02\n" +
 	"\x10RecomputeService\x12U\n" +

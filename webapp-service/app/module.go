@@ -67,6 +67,8 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS, c
 	e.POST("/api/memes/parse-by-token", h.ParseByToken)
 	e.GET("/api/memes/:id", h.GetMeme)
 	e.PATCH("/api/memes/:id", h.UpdateMeme)
+	e.DELETE("/api/memes/:id", h.DeleteMeme)
+	e.POST("/api/memes/:id/recompute", h.RecomputeMeme)
 	e.POST("/api/memes/:id/update-media/:field", h.UpdateMemeMedia)
 	e.GET("/api/health", h.Health)
 

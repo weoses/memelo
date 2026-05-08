@@ -7,6 +7,8 @@ import (
 	"github.com/weoses/memelo/storage-service/storage"
 )
 
+const CalcTagsKey = "CalcTagsPipelineStep"
+
 type CalcTagsPipelineStep struct {
 	BasePipelineStep
 
@@ -31,6 +33,7 @@ func NewCalcTagsPipelineStep(tagStorage storage.ElasticTagStorage) ExtractPipeli
 		BasePipelineStep: BasePipelineStep{
 			pos: 80,
 			typ: []entity.MetadataType{entity.ImageMetadataType, entity.VideoMetadataType},
+			key: CalcTagsKey,
 		},
 		tagStorage: tagStorage,
 	}

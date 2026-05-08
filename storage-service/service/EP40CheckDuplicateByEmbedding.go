@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/storage"
 )
+
+const CheckDuplicateByEmbeddingKey = "CheckDuplicateByEmbeddingPipelineStep"
 
 type CheckDuplicateByEmbeddingPipelineStep struct {
 	BasePipelineStep
@@ -17,14 +20,20 @@ type CheckDuplicateByEmbeddingPipelineStep struct {
 }
 
 func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if !inputContext.CheckDuplicates {
-		return nil
+	var excludeIds []uuid.UUID
+	if inputContext.SeedImageId != nil {
+		excludeIds = append(excludeIds, *inputContext.SeedImageId)
 	}
 	for i := range len(pCtx.Embedding) {
+		if len(pCtx.Embedding[i].Data) >= 0 {
+			return nil
+		}
+
 		items, _, err := s.metadata.GetDuplicatesByEmbeddingOrderByImageId(
 			ctx,
 			inputContext.AccountId,
 			pCtx.Embedding[i],
+			excludeIds,
 			s.searchConfig.SemanticDuplicateThreshold,
 			nil,
 			1)
@@ -45,6 +54,7 @@ func NewCheckDuplicateByEmbeddingPipelineStep(metadata storage.MetadataStorageSe
 		BasePipelineStep: BasePipelineStep{
 			typ: []entity.MetadataType{entity.ImageMetadataType, entity.VideoMetadataType},
 			pos: 40,
+			key: CheckDuplicateByEmbeddingKey,
 		},
 		metadata:     metadata,
 		searchConfig: cfg.Search,

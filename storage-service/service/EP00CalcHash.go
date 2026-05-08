@@ -13,12 +13,14 @@ import (
 	"github.com/weoses/memelo/storage-service/entity"
 )
 
+const CalcHashKey = "CalcHashPipelineStep"
+
 type CalcHashPipelineStep struct {
 	BasePipelineStep
 }
 
 func (c *CalcHashPipelineStep) Do(_ context.Context, inputContext MetadataInputContext, pipelineContext *MetadataPipelineContext) error {
-	if !inputContext.ComputeHash && pipelineContext.Hash != "" {
+	if pipelineContext.Hash != "" {
 		return nil
 	}
 	hash, err := calcRawHash(inputContext.RawInput)
@@ -51,6 +53,7 @@ func NewCalcHashPipelineStep() ExtractPipelineStep {
 		BasePipelineStep{
 			pos: 0,
 			typ: []entity.MetadataType{entity.ImageMetadataType, entity.VideoMetadataType},
+			key: CalcHashKey,
 		},
 	}
 }

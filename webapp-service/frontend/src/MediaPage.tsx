@@ -5,7 +5,9 @@ import MemeGrid from './components/MemeGrid'
 import UploadButton from './components/UploadButton'
 import UploadModal from './components/UploadModal'
 import MemeModal from './components/MemeModal'
-import { Meme } from './api/client'
+import Modal from './components/Modal'
+import Dialog from './components/Dialog'
+import { Meme, deleteMeme, recomputeMeme } from './api/client'
 import { useMediaStore } from './store/mediaStore'
 const _cfg = (window as Window & { __MEMELO_CONFIG__?: { baseUrl?: string } }).__MEMELO_CONFIG__
 const BASE = _cfg?.baseUrl ? _cfg.baseUrl.replace(/\/$/, '') + '/' : ''
@@ -24,14 +26,16 @@ export default function MediaPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const [confirmDeleteMeme, setConfirmDeleteMeme] = useState<Meme | null>(null)
 
-  const { memes, hasMore, prependMeme, getById, setDetachedMeme } = useMediaStore(
+  const { memes, hasMore, prependMeme, getById, setDetachedMeme, removeMeme } = useMediaStore(
     useShallow(s => ({
       memes: s.memes,
       hasMore: s.hasMore,
       prependMeme: s.prependMeme,
       getById: s.getById,
       setDetachedMeme: s.setDetachedMeme,
+      removeMeme: s.removeMeme,
     }))
   )
 
@@ -75,6 +79,29 @@ export default function MediaPage() {
 
   const handleUploaded = useCallback((meme: Meme) => prependMeme(meme), [prependMeme])
 
+  const handleRecompute = useCallback((meme: Meme) => {
+    recomputeMeme(meme.id).catch(err => console.error('recompute failed', err))
+  }, [])
+
+  const handleDownload = useCallback((meme: Meme) => {
+    window.open(meme.original_url, '_blank')
+  }, [])
+
+  const handleDelete = useCallback((meme: Meme) => {
+    setConfirmDeleteMeme(meme)
+  }, [])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!confirmDeleteMeme) return
+    try {
+      await deleteMeme(confirmDeleteMeme.id)
+      removeMeme(confirmDeleteMeme.id)
+    } catch (err) {
+      console.error('delete failed', err)
+    }
+    setConfirmDeleteMeme(null)
+  }, [confirmDeleteMeme, removeMeme])
+
   const handleSelect = useCallback((index: number) => {
     const meme = useMediaStore.getState().memes[index]
     if (!meme) return
@@ -110,7 +137,13 @@ export default function MediaPage() {
         <UploadButton onOpen={() => setUploadOpen(true)} />
       </header>
       <main className="flex-1 p-4">
-        <MemeGrid query={query} onSelect={handleSelect} />
+        <MemeGrid
+          query={query}
+          onSelect={handleSelect}
+          onRecompute={handleRecompute}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+        />
       </main>
       {uploadOpen && (
         <UploadModal
@@ -134,6 +167,27 @@ export default function MediaPage() {
           Image not found
           <button onClick={() => setNotFound(false)} className="ml-2 text-white/70 hover:text-white">✕</button>
         </div>
+      )}
+      {confirmDeleteMeme && (
+        <Modal onClose={() => setConfirmDeleteMeme(null)}>
+          <Dialog title="Delete media?" onClose={() => setConfirmDeleteMeme(null)}>
+            <p className="text-gray-300 text-sm">This cannot be undone.</p>
+            <div className="flex gap-2 mt-5 justify-end">
+              <button
+                onClick={() => setConfirmDeleteMeme(null)}
+                className="px-4 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-white"
+              >
+                Delete
+              </button>
+            </div>
+          </Dialog>
+        </Modal>
       )}
     </div>
   )

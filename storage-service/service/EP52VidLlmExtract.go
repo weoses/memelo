@@ -13,6 +13,8 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 )
 
+const VidLlmExtractKey = "VidLlmExtractPipelineStep"
+
 type VidLlmExtractPipelineStep struct {
 	BasePipelineStep
 
@@ -28,9 +30,6 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 		Result         ocr.MediaExtractResult
 	}
 
-	if !inputContext.ComputeExtractor {
-		return nil
-	}
 	if len(pCtx.VideoSlices) == 0 {
 		return errors.New("no video slices")
 	}
@@ -129,6 +128,7 @@ func NewVidLlmExtractPipelineStep(extractor ocr.LlmMediaExtractor) ExtractPipeli
 		BasePipelineStep: BasePipelineStep{
 			pos: 52,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
+			key: VidLlmExtractKey,
 		},
 		extractor: extractor,
 		slogger:   slog.With("service", "VidLlmExtractPipelineStep"),

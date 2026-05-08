@@ -16,6 +16,7 @@ interface MediaState {
   getById: (id: string) => Promise<Meme | null>
   prependMeme: (meme: Meme) => void
   updateMeme: (updated: Meme) => void
+  removeMeme: (id: string) => void
   setDetachedMeme: (meme: Meme | null) => void
 }
 
@@ -72,6 +73,9 @@ export const useMediaStore = create<MediaState>((set, get) => ({
 
   updateMeme: (updated: Meme) =>
     set(s => ({ memes: s.memes.map(m => m.id === updated.id ? updated : m) })),
+
+  removeMeme: (id: string) =>
+    set(s => ({ memes: s.memes.filter(m => m.id !== id) })),
 
   setDetachedMeme: (meme: Meme | null) => set({ detachedMeme: meme }),
 }))

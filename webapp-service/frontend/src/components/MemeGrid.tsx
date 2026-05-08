@@ -10,6 +10,9 @@ const GUTTER = 4
 interface Props {
   query: string
   onSelect: (index: number) => void
+  onRecompute: (meme: Meme) => void
+  onDownload: (meme: Meme) => void
+  onDelete: (meme: Meme) => void
 }
 
 interface RowItem { meme: Meme; w: number; h: number; index: number }
@@ -58,7 +61,7 @@ function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
   return rows
 }
 
-export default function MemeGrid({ query, onSelect }: Props) {
+export default function MemeGrid({ query, onSelect, onRecompute, onDownload, onDelete }: Props) {
   const { memes, loading, load, loadMore } = useMediaStore(
     useShallow(s => ({ memes: s.memes, loading: s.loading, load: s.load, loadMore: s.loadMore }))
   )
@@ -109,6 +112,9 @@ export default function MemeGrid({ query, onSelect }: Props) {
                     meme={meme}
                     onClick={() => onSelect(index)}
                     isEdited={meme.edited}
+                    onRecompute={() => onRecompute(meme)}
+                    onDownload={() => onDownload(meme)}
+                    onDelete={() => onDelete(meme)}
                   />
                 </div>
               ))}

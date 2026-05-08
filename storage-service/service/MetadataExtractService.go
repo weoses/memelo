@@ -19,11 +19,8 @@ type MetadataExtractServiceImpl struct {
 }
 
 func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, inputCtx MetadataInputContext) (*MetadataPipelineContext, error) {
-	var pipelineCtx *MetadataPipelineContext
-	if inputCtx.SeedData != nil {
-		pipelineCtx = inputCtx.SeedData
-	} else {
-		pipelineCtx = &MetadataPipelineContext{}
+	var pipelineCtx = &MetadataPipelineContext{
+		Embedding: inputCtx.SeedEmbeddings,
 	}
 
 	for _, step := range c.steps {
@@ -31,12 +28,13 @@ func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, inputCtx Metad
 			continue
 		}
 
+		if !inputCtx.StepCallback(ctx, step.GetKey(), pipelineCtx) {
+			return pipelineCtx, nil
+		}
+
 		if err := step.Do(ctx, inputCtx, pipelineCtx); err != nil {
 			helper.QuietClose(pipelineCtx, c.slogger)
 			return nil, fmt.Errorf("create pipeline: step failed (pos=%d): %w", step.GetPos(), err)
-		}
-		if inputCtx.CheckDuplicates && pipelineCtx.Duplicate != nil {
-			return pipelineCtx, nil
 		}
 	}
 
