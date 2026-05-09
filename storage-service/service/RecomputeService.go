@@ -17,8 +17,7 @@ import (
 const maxRecomputeWorkers = 4
 const recomputePageSize = 50
 
-type RecomputeParams struct {
-	Query              map[string]interface{}
+type RecomputeOptions struct {
 	ComputeExtractor   bool
 	ComputeEmbedding   bool
 	UpdateStorageItems bool
@@ -28,9 +27,11 @@ type RecomputeParams struct {
 }
 
 type RecomputeService interface {
-	StartRecompute(ctx context.Context, params RecomputeParams) (string, error)
+	StartRecompute(ctx context.Context, query map[string]interface{}, params RecomputeOptions) (string, error)
+	StartRecomputeById(ctx context.Context, accountId string, id string, params RecomputeOptions) (string, error)
+
 	GetJobStatus(ctx context.Context, jobId string) (*RecomputeJobState, error)
-	RecomputeOneById(ctx context.Context, accountId string, id string, params RecomputeParams) error
+	WaitForJob(ctx context.Context, jobId string) (*RecomputeJobState, error)
 }
 
 type RecomputeServiceImpl struct {
@@ -38,15 +39,47 @@ type RecomputeServiceImpl struct {
 	extractService         MetadataExtractService
 	metadataStorageService storage2.MetadataStorageService
 	imageStorageService    storage2.MediaStorageService
+	pipelineSaveService    PipelineSaveService
 	tmpDataService         service.TmpDataService
 	jobStorage             RecomputeJobStorage
 }
 
-func (r *RecomputeServiceImpl) StartRecompute(ctx context.Context, params RecomputeParams) (string, error) {
+func (r *RecomputeServiceImpl) StartRecompute(ctx context.Context, query map[string]interface{}, params RecomputeOptions) (string, error) {
+
+	if query == nil {
+		query = map[string]interface{}{"match_all": map[string]interface{}{}}
+	}
+
 	jobId := uuid.New().String()
 	job := r.jobStorage.Create(jobId)
 
-	go r.runJob(context.WithoutCancel(ctx), job, params)
+	go r.runJob(context.WithoutCancel(ctx), query, job, params)
+
+	return jobId, nil
+}
+
+func (r *RecomputeServiceImpl) StartRecomputeById(ctx context.Context, accountId string, id string, params RecomputeOptions) (string, error) {
+	query := map[string]interface{}{
+		"bool": map[string]interface{}{
+			"must": map[string]interface{}{
+				"ids": map[string]interface{}{
+					"values": []string{id},
+				},
+			},
+			"filter": []interface{}{
+				map[string]interface{}{
+					"term": map[string]interface{}{
+						"AccountId": accountId,
+					},
+				},
+			},
+		},
+	}
+
+	jobId := uuid.New().String()
+	job := r.jobStorage.Create(jobId)
+
+	go r.runJob(context.WithoutCancel(ctx), query, job, params)
 
 	return jobId, nil
 }
@@ -59,15 +92,31 @@ func (r *RecomputeServiceImpl) GetJobStatus(_ context.Context, jobId string) (*R
 	return job, nil
 }
 
-func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobState, params RecomputeParams) {
+func (r *RecomputeServiceImpl) WaitForJob(ctx context.Context, jobId string) (*RecomputeJobState, error) {
+	job, ok := r.jobStorage.Get(jobId)
+	if !ok {
+		return nil, fmt.Errorf("job not found: %s", jobId)
+	}
+
+	for {
+		job.Mu.Lock()
+		if job.State == RecomputeStateDone || job.State == RecomputeStateFailed {
+			break
+		}
+		job.StateCondition.Wait()
+		job.Mu.Unlock()
+	}
+
+	return job, nil
+}
+
+func (r *RecomputeServiceImpl) runJob(ctx context.Context, query map[string]interface{}, job *RecomputeJobState, params RecomputeOptions) {
 	job.Mu.Lock()
 	job.State = RecomputeStateRunning
+	job.StateCondition.Broadcast()
 	job.Mu.Unlock()
 
-	rawQuery := params.Query
-	if rawQuery == nil {
-		rawQuery = map[string]interface{}{"match_all": map[string]interface{}{}}
-	}
+	rawQuery := query
 
 	var sortKey entity.ElasticSortKey
 	sem := make(chan struct{}, maxRecomputeWorkers)
@@ -80,6 +129,7 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobStat
 			job.Mu.Lock()
 			job.State = RecomputeStateFailed
 			job.Errors = append(job.Errors, RecomputeJobError{ErrorText: err.Error()})
+			job.StateCondition.Broadcast()
 			job.Mu.Unlock()
 			return
 		}
@@ -94,29 +144,33 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobStat
 			go func() {
 				defer wg.Done()
 				defer func() { <-sem }()
-
 				r.slogger.InfoContext(ctx, "recompute: processing media object",
 					"jobId", job.JobId,
 					"imageId", m.ImageId)
 
-				if err := r.recomputeOne(ctx, m, params); err != nil {
+				err := r.recomputeOne(ctx, m, params)
+				if err != nil {
 					r.slogger.ErrorContext(ctx, "recompute: object failed",
 						"jobId", job.JobId,
 						"imageId", m.ImageId,
 						"error", err)
+
 					job.Mu.Lock()
 					job.Errors = append(job.Errors, RecomputeJobError{
 						ObjectId:  m.ImageId.String(),
 						ErrorText: err.Error(),
 					})
 					job.Mu.Unlock()
-					return
 				}
+				r.slogger.InfoContext(ctx, "recompute: completed media object",
+					"jobId", job.JobId,
+					"imageId", m.ImageId)
 
 				job.Mu.Lock()
+				job.ProcessedIds = append(job.ProcessedIds, m.ImageId.String())
 				job.Processed++
-				job.LastId = m.ImageId.String()
 				job.Mu.Unlock()
+
 			}()
 		}
 
@@ -130,12 +184,13 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, job *RecomputeJobStat
 
 	job.Mu.Lock()
 	job.State = RecomputeStateDone
+	job.StateCondition.Broadcast()
 	job.Mu.Unlock()
 
 	r.slogger.InfoContext(ctx, "recompute: job done", "jobId", job.JobId, "processed", job.Processed)
 }
 
-func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData, params RecomputeParams) error {
+func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.ElasticImageMetaData, params RecomputeOptions) error {
 	if (!params.IncludeManualEdited) && data.Edited {
 		r.slogger.InfoContext(ctx, "recompute: skipping manually-updated entity", "imageId", data.ImageId)
 		return nil
@@ -202,64 +257,17 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		}
 	}
 
-	data.Hash = pipelineResult.Hash
+	data.Edited = false
 
-	if params.ComputeExtractor && pipelineResult.Result != nil {
-		joinedResult := fmt.Sprintf("%s %s %s",
-			pipelineResult.Result.OnScreenText,
-			pipelineResult.Result.AudioTranscript,
-			pipelineResult.Result.AudioTrack)
-		data.Result = joinedResult
-		data.ResultData = pipelineResult.Result
-		data.ResultPerVideoSlices = pipelineResult.ResultPerVideoSlices
-	}
-
-	if params.UpdateStorageItems {
-		for i := range pipelineResult.StorageArtifacts {
-			artifact := pipelineResult.StorageArtifacts[i]
-			err = r.imageStorageService.Save(ctx, data.S3Id, storageMediaType(data.Type, artifact.Type), artifact.Data)
-			if err != nil {
-				return fmt.Errorf("save artifact with type %s failed: %w", artifact.Type, err)
-			}
-		}
-
-		if pipelineResult.OriginalSize.Width > 0 {
-			data.ImageSize = &entity.Sizes{
-				Width:  pipelineResult.OriginalSize.Width,
-				Height: pipelineResult.OriginalSize.Height,
-			}
-		}
-		if pipelineResult.ThumbnailSize.Width > 0 {
-			data.ThumbSize = &entity.Sizes{
-				Width:  pipelineResult.ThumbnailSize.Width,
-				Height: pipelineResult.ThumbnailSize.Height,
-			}
-		}
-	}
-
-	if params.ComputeEmbedding && len(pipelineResult.Embedding) > 0 {
-		data.EmbeddingList = []entity.EmbeddingItem{}
-		for _, v := range pipelineResult.Embedding {
-			if len(v.Data) >= 1 {
-				data.EmbeddingList = append(data.EmbeddingList, v)
-			}
-		}
-	}
-
-	if len(pipelineResult.Tags) > 0 {
-		data.Tags = helper.TransformSlice(
-			pipelineResult.Tags,
-			make([]string, len(pipelineResult.Tags)),
-			func(tag entity.ElasticTag) string { return tag.Tag })
-	}
-
-	if err = r.metadataStorageService.Save(ctx, data); err != nil {
-		return fmt.Errorf("save metadata failed: %w", err)
-	}
-	return nil
+	return r.pipelineSaveService.Save(ctx, data, pipelineResult, PipelineSaveConfig{
+		SaveHash:      true,
+		SaveExtractor: params.ComputeExtractor,
+		SaveArtifacts: params.UpdateStorageItems,
+		SaveEmbedding: params.ComputeEmbedding,
+	})
 }
 
-func (r *RecomputeServiceImpl) RecomputeOneById(ctx context.Context, accountId string, id string, params RecomputeParams) error {
+func (r *RecomputeServiceImpl) RecomputeOneById(ctx context.Context, accountId string, id string, params RecomputeOptions) error {
 	accountUuid, err := uuid.Parse(accountId)
 	if err != nil {
 		return fmt.Errorf("invalid account_id: %w", err)
@@ -282,6 +290,7 @@ func NewRecomputeService(
 	extractService MetadataExtractService,
 	metadataStorageService storage2.MetadataStorageService,
 	imageStorageService storage2.MediaStorageService,
+	pipelineSaveService PipelineSaveService,
 	tmpDataService service.TmpDataService,
 	jobStorage RecomputeJobStorage,
 ) RecomputeService {
@@ -290,6 +299,7 @@ func NewRecomputeService(
 		extractService:         extractService,
 		metadataStorageService: metadataStorageService,
 		imageStorageService:    imageStorageService,
+		pipelineSaveService:    pipelineSaveService,
 		tmpDataService:         tmpDataService,
 		jobStorage:             jobStorage,
 	}

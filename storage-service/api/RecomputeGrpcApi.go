@@ -15,34 +15,55 @@ type RecomputeGrpcApiImpl struct {
 	recomputeService service.RecomputeService
 }
 
-func (r *RecomputeGrpcApiImpl) RecomputeById(ctx context.Context, request *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error) {
-	err := r.recomputeService.RecomputeOneById(ctx, request.AccountId, request.MediaId, service.RecomputeParams{
-		ComputeExtractor:    request.ComputeExtractor,
-		ComputeEmbedding:    request.ComputeEmbedding,
-		CheckDuplicates:     request.CheckDuplicates,
-		UpdateStorageItems:  request.UpdateStorageItems,
-		IncludeManualEdited: request.IncludeManualEdited,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("recompute by id failed: %w", err)
+func (r *RecomputeGrpcApiImpl) StartRecomputeJobById(ctx context.Context, request *v1.RecomputeOneRequest) (*v1.RecomputeJob, error) {
+	if request.Options == nil {
+		return nil, fmt.Errorf("options is nil")
 	}
-	return &v1.RecomputeOneResponse{Success: true}, nil
+	if request.AccountId == "" {
+		return nil, fmt.Errorf("accountId is nil")
+	}
+	if request.MediaId == "" {
+		return nil, fmt.Errorf("mediaId is nil")
+	}
+
+	jobId, err := r.recomputeService.StartRecomputeById(ctx,
+		request.AccountId,
+		request.MediaId,
+		service.RecomputeOptions{
+			ComputeExtractor:    request.Options.ComputeExtractor,
+			ComputeEmbedding:    request.Options.ComputeEmbedding,
+			CheckDuplicates:     request.Options.CheckDuplicates,
+			UpdateStorageItems:  request.Options.UpdateStorageItems,
+			IncludeManualEdited: request.Options.IncludeManualEdited,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("recompute start for job failed: %v", err)
+	}
+
+	return &v1.RecomputeJob{
+		JobId: jobId,
+	}, nil
 }
 
 func (r *RecomputeGrpcApiImpl) StartRecomputeJob(ctx context.Context, req *v1.RecomputeRequest) (*v1.RecomputeJob, error) {
+	if req.Options == nil {
+		return nil, fmt.Errorf("options is nil")
+	}
+
 	var query map[string]interface{}
 	if req.Query != nil {
 		query = req.Query.AsMap()
 	}
 
-	jobId, err := r.recomputeService.StartRecompute(ctx, service.RecomputeParams{
-		Query:               query,
-		ComputeExtractor:    req.ComputeExtractor,
-		ComputeEmbedding:    req.ComputeEmbedding,
-		CheckDuplicates:     req.CheckDuplicates,
-		UpdateStorageItems:  req.UpdateStorageItems,
-		IncludeManualEdited: req.IncludeManualEdited,
-	})
+	jobId, err := r.recomputeService.StartRecompute(ctx,
+		query,
+		service.RecomputeOptions{
+			ComputeExtractor:    req.Options.ComputeExtractor,
+			ComputeEmbedding:    req.Options.ComputeEmbedding,
+			CheckDuplicates:     req.Options.CheckDuplicates,
+			UpdateStorageItems:  req.Options.UpdateStorageItems,
+			IncludeManualEdited: req.Options.IncludeManualEdited,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("start recompute failed: %w", err)
 	}
@@ -67,12 +88,12 @@ func (r *RecomputeGrpcApiImpl) GetRecomputeJobStatus(ctx context.Context, req *v
 	}
 
 	return &v1.RecomputeJobStatus{
-		JobId:     job.JobId,
-		State:     stateToProto(job.State),
-		Processed: job.Processed,
-		Total:     job.Total,
-		Errors:    errors,
-		LastId:    job.LastId,
+		JobId:        job.JobId,
+		State:        stateToProto(job.State),
+		Processed:    job.Processed,
+		Total:        job.Total,
+		Errors:       errors,
+		ProcessedIds: job.ProcessedIds,
 	}, nil
 }
 

@@ -29,7 +29,7 @@ func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, inputCtx Metad
 		}
 
 		if !inputCtx.StepCallback(ctx, step.GetKey(), pipelineCtx) {
-			return pipelineCtx, nil
+			continue
 		}
 
 		if err := step.Do(ctx, inputCtx, pipelineCtx); err != nil {

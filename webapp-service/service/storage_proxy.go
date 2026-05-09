@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -56,7 +57,7 @@ type StorageProxy interface {
 	GetMeme(ctx context.Context, accountId, id string) (*MemeResult, error)
 	UpdateMeme(ctx context.Context, accountId, id string, params UpdateParams) (*MemeResult, error)
 	DeleteMeme(ctx context.Context, accountId, id string) error
-	RecomputeById(ctx context.Context, accountId, id string) error
+	RecomputeById(ctx context.Context, accountId, id string) (*MemeResult, error)
 }
 
 type storageProxy struct {
@@ -169,20 +170,60 @@ func (s *storageProxy) DeleteMeme(ctx context.Context, accountId, id string) err
 	return nil
 }
 
-func (s *storageProxy) RecomputeById(ctx context.Context, accountId, id string) error {
-	_, err := s.recomputeCl.RecomputeById(ctx, &v1.RecomputeOneRequest{
-		AccountId:           accountId,
-		MediaId:             id,
-		ComputeExtractor:    true,
-		ComputeEmbedding:    true,
-		CheckDuplicates:     true,
-		UpdateStorageItems:  true,
-		IncludeManualEdited: true,
+func (s *storageProxy) RecomputeById(ctx context.Context, accountId, id string) (*MemeResult, error) {
+	jobId, err := s.recomputeCl.StartRecomputeJobById(ctx, &v1.RecomputeOneRequest{
+		AccountId: accountId,
+		MediaId:   id,
+		Options: &v1.RecomputeOptions{
+			ComputeExtractor:    true,
+			ComputeEmbedding:    true,
+			CheckDuplicates:     false,
+			UpdateStorageItems:  true,
+			IncludeManualEdited: true,
+		},
 	})
 	if err != nil {
-		return fmt.Errorf("recompute by id failed: %w", err)
+		return nil, fmt.Errorf("recompute by id failed: %w", err)
 	}
-	return nil
+
+	var done bool
+	for i := 0; i < 100; i++ {
+		status, err := s.recomputeCl.GetRecomputeJobStatus(ctx, jobId)
+		if err != nil {
+			return nil, fmt.Errorf("recompute job get status failed: %w", err)
+		}
+
+		if status.State == v1.RecomputeJobStatus_STATE_DONE || status.State == v1.RecomputeJobStatus_STATE_FAILED {
+			for _, errRecompute := range status.GetErrors() {
+				s.log.Error("recompute failed for object", "imageId", errRecompute.ObjectId, "error", errRecompute.ErrorText)
+			}
+		}
+
+		if status.State == v1.RecomputeJobStatus_STATE_DONE {
+			done = true
+			break
+		}
+		if status.State == v1.RecomputeJobStatus_STATE_FAILED {
+			return nil, fmt.Errorf("recompute job failed")
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(2 * time.Second):
+			continue
+		}
+	}
+
+	if !done {
+		return nil, fmt.Errorf("recompute job timed out")
+	}
+
+	resp, err := s.searchCl.GetMeme(ctx, &v1.GetMemeRequest{AccountId: accountId, Id: id})
+	if err != nil {
+		return nil, fmt.Errorf("get meme after recompute failed: %w", err)
+	}
+	result := dtoToResult(resp.GetResult())
+	return &result, nil
 }
 
 func dtoToResult(dto *v1.MemeDto) MemeResult {

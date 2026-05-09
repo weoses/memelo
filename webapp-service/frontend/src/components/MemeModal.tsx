@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Meme, updateMeme as updateMemeApi, updateMemeMedia as updateMemeMediaApi, getUploadUrl, uploadToS3Post } from '../api/client'
+import { Meme, updateMeme as updateMemeApi } from '../api/client'
 import { useMediaStore } from '../store/mediaStore'
 import Modal from './Modal'
 import Dialog from './Dialog'
@@ -9,6 +9,9 @@ interface Props {
   onClose: () => void
   onPrev?: () => void
   onNext?: () => void
+  onRecompute?: () => void
+  onDownload?: () => void
+  onDelete?: () => void
 }
 
 function computeMediaHeight(meme: Meme): number | null {
@@ -157,18 +160,14 @@ function FieldRow({ label, value, fieldKey, onSave, readOnly, copyable }: FieldR
   )
 }
 
-export default function MemeModal({ index, onClose, onPrev, onNext }: Props) {
+export default function MemeModal({ index, onClose, onPrev, onNext, onRecompute, onDownload, onDelete }: Props) {
   const meme = useMediaStore(s => index >= 0 ? s.memes[index] : s.detachedMeme)
   const updateMemeInStore = useMediaStore(s => s.updateMeme)
 
   const isVideo = meme?.type === 'video'
   const [loaded, setLoaded] = useState(isVideo ?? false)
-  const [mediaUploading, setMediaUploading] = useState(false)
-  const [mediaError, setMediaError] = useState<string | null>(null)
   const mediaHeight = useMemo(() => meme ? computeMediaHeight(meme) : null, [meme?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const replaceTargetRef = useRef<'original' | 'thumbnail'>('original')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -198,30 +197,6 @@ export default function MemeModal({ index, onClose, onPrev, onNext }: Props) {
   const handleFieldSave = async (key: EditableField, value: string) => {
     const updated = await updateMemeApi(meme.id, { [key]: value })
     updateMemeInStore(updated)
-  }
-
-  const triggerReplace = (target: 'original' | 'thumbnail') => {
-    replaceTargetRef.current = target
-    setDropdownOpen(false)
-    fileInputRef.current?.click()
-  }
-
-  const handleReplaceMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setMediaUploading(true)
-    setMediaError(null)
-    try {
-      const { upload_url, form_fields, token } = await getUploadUrl(file.type, file.size)
-      await uploadToS3Post(upload_url, form_fields, file)
-      const updated = await updateMemeMediaApi(meme.id, token, replaceTargetRef.current)
-      updateMemeInStore(updated)
-    } catch {
-      setMediaError('Media replacement failed')
-    } finally {
-      setMediaUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
   }
 
   const mediaStyle = mediaHeight ? { height: mediaHeight } : {}
@@ -312,48 +287,46 @@ export default function MemeModal({ index, onClose, onPrev, onNext }: Props) {
               <span className="text-xs bg-yellow-500/20 text-yellow-400 rounded px-1.5 py-0.5">Edited</span>
             )}
           </div>
-          <div className="relative" ref={dropdownRef}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={handleReplaceMedia}
-            />
-            <button
-              onClick={() => setDropdownOpen(o => !o)}
-              disabled={mediaUploading}
-              className="text-xs bg-gray-700 hover:bg-purple-600 disabled:opacity-50 text-white rounded px-2 py-1 transition-colors flex items-center gap-1"
-            >
-              {mediaUploading ? 'Uploading…' : 'Replace media'}
-              {!mediaUploading && (
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                  <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                </svg>
+          {(onRecompute || onDownload || onDelete) && (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(o => !o)}
+                className="bg-black/40 hover:bg-black/70 text-white rounded px-2.5 py-1 text-base leading-none transition-colors"
+                title="More options"
+              >
+                ···
+              </button>
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full mt-1 w-36 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-10">
+                  {onRecompute && (
+                    <button
+                      onClick={() => { setDropdownOpen(false); onRecompute() }}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700"
+                    >
+                      Recompute
+                    </button>
+                  )}
+                  {onDownload && (
+                    <button
+                      onClick={() => { setDropdownOpen(false); onDownload() }}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700"
+                    >
+                      Download
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={() => { setDropdownOpen(false); onDelete() }}
+                      className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-700"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               )}
-            </button>
-            {dropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-10 min-w-max">
-                <button
-                  onClick={() => triggerReplace('original')}
-                  className="block w-full text-left text-xs text-gray-200 hover:bg-gray-700 px-3 py-2 transition-colors"
-                >
-                  Replace media
-                </button>
-                <button
-                  onClick={() => triggerReplace('thumbnail')}
-                  className="block w-full text-left text-xs text-gray-200 hover:bg-gray-700 px-3 py-2 transition-colors"
-                >
-                  Replace thumbnail
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-        {mediaError && (
-          <p className="text-xs text-red-400 px-4 pb-1">{mediaError}</p>
-        )}
-
         <div className="p-4 space-y-4">
           <FieldRow
             key="id"

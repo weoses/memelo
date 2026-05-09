@@ -131,9 +131,10 @@ export async function deleteMeme(id: string): Promise<void> {
   if (!res.ok) throw new Error(`delete meme failed: ${res.status}`)
 }
 
-export async function recomputeMeme(id: string): Promise<void> {
+export async function recomputeMeme(id: string): Promise<Meme> {
   const res = await fetch(`${BASE}api/memes/${id}/recompute`, { method: 'POST' })
   if (!res.ok) throw new Error(`recompute meme failed: ${res.status}`)
+  return res.json()
 }
 
 export async function updateMemeMedia(

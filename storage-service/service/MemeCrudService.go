@@ -64,6 +64,7 @@ type MemeCrudServiceImpl struct {
 	imageStorageService    storage2.MediaStorageService
 	metadataStorageService storage2.MetadataStorageService
 	metadataExtractService MetadataExtractService
+	pipelineSaveService    PipelineSaveService
 	searchService          SearchService
 	encoder                MediaEncoderService
 	slogger                *slog.Logger
@@ -97,43 +98,19 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 
 	s3id := uuid.New()
 	imgId := uuid.New()
-	for i := range pipelineResult.StorageArtifacts {
-		artifact := pipelineResult.StorageArtifacts[i]
-		err = m.imageStorageService.Save(ctx, s3id, storageMediaType(mediaType, artifact.Type), artifact.Data)
-		if err != nil {
-			return nil, fmt.Errorf("save artifact with type %s failed: %w", artifact.Type, err)
-		}
-	}
-
-	joinedResult := fmt.Sprintf("%s %s %s",
-		pipelineResult.Result.OnScreenText,
-		pipelineResult.Result.AudioTranscript,
-		pipelineResult.Result.AudioTrack)
-
 	metadataEntity := &entity.ElasticImageMetaData{
-		ImageId:              imgId,
-		Type:                 mediaType,
-		S3Id:                 s3id,
-		AccountId:            accountId,
-		Result:               joinedResult,
-		ResultData:           pipelineResult.Result,
-		Hash:                 pipelineResult.Hash,
-		EmbeddingList:        pipelineResult.Embedding,
-		ImageSize:            &pipelineResult.OriginalSize,
-		ThumbSize:            &pipelineResult.ThumbnailSize,
-		Created:              time.Now().UnixMicro(),
-		Updated:              time.Now().UnixMicro(),
-		ResultPerVideoSlices: pipelineResult.ResultPerVideoSlices,
-		Tags: helper.TransformSlice(
-			pipelineResult.Tags,
-			make([]string, len(pipelineResult.Tags)),
-			func(tag entity.ElasticTag) string {
-				return tag.Tag
-			}),
+		ImageId:   imgId,
+		Type:      mediaType,
+		S3Id:      s3id,
+		AccountId: accountId,
+		Created:   time.Now().UnixMicro(),
+		Updated:   time.Now().UnixMicro(),
 	}
-	err = m.metadataStorageService.Save(ctx, metadataEntity)
+	err = m.pipelineSaveService.Save(ctx, metadataEntity, pipelineResult, PipelineSaveConfig{
+		SaveHash: true, SaveExtractor: true, SaveArtifacts: true, SaveEmbedding: true,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("save metadataService failed: %w", err)
+		return nil, fmt.Errorf("pipeline save failed: %w", err)
 	}
 
 	entities, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{metadataEntity})
@@ -364,6 +341,7 @@ func NewMemeCrudService(
 	imageStore storage2.MediaStorageService,
 	metadataStore storage2.MetadataStorageService,
 	imageMetadataExtract MetadataExtractService,
+	pipelineSaveService PipelineSaveService,
 	searchService SearchService,
 	encoder MediaEncoderService,
 ) MemeCrudService {
@@ -371,6 +349,7 @@ func NewMemeCrudService(
 		imageStorageService:    imageStore,
 		metadataStorageService: metadataStore,
 		metadataExtractService: imageMetadataExtract,
+		pipelineSaveService:    pipelineSaveService,
 		searchService:          searchService,
 		encoder:                encoder,
 		slogger:                slog.With("service", "MemeCrudService"),

@@ -22,13 +22,14 @@ type RecomputeJobError struct {
 }
 
 type RecomputeJobState struct {
-	JobId     string
-	State     RecomputeState
-	Processed int32
-	Total     int32
-	Errors    []RecomputeJobError
-	LastId    string
-	Mu        sync.RWMutex
+	JobId          string
+	State          RecomputeState
+	Processed      int32
+	Total          int32
+	Errors         []RecomputeJobError
+	ProcessedIds   []string
+	Mu             sync.RWMutex
+	StateCondition *sync.Cond
 }
 
 type RecomputeJobStorage interface {
@@ -46,6 +47,7 @@ func (s *inMemoryRecomputeJobStorage) Create(jobId string) *RecomputeJobState {
 		State:  RecomputeStatePending,
 		Errors: make([]RecomputeJobError, 0),
 	}
+	state.StateCondition = sync.NewCond(&state.Mu)
 	_ = s.cache.Set(jobId, state)
 	return state
 }

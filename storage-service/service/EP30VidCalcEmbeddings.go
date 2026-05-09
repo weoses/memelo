@@ -21,12 +21,10 @@ type VidCalcEmbeddingsPipelineStep struct {
 }
 
 func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
-	if len(pCtx.Embedding) > 0 {
-		return nil
-	}
 	if len(pCtx.VideoSlices) == 0 {
 		return nil
 	}
+	pCtx.Embedding = []entity.EmbeddingItem{}
 
 	s.slogger.InfoContext(ctx, "calculating embeddings for video slices", "slices", len(pCtx.VideoSlices))
 
