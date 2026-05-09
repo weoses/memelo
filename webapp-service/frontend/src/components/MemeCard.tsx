@@ -47,7 +47,7 @@ export default function MemeCard({ meme, onClick, isEdited, onRecompute, onDownl
           </div>
         )}
         {isVideo && (
-          <span className="absolute top-1 right-1 bg-black/60 rounded px-1 py-0.5 text-xs text-white">
+          <span className="absolute bottom-1 left-1 bg-black/60 rounded px-1 py-0.5 text-xs text-white">
             ▶
           </span>
         )}
@@ -58,18 +58,18 @@ export default function MemeCard({ meme, onClick, isEdited, onRecompute, onDownl
         )}
       </button>
 
-      <div ref={menuRef} className="absolute bottom-1 right-1 z-10">
+      <div ref={menuRef} className="absolute top-1 right-1 z-10">
         <button
           onClick={e => { e.stopPropagation(); setMenuOpen(v => !v) }}
           className="opacity-0 group-hover:opacity-100 transition-opacity
-                     bg-black/70 hover:bg-black/90 text-white rounded px-1.5 py-0.5 text-sm leading-none"
+                     bg-black/70 hover:bg-black/90 text-white rounded px-2.5 py-1 text-base leading-none"
           title="More options"
         >
           ···
         </button>
 
         {menuOpen && (
-          <div className="absolute bottom-7 right-0 w-36 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute top-6 right-0 w-36 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
             <button
               onClick={() => { setMenuOpen(false); onClick() }}
               className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700"

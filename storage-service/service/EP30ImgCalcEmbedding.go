@@ -21,7 +21,7 @@ func (s *ImageCalcEmbeddingPipelineStep) Do(ctx context.Context, inputContext Me
 	if err != nil {
 		return fmt.Errorf("error getting image embedding: %w", err)
 	}
-	pCtx.Embedding = append(pCtx.Embedding, *embedding)
+	pCtx.Embedding = []entity.EmbeddingItem{*embedding}
 	return nil
 }
 

@@ -3,7 +3,7 @@ import { getUploadUrl, uploadToS3Post, parseByToken, Meme } from '../api/client'
 import Modal from './Modal'
 import Dialog from './Dialog'
 
-type Phase = 'idle' | 'uploading' | 'success' | 'duplicate' | 'error'
+type Phase = 'idle' | 'uploading' | 'processing' | 'success' | 'duplicate' | 'error'
 
 interface Props {
   onClose: () => void
@@ -17,7 +17,7 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const canClose = phase !== 'uploading'
+  const canClose = phase !== 'uploading' && phase !== 'processing'
 
   const startUpload = async (file: File) => {
     setPhase('uploading')
@@ -25,6 +25,7 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
     try {
       const { upload_url, form_fields, token } = await getUploadUrl(file.type, file.size)
       await uploadToS3Post(upload_url, form_fields, file, setProgress)
+      setPhase('processing')
       const meme = await parseByToken(token)
       if (meme.status === 'duplicate') {
         setPhase('duplicate')
@@ -92,7 +93,14 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-500">Processing may take a moment after upload</p>
+            </div>
+          )}
+
+          {/* Processing — waiting for service response */}
+          {phase === 'processing' && (
+            <div className="flex items-center gap-3 py-6">
+              <div className="w-5 h-5 rounded-full border-2 border-purple-400 border-t-transparent animate-spin shrink-0" />
+              <p className="text-sm text-gray-300">Processing… This may take a moment.</p>
             </div>
           )}
 

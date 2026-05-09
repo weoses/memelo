@@ -5,8 +5,8 @@ import MemeGrid from './components/MemeGrid'
 import UploadButton from './components/UploadButton'
 import UploadModal from './components/UploadModal'
 import MemeModal from './components/MemeModal'
-import Modal from './components/Modal'
-import Dialog from './components/Dialog'
+import DeleteConfirmModal from './components/DeleteConfirmModal'
+import ProgressModal from './components/ProgressModal'
 import { Meme, deleteMeme, recomputeMeme } from './api/client'
 import { useMediaStore } from './store/mediaStore'
 const _cfg = (window as Window & { __MEMELO_CONFIG__?: { baseUrl?: string } }).__MEMELO_CONFIG__
@@ -27,8 +27,9 @@ export default function MediaPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [confirmDeleteMeme, setConfirmDeleteMeme] = useState<Meme | null>(null)
+  const [recomputingMeme, setRecomputingMeme] = useState<Meme | null>(null)
 
-  const { memes, hasMore, prependMeme, getById, setDetachedMeme, removeMeme } = useMediaStore(
+  const { memes, hasMore, prependMeme, getById, setDetachedMeme, removeMeme, updateMeme } = useMediaStore(
     useShallow(s => ({
       memes: s.memes,
       hasMore: s.hasMore,
@@ -36,6 +37,7 @@ export default function MediaPage() {
       getById: s.getById,
       setDetachedMeme: s.setDetachedMeme,
       removeMeme: s.removeMeme,
+      updateMeme: s.updateMeme,
     }))
   )
 
@@ -79,9 +81,18 @@ export default function MediaPage() {
 
   const handleUploaded = useCallback((meme: Meme) => prependMeme(meme), [prependMeme])
 
-  const handleRecompute = useCallback((meme: Meme) => {
-    recomputeMeme(meme.id).catch(err => console.error('recompute failed', err))
-  }, [])
+  const handleRecompute = useCallback(async (meme: Meme) => {
+      console.log("handle called")
+    setRecomputingMeme(meme)
+    try {
+      const updated = await recomputeMeme(meme.id)
+        console.log("handle recomputed")
+      updateMeme(updated)
+    } catch (err) {
+      console.error('recompute failed', err)
+    }
+    setRecomputingMeme(null)
+  }, [updateMeme])
 
   const handleDownload = useCallback((meme: Meme) => {
     window.open(meme.original_url, '_blank')
@@ -160,6 +171,21 @@ export default function MediaPage() {
           }}
           onPrev={selectedIndex > 0 ? handlePrev : undefined}
           onNext={selectedIndex < memes.length - 1 || hasMore ? handleNext : undefined}
+          onRecompute={() => {
+            const s = useMediaStore.getState()
+            const meme = selectedIndex >= 0 ? s.memes[selectedIndex] : s.detachedMeme
+            if (meme) handleRecompute(meme)
+          }}
+          onDownload={() => {
+            const s = useMediaStore.getState()
+            const meme = selectedIndex >= 0 ? s.memes[selectedIndex] : s.detachedMeme
+            if (meme) handleDownload(meme)
+          }}
+          onDelete={() => {
+            const s = useMediaStore.getState()
+            const meme = selectedIndex >= 0 ? s.memes[selectedIndex] : s.detachedMeme
+            if (meme) handleDelete(meme)
+          }}
         />
       )}
       {notFound && (
@@ -169,26 +195,12 @@ export default function MediaPage() {
         </div>
       )}
       {confirmDeleteMeme && (
-        <Modal onClose={() => setConfirmDeleteMeme(null)}>
-          <Dialog title="Delete media?" onClose={() => setConfirmDeleteMeme(null)}>
-            <p className="text-gray-300 text-sm">This cannot be undone.</p>
-            <div className="flex gap-2 mt-5 justify-end">
-              <button
-                onClick={() => setConfirmDeleteMeme(null)}
-                className="px-4 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-white"
-              >
-                Delete
-              </button>
-            </div>
-          </Dialog>
-        </Modal>
+        <DeleteConfirmModal
+          onClose={() => setConfirmDeleteMeme(null)}
+          onConfirm={handleConfirmDelete}
+        />
       )}
+      {recomputingMeme && <ProgressModal title="Recomputing…" message="This may take a moment." />}
     </div>
   )
 }

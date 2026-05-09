@@ -2,6 +2,7 @@ package functional_test //nolint
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -31,17 +32,20 @@ func TestRecomputeBasic(t *testing.T) {
 	ctx := context.Background()
 	c := testClient()
 	acct := accountID("ec001")
-
-	if _, err := c.CreateMemeFromBytes(ctx, acct, minimalJPEG(1)); err != nil {
+	obj1, err := c.CreateMemeFromBytes(ctx, acct, minimalJPEG(1))
+	if err != nil {
 		t.Fatalf("create meme 1: %v", err)
 	}
-	if _, err := c.CreateMemeFromBytes(ctx, acct, minimalJPEG(2)); err != nil {
+	obj2, err := c.CreateMemeFromBytes(ctx, acct, minimalJPEG(2))
+	if err != nil {
 		t.Fatalf("create meme 2: %v", err)
 	}
 
 	job, err := c.StartRecompute(ctx, &v1.RecomputeRequest{
-		ComputeExtractor: true,
-		ComputeEmbedding: true,
+		Options: &v1.RecomputeOptions{
+			ComputeExtractor: true,
+			ComputeEmbedding: true,
+		},
 	})
 	if err != nil {
 		t.Fatalf("start recompute: %v", err)
@@ -64,6 +68,12 @@ func TestRecomputeBasic(t *testing.T) {
 	}
 	if len(status.GetErrors()) != 0 {
 		t.Errorf("expected no errors, got %d: %v", len(status.GetErrors()), status.GetErrors())
+	}
+	if !slices.Contains(status.ProcessedIds, obj1.GetResult().GetId()) {
+		t.Errorf("expected processed contains %s, got %s", obj1.GetResult().GetId(), status.ProcessedIds)
+	}
+	if !slices.Contains(status.ProcessedIds, obj2.GetResult().GetId()) {
+		t.Errorf("expected processed contains %s, got %s", obj2.GetResult().GetId(), status.ProcessedIds)
 	}
 	if testMockEx.CallCount() != 4 {
 		t.Errorf("expected exactly 4 extractor calls, got %d", testMockEx.CallCount())
@@ -91,8 +101,10 @@ func TestRecomputeNoExtractor(t *testing.T) {
 	testMockEmb.Reset()
 
 	job, err := c.StartRecompute(ctx, &v1.RecomputeRequest{
-		ComputeExtractor: false,
-		ComputeEmbedding: true,
+		Options: &v1.RecomputeOptions{
+			ComputeExtractor: false,
+			ComputeEmbedding: true,
+		},
 	})
 	if err != nil {
 		t.Fatalf("start recompute: %v", err)
@@ -134,8 +146,10 @@ func TestRecomputeNoEmbedding(t *testing.T) {
 	testMockEmb.Reset()
 
 	job, err := c.StartRecompute(ctx, &v1.RecomputeRequest{
-		ComputeExtractor: true,
-		ComputeEmbedding: false,
+		Options: &v1.RecomputeOptions{
+			ComputeExtractor: true,
+			ComputeEmbedding: false,
+		},
 	})
 	if err != nil {
 		t.Fatalf("start recompute: %v", err)

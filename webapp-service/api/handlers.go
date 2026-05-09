@@ -156,11 +156,12 @@ func (h *Handlers) RecomputeMeme(c echo.Context) error {
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
-	if err := h.proxy.RecomputeById(c.Request().Context(), h.accountId, id); err != nil {
+	result, err := h.proxy.RecomputeById(c.Request().Context(), h.accountId, id)
+	if err != nil {
 		h.log.Error("recompute meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream recompute failed")
 	}
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, memeToResponse(*result))
 }
 
 func (h *Handlers) UpdateMemeMedia(c echo.Context) error {

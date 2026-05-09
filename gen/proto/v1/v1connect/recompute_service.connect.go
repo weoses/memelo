@@ -36,19 +36,19 @@ const (
 	// RecomputeServiceStartRecomputeJobProcedure is the fully-qualified name of the RecomputeService's
 	// StartRecomputeJob RPC.
 	RecomputeServiceStartRecomputeJobProcedure = "/proto.memelo.v1.RecomputeService/StartRecomputeJob"
+	// RecomputeServiceStartRecomputeJobByIdProcedure is the fully-qualified name of the
+	// RecomputeService's StartRecomputeJobById RPC.
+	RecomputeServiceStartRecomputeJobByIdProcedure = "/proto.memelo.v1.RecomputeService/StartRecomputeJobById"
 	// RecomputeServiceGetRecomputeJobStatusProcedure is the fully-qualified name of the
 	// RecomputeService's GetRecomputeJobStatus RPC.
 	RecomputeServiceGetRecomputeJobStatusProcedure = "/proto.memelo.v1.RecomputeService/GetRecomputeJobStatus"
-	// RecomputeServiceRecomputeByIdProcedure is the fully-qualified name of the RecomputeService's
-	// RecomputeById RPC.
-	RecomputeServiceRecomputeByIdProcedure = "/proto.memelo.v1.RecomputeService/RecomputeById"
 )
 
 // RecomputeServiceClient is a client for the proto.memelo.v1.RecomputeService service.
 type RecomputeServiceClient interface {
 	StartRecomputeJob(context.Context, *v1.RecomputeRequest) (*v1.RecomputeJob, error)
+	StartRecomputeJobById(context.Context, *v1.RecomputeOneRequest) (*v1.RecomputeJob, error)
 	GetRecomputeJobStatus(context.Context, *v1.RecomputeJob) (*v1.RecomputeJobStatus, error)
-	RecomputeById(context.Context, *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error)
 }
 
 // NewRecomputeServiceClient constructs a client for the proto.memelo.v1.RecomputeService service.
@@ -68,16 +68,16 @@ func NewRecomputeServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(recomputeServiceMethods.ByName("StartRecomputeJob")),
 			connect.WithClientOptions(opts...),
 		),
+		startRecomputeJobById: connect.NewClient[v1.RecomputeOneRequest, v1.RecomputeJob](
+			httpClient,
+			baseURL+RecomputeServiceStartRecomputeJobByIdProcedure,
+			connect.WithSchema(recomputeServiceMethods.ByName("StartRecomputeJobById")),
+			connect.WithClientOptions(opts...),
+		),
 		getRecomputeJobStatus: connect.NewClient[v1.RecomputeJob, v1.RecomputeJobStatus](
 			httpClient,
 			baseURL+RecomputeServiceGetRecomputeJobStatusProcedure,
 			connect.WithSchema(recomputeServiceMethods.ByName("GetRecomputeJobStatus")),
-			connect.WithClientOptions(opts...),
-		),
-		recomputeById: connect.NewClient[v1.RecomputeOneRequest, v1.RecomputeOneResponse](
-			httpClient,
-			baseURL+RecomputeServiceRecomputeByIdProcedure,
-			connect.WithSchema(recomputeServiceMethods.ByName("RecomputeById")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -86,13 +86,22 @@ func NewRecomputeServiceClient(httpClient connect.HTTPClient, baseURL string, op
 // recomputeServiceClient implements RecomputeServiceClient.
 type recomputeServiceClient struct {
 	startRecomputeJob     *connect.Client[v1.RecomputeRequest, v1.RecomputeJob]
+	startRecomputeJobById *connect.Client[v1.RecomputeOneRequest, v1.RecomputeJob]
 	getRecomputeJobStatus *connect.Client[v1.RecomputeJob, v1.RecomputeJobStatus]
-	recomputeById         *connect.Client[v1.RecomputeOneRequest, v1.RecomputeOneResponse]
 }
 
 // StartRecomputeJob calls proto.memelo.v1.RecomputeService.StartRecomputeJob.
 func (c *recomputeServiceClient) StartRecomputeJob(ctx context.Context, req *v1.RecomputeRequest) (*v1.RecomputeJob, error) {
 	response, err := c.startRecomputeJob.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// StartRecomputeJobById calls proto.memelo.v1.RecomputeService.StartRecomputeJobById.
+func (c *recomputeServiceClient) StartRecomputeJobById(ctx context.Context, req *v1.RecomputeOneRequest) (*v1.RecomputeJob, error) {
+	response, err := c.startRecomputeJobById.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -108,20 +117,11 @@ func (c *recomputeServiceClient) GetRecomputeJobStatus(ctx context.Context, req 
 	return nil, err
 }
 
-// RecomputeById calls proto.memelo.v1.RecomputeService.RecomputeById.
-func (c *recomputeServiceClient) RecomputeById(ctx context.Context, req *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error) {
-	response, err := c.recomputeById.CallUnary(ctx, connect.NewRequest(req))
-	if response != nil {
-		return response.Msg, err
-	}
-	return nil, err
-}
-
 // RecomputeServiceHandler is an implementation of the proto.memelo.v1.RecomputeService service.
 type RecomputeServiceHandler interface {
 	StartRecomputeJob(context.Context, *v1.RecomputeRequest) (*v1.RecomputeJob, error)
+	StartRecomputeJobById(context.Context, *v1.RecomputeOneRequest) (*v1.RecomputeJob, error)
 	GetRecomputeJobStatus(context.Context, *v1.RecomputeJob) (*v1.RecomputeJobStatus, error)
-	RecomputeById(context.Context, *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error)
 }
 
 // NewRecomputeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -137,26 +137,26 @@ func NewRecomputeServiceHandler(svc RecomputeServiceHandler, opts ...connect.Han
 		connect.WithSchema(recomputeServiceMethods.ByName("StartRecomputeJob")),
 		connect.WithHandlerOptions(opts...),
 	)
+	recomputeServiceStartRecomputeJobByIdHandler := connect.NewUnaryHandlerSimple(
+		RecomputeServiceStartRecomputeJobByIdProcedure,
+		svc.StartRecomputeJobById,
+		connect.WithSchema(recomputeServiceMethods.ByName("StartRecomputeJobById")),
+		connect.WithHandlerOptions(opts...),
+	)
 	recomputeServiceGetRecomputeJobStatusHandler := connect.NewUnaryHandlerSimple(
 		RecomputeServiceGetRecomputeJobStatusProcedure,
 		svc.GetRecomputeJobStatus,
 		connect.WithSchema(recomputeServiceMethods.ByName("GetRecomputeJobStatus")),
 		connect.WithHandlerOptions(opts...),
 	)
-	recomputeServiceRecomputeByIdHandler := connect.NewUnaryHandlerSimple(
-		RecomputeServiceRecomputeByIdProcedure,
-		svc.RecomputeById,
-		connect.WithSchema(recomputeServiceMethods.ByName("RecomputeById")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/proto.memelo.v1.RecomputeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RecomputeServiceStartRecomputeJobProcedure:
 			recomputeServiceStartRecomputeJobHandler.ServeHTTP(w, r)
+		case RecomputeServiceStartRecomputeJobByIdProcedure:
+			recomputeServiceStartRecomputeJobByIdHandler.ServeHTTP(w, r)
 		case RecomputeServiceGetRecomputeJobStatusProcedure:
 			recomputeServiceGetRecomputeJobStatusHandler.ServeHTTP(w, r)
-		case RecomputeServiceRecomputeByIdProcedure:
-			recomputeServiceRecomputeByIdHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -170,10 +170,10 @@ func (UnimplementedRecomputeServiceHandler) StartRecomputeJob(context.Context, *
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.RecomputeService.StartRecomputeJob is not implemented"))
 }
 
-func (UnimplementedRecomputeServiceHandler) GetRecomputeJobStatus(context.Context, *v1.RecomputeJob) (*v1.RecomputeJobStatus, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.RecomputeService.GetRecomputeJobStatus is not implemented"))
+func (UnimplementedRecomputeServiceHandler) StartRecomputeJobById(context.Context, *v1.RecomputeOneRequest) (*v1.RecomputeJob, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.RecomputeService.StartRecomputeJobById is not implemented"))
 }
 
-func (UnimplementedRecomputeServiceHandler) RecomputeById(context.Context, *v1.RecomputeOneRequest) (*v1.RecomputeOneResponse, error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.RecomputeService.RecomputeById is not implemented"))
+func (UnimplementedRecomputeServiceHandler) GetRecomputeJobStatus(context.Context, *v1.RecomputeJob) (*v1.RecomputeJobStatus, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.memelo.v1.RecomputeService.GetRecomputeJobStatus is not implemented"))
 }

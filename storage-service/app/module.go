@@ -82,6 +82,7 @@ func Module() fx.Option {
 		fx.Provide(storage2.NewTmpDataService),
 		fx.Provide(service.NewExportService),
 		fx.Provide(service.NewMediaEncoderService),
+		fx.Provide(service.NewPipelineSaveService),
 		fx.Provide(service.NewMemeCrudService),
 
 		fx.Provide(service.NewInMemoryRecomputeJobStorage),

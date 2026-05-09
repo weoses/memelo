@@ -25,7 +25,7 @@ func (s *CheckDuplicateByEmbeddingPipelineStep) Do(ctx context.Context, inputCon
 		excludeIds = append(excludeIds, *inputContext.SeedImageId)
 	}
 	for i := range len(pCtx.Embedding) {
-		if len(pCtx.Embedding[i].Data) >= 0 {
+		if len(pCtx.Embedding[i].Data) == 0 {
 			return nil
 		}
 
