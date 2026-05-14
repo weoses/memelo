@@ -94,22 +94,24 @@ func (p *SearchQueryProcessor) ProcessChosenQuery(_ context.Context, _ uuid.UUID
 	return nil
 }
 
-// DeleteQueryProcessor handles /delete queries: shows results marked for deletion,
-// and performs the actual delete when a result is chosen.
-type DeleteQueryProcessor struct {
+// prefixSearchProcessor is a shared base for processors that strip a prefix,
+// search, and show results with a fixed caption mark.
+type prefixSearchProcessor struct {
 	storage StorageConnector
 	config  *conf.Config
 	log     *slog.Logger
+	prefix  string
+	mark    string
 }
 
-func (p *DeleteQueryProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
-	params := entity.SearchParams{Query: strings.TrimSpace(strings.TrimPrefix(query, inlineDeletePrefix)), Pagination: pagination}
+func (p *prefixSearchProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
+	params := entity.SearchParams{Query: strings.TrimSpace(strings.TrimPrefix(query, p.prefix)), Pagination: pagination}
 	searchResult, err := p.storage.ProcessSearchQuery(ctx, accountId, params, p.config.Inline.PageSize)
 	if err != nil {
-		return nil, fmt.Errorf("DeleteQueryProcessor: %w", err)
+		return nil, fmt.Errorf("prefixSearchProcessor: %w", err)
 	}
 
-	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, "Deleted")
+	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, p.mark)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +121,12 @@ func (p *DeleteQueryProcessor) Process(ctx context.Context, accountId uuid.UUID,
 		nextPagination = searchResult.Pagination
 	}
 	return &QueryProcessorResult{Results: results, Pagination: nextPagination, CacheTime: 120}, nil
+}
+
+// DeleteQueryProcessor handles /delete queries: shows results marked for deletion,
+// and performs the actual delete when a result is chosen.
+type DeleteQueryProcessor struct {
+	prefixSearchProcessor
 }
 
 func (p *DeleteQueryProcessor) ProcessChosenQuery(ctx context.Context, accountId uuid.UUID, resultId string) error {
@@ -169,28 +177,7 @@ func (p *RandomQueryProcessor) ProcessChosenQuery(_ context.Context, _ uuid.UUID
 // RecomputeQueryProcessor handles /recompute queries: shows search results,
 // and triggers a recompute job when a result is chosen.
 type RecomputeQueryProcessor struct {
-	storage StorageConnector
-	config  *conf.Config
-	log     *slog.Logger
-}
-
-func (p *RecomputeQueryProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
-	params := entity.SearchParams{Query: strings.TrimSpace(strings.TrimPrefix(query, inlineRecomputePrefix)), Pagination: pagination}
-	searchResult, err := p.storage.ProcessSearchQuery(ctx, accountId, params, p.config.Inline.PageSize)
-	if err != nil {
-		return nil, fmt.Errorf("RecomputeQueryProcessor: %w", err)
-	}
-
-	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, "Recompute")
-	if err != nil {
-		return nil, err
-	}
-
-	var nextPagination *entity.PaginationOffset
-	if len(results) == p.config.Inline.PageSize && p.config.Inline.PageSize > 0 {
-		nextPagination = searchResult.Pagination
-	}
-	return &QueryProcessorResult{Results: results, Pagination: nextPagination, CacheTime: 120}, nil
+	prefixSearchProcessor
 }
 
 func (p *RecomputeQueryProcessor) ProcessChosenQuery(ctx context.Context, accountId uuid.UUID, resultId string) error {
@@ -228,19 +215,23 @@ func NewQueryProcessorFactory(storage StorageConnector, config *conf.Config) Que
 			config:  config,
 			log:     slog.With("service", "SearchQueryProcessor"),
 		},
-		deleteProcessor: &DeleteQueryProcessor{
+		deleteProcessor: &DeleteQueryProcessor{prefixSearchProcessor{
 			storage: storage,
 			config:  config,
 			log:     slog.With("service", "DeleteQueryProcessor"),
-		},
+			prefix:  inlineDeletePrefix,
+			mark:    "Deleted",
+		}},
 		randomProcessor: &RandomQueryProcessor{
 			storage: storage,
 			log:     slog.With("service", "RandomQueryProcessor"),
 		},
-		recomputeProcessor: &RecomputeQueryProcessor{
+		recomputeProcessor: &RecomputeQueryProcessor{prefixSearchProcessor{
 			storage: storage,
 			config:  config,
 			log:     slog.With("service", "RecomputeQueryProcessor"),
-		},
+			prefix:  inlineRecomputePrefix,
+			mark:    "Recompute",
+		}},
 	}
 }
