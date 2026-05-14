@@ -33,12 +33,15 @@ type StorageConnector interface {
 	AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error
 
 	GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType string) (*entity.MemeSearchResult, error)
+
+	StartRecomputeById(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
 }
 
 type StorageConnectorImpl struct {
-	cl     v1connect.SearchServiceClient
-	tagsCl v1connect.TagsServiceClient
-	log    *slog.Logger
+	cl          v1connect.SearchServiceClient
+	tagsCl      v1connect.TagsServiceClient
+	recomputeCl v1connect.RecomputeServiceClient
+	log         *slog.Logger
 }
 
 func (s *StorageConnectorImpl) AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error {
@@ -210,12 +213,30 @@ func (s *StorageConnectorImpl) GetRandomMeme(ctx context.Context, accountId uuid
 	return result, nil
 }
 
+func (s *StorageConnectorImpl) StartRecomputeById(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error {
+	_, err := s.recomputeCl.StartRecomputeJobById(ctx, &v1.RecomputeOneRequest{
+		AccountId: accountId.String(),
+		MediaId:   memeId.String(),
+		Options: &v1.RecomputeOptions{
+			ComputeExtractor:   true,
+			ComputeEmbedding:   true,
+			UpdateStorageItems: true,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("StartRecomputeById failed: accountId=%s memeId=%s: %w", accountId, memeId, err)
+	}
+	return nil
+}
+
 func NewStorageConnector(config *conf.Config) (StorageConnector, error) {
 	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.StorageService.Uri)
 	tagsCl := v1connect.NewTagsServiceClient(http.DefaultClient, config.StorageService.Uri)
+	recomputeCl := v1connect.NewRecomputeServiceClient(http.DefaultClient, config.StorageService.Uri)
 	return &StorageConnectorImpl{
-		cl:     cl,
-		tagsCl: tagsCl,
-		log:    slog.With("service", "StorageConnectorService"),
+		cl:          cl,
+		tagsCl:      tagsCl,
+		recomputeCl: recomputeCl,
+		log:         slog.With("service", "StorageConnectorService"),
 	}, nil
 }
