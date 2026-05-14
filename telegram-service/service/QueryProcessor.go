@@ -28,7 +28,7 @@ type QueryProcessorFactory interface {
 	GetProcessor(rawQuery string) QueryProcessor
 }
 
-func buildTelegramResults(ctx context.Context, log *slog.Logger, results []entity.MemeSearchResult, markDeleted bool) ([]interface{}, error) {
+func buildTelegramResults(ctx context.Context, log *slog.Logger, results []entity.MemeSearchResult, mark string) ([]interface{}, error) {
 	return helper.TransformSliceErr(
 		results,
 		make([]interface{}, len(results)),
@@ -46,9 +46,7 @@ func buildTelegramResults(ctx context.Context, log *slog.Logger, results []entit
 				inlineChoice.MimeType = "image/jpeg"
 				inlineChoice.Height = item.ThumbHeight
 				inlineChoice.Width = item.ThumbWidth
-				if markDeleted {
-					inlineChoice.Caption = "Deleted"
-				}
+				inlineChoice.Caption = mark
 				return inlineChoice, nil
 
 			case entity.ResultTypeVideo:
@@ -58,9 +56,7 @@ func buildTelegramResults(ctx context.Context, log *slog.Logger, results []entit
 				inlineChoice.Width = item.ThumbWidth
 				inlineChoice.Height = item.ThumbHeight
 				inlineChoice.Title = caption
-				if markDeleted {
-					inlineChoice.Caption = "Deleted"
-				}
+				inlineChoice.Caption = mark
 				return inlineChoice, nil
 			}
 			return nil, fmt.Errorf("buildTelegramResults: unknown result type %q", item.Type)
@@ -82,7 +78,7 @@ func (p *SearchQueryProcessor) Process(ctx context.Context, accountId uuid.UUID,
 		return nil, fmt.Errorf("SearchQueryProcessor: %w", err)
 	}
 
-	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, false)
+	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, "")
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +109,7 @@ func (p *DeleteQueryProcessor) Process(ctx context.Context, accountId uuid.UUID,
 		return nil, fmt.Errorf("DeleteQueryProcessor: %w", err)
 	}
 
-	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, true)
+	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, "Deleted")
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +155,7 @@ func (p *RandomQueryProcessor) Process(ctx context.Context, accountId uuid.UUID,
 		return &QueryProcessorResult{}, nil
 	}
 
-	results, err := buildTelegramResults(ctx, p.log, []entity.MemeSearchResult{*meme}, false)
+	results, err := buildTelegramResults(ctx, p.log, []entity.MemeSearchResult{*meme}, "")
 	if err != nil {
 		return nil, err
 	}
@@ -170,16 +166,54 @@ func (p *RandomQueryProcessor) ProcessChosenQuery(_ context.Context, _ uuid.UUID
 	return nil
 }
 
+// RecomputeQueryProcessor handles /recompute queries: shows search results,
+// and triggers a recompute job when a result is chosen.
+type RecomputeQueryProcessor struct {
+	storage StorageConnector
+	config  *conf.Config
+	log     *slog.Logger
+}
+
+func (p *RecomputeQueryProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
+	params := entity.SearchParams{Query: strings.TrimSpace(strings.TrimPrefix(query, inlineRecomputePrefix)), Pagination: pagination}
+	searchResult, err := p.storage.ProcessSearchQuery(ctx, accountId, params, p.config.Inline.PageSize)
+	if err != nil {
+		return nil, fmt.Errorf("RecomputeQueryProcessor: %w", err)
+	}
+
+	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, "Recompute")
+	if err != nil {
+		return nil, err
+	}
+
+	var nextPagination *entity.PaginationOffset
+	if len(results) == p.config.Inline.PageSize && p.config.Inline.PageSize > 0 {
+		nextPagination = searchResult.Pagination
+	}
+	return &QueryProcessorResult{Results: results, Pagination: nextPagination, CacheTime: 120}, nil
+}
+
+func (p *RecomputeQueryProcessor) ProcessChosenQuery(ctx context.Context, accountId uuid.UUID, resultId string) error {
+	memeId, err := uuid.Parse(resultId)
+	if err != nil {
+		return fmt.Errorf("RecomputeQueryProcessor: failed to parse meme uuid %q: %w", resultId, err)
+	}
+	return p.storage.StartRecomputeById(ctx, accountId, memeId)
+}
+
 type QueryProcessorFactoryImpl struct {
-	searchProcessor QueryProcessor
-	deleteProcessor QueryProcessor
-	randomProcessor QueryProcessor
+	searchProcessor    QueryProcessor
+	deleteProcessor    QueryProcessor
+	randomProcessor    QueryProcessor
+	recomputeProcessor QueryProcessor
 }
 
 func (f *QueryProcessorFactoryImpl) GetProcessor(rawQuery string) QueryProcessor {
 	switch {
 	case strings.HasPrefix(rawQuery, inlineDeletePrefix):
 		return f.deleteProcessor
+	case strings.HasPrefix(rawQuery, inlineRecomputePrefix):
+		return f.recomputeProcessor
 	case strings.HasPrefix(rawQuery, randomPrefix):
 		return f.randomProcessor
 	default:
@@ -202,6 +236,11 @@ func NewQueryProcessorFactory(storage StorageConnector, config *conf.Config) Que
 		randomProcessor: &RandomQueryProcessor{
 			storage: storage,
 			log:     slog.With("service", "RandomQueryProcessor"),
+		},
+		recomputeProcessor: &RecomputeQueryProcessor{
+			storage: storage,
+			config:  config,
+			log:     slog.With("service", "RecomputeQueryProcessor"),
 		},
 	}
 }

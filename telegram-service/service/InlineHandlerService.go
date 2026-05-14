@@ -12,6 +12,7 @@ import (
 )
 
 const inlineDeletePrefix = "/delete"
+const inlineRecomputePrefix = "/recompute"
 const randomPrefix = "/random"
 
 type InlineHandlerService interface {
