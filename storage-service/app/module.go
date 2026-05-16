@@ -16,6 +16,7 @@ import (
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/ocr/ffmpeg"
 	"github.com/weoses/memelo/storage-service/ocr/gapi"
+	openrouterpkg "github.com/weoses/memelo/storage-service/ocr/openrouter"
 	"github.com/weoses/memelo/storage-service/service"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 	"go.uber.org/fx"
@@ -37,14 +38,25 @@ func Module() fx.Option {
 		fx.Provide(func(c *conf.Config) *conf.CommonExtractingConfig { return c.Extracting }),
 
 		fx.Provide(ocr.NewImageConverter),
-		// Real Gemini implementations — override with fx.Decorate in tests.
+		// LLM provider implementations — selected by extractor-provider / embedder-provider config.
+		// Override with fx.Decorate in tests.
+		fx.Provide(func(cfg *conf.Config, fe ocr.Video2FrameExtractor) (ocr.LlmMediaExtractor, error) {
+			if cfg.ExtractorProvider == "openrouter" {
+				return openrouterpkg.NewOpenRouterExtractor(cfg, fe)
+			}
+			return gapi.NewGeminiExtractor(cfg)
+		}),
 		fx.Provide(
 			fx.Annotate(
-				gapi.NewImageEmbeddingExtractorGenai,
+				func(cfg *conf.Config, fe ocr.Video2FrameExtractor) (ocr.LlmEmbeddingExtractor, error) {
+					if cfg.EmbedderProvider == "openrouter" {
+						return openrouterpkg.NewOpenRouterEmbedder(cfg, fe)
+					}
+					return gapi.NewImageEmbeddingExtractorGenai(cfg)
+				},
 				fx.ResultTags(`name:"raw_embedder"`),
 			),
 		),
-		fx.Provide(gapi.NewGeminiExtractor),
 		fx.Provide(
 			fx.Annotate(
 				ocr.NewCachedEmbeddingExtractor,
