@@ -72,3 +72,16 @@ gemini-embedding:
   apikey:
   apiendpoint:
   model: "gemini-embedding-2-preview"
+
+extractor-provider: gemini   # gemini | openrouter
+embedder-provider: gemini    # gemini | openrouter
+
+openrouter-extractor:
+  apikey:
+  model: openai/gpt-4o
+  prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for a parameter, leave it empty (except caption)."
+  combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
+
+openrouter-embedding:
+  apikey:
+  model: nvidia/llama-nemotron-embed-vl-1b-v2

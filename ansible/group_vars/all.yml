@@ -22,6 +22,16 @@ gemini_embedding_api_endpoint: ""
 gemini_extractor_model: "gemini-2.5-flash"
 gemini_extractor_api_endpoint: ""
 
+# LLM provider selection (gemini | openrouter)
+extractor_provider: "openrouter"
+embedder_provider: "gemini"
+
+# OpenRouter embedding model
+openrouter_embedding_model: ""
+
+# OpenRouter extractor model
+openrouter_extractor_model: "google/gemini-3-flash-preview"
+
 
 # filled by runner
 release_version:

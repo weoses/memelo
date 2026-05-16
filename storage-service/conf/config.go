@@ -81,19 +81,35 @@ type GeminiEmbeddingConfig struct {
 	Model       string `mapstructure:"model"`
 }
 
+type OpenRouterExtractorConfig struct {
+	ApiKey        string `mapstructure:"apikey"`
+	Model         string `mapstructure:"model"`
+	Prompt        string `mapstructure:"prompt"`
+	CombinePrompt string `mapstructure:"combine-prompt"`
+}
+
+type OpenRouterEmbeddingConfig struct {
+	ApiKey string `mapstructure:"apikey"`
+	Model  string `mapstructure:"model"`
+}
+
 type Config struct {
-	Server          *commonconfig.ServerConfig       `mapstructure:"server"`
-	Log             *commonconfig.LoggingConfig      `mapstructure:"log"`
-	Search          *SearchConfig                    `mapstructure:"search"`
-	Extracting      *CommonExtractingConfig          `mapstructure:"extracting"`
-	MediaStorage    *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
-	TempStorage     *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
-	MetadataDb      *MetadataDbConfig                `mapstructure:"metadata-db"`
-	TagDb           *TagDbConfig                     `mapstructure:"tag-db"`
-	ImageConverter  *ImageConverterConfig            `mapstructure:"image-converter"`
-	Ffmpeg          *FfmpegConfig                    `mapstructure:"ffmpeg"`
-	GeminiExtractor *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`
-	GeminiEmbedding *GeminiEmbeddingConfig           `mapstructure:"gemini-embedding"`
+	Server              *commonconfig.ServerConfig       `mapstructure:"server"`
+	Log                 *commonconfig.LoggingConfig      `mapstructure:"log"`
+	Search              *SearchConfig                    `mapstructure:"search"`
+	Extracting          *CommonExtractingConfig          `mapstructure:"extracting"`
+	MediaStorage        *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
+	TempStorage         *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
+	MetadataDb          *MetadataDbConfig                `mapstructure:"metadata-db"`
+	TagDb               *TagDbConfig                     `mapstructure:"tag-db"`
+	ImageConverter      *ImageConverterConfig            `mapstructure:"image-converter"`
+	Ffmpeg              *FfmpegConfig                    `mapstructure:"ffmpeg"`
+	GeminiExtractor     *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`
+	GeminiEmbedding     *GeminiEmbeddingConfig           `mapstructure:"gemini-embedding"`
+	ExtractorProvider   string                           `mapstructure:"extractor-provider"`
+	EmbedderProvider    string                           `mapstructure:"embedder-provider"`
+	OpenRouterExtractor *OpenRouterExtractorConfig       `mapstructure:"openrouter-extractor"`
+	OpenRouterEmbedding *OpenRouterEmbeddingConfig       `mapstructure:"openrouter-embedding"`
 }
 
 func NewConfig() (*Config, error) {
