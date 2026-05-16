@@ -142,6 +142,10 @@ type RandomQueryProcessor struct {
 
 func (p *RandomQueryProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, _ *entity.PaginationOffset) (*QueryProcessorResult, error) {
 	mediaType := strings.TrimSpace(strings.TrimPrefix(query, randomPrefix))
+	if strings.HasPrefix(mediaType, "-type:") {
+		mediaType = strings.TrimPrefix(mediaType, "-type:")
+	}
+
 	if mediaType != entity.ResultTypeImage && mediaType != entity.ResultTypeVideo {
 		mediaType = ""
 	}
