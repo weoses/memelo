@@ -58,6 +58,15 @@ func (c *TestClient) SearchMemePage(ctx context.Context, accountID, query string
 	})
 }
 
+func (c *TestClient) SearchMemeWithType(ctx context.Context, accountID, query string, pageSize int32, mediaType *string) (*v1.SearchMemeResponse, error) {
+	return c.search.SearchMeme(ctx, &v1.SearchMemeRequest{
+		AccountId: accountID,
+		Query:     query,
+		PageSize:  pageSize,
+		Type:      mediaType,
+	})
+}
+
 func (c *TestClient) DeleteAll(ctx context.Context, accountID string) error {
 	_, err := c.search.DeleteAll(ctx, &v1.DeleteAllRequest{AccountId: accountID})
 	return err

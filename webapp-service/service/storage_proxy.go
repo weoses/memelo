@@ -52,7 +52,7 @@ type SearchResult struct {
 }
 
 type StorageProxy interface {
-	Search(ctx context.Context, accountId, query string, afterId *Pagination, limit int32) (*SearchResult, error)
+	Search(ctx context.Context, accountId, query string, metadataType *string, afterId *Pagination, limit int32) (*SearchResult, error)
 	UploadByS3Path(ctx context.Context, accountId, s3path, mime string) (*MemeResult, error)
 	GetMeme(ctx context.Context, accountId, id string) (*MemeResult, error)
 	UpdateMeme(ctx context.Context, accountId, id string, params UpdateParams) (*MemeResult, error)
@@ -74,11 +74,12 @@ func NewStorageProxy(cfg *conf.Config) (StorageProxy, error) {
 	}, nil
 }
 
-func (s *storageProxy) Search(ctx context.Context, accountId, query string, afterId *Pagination, limit int32) (*SearchResult, error) {
+func (s *storageProxy) Search(ctx context.Context, accountId, query string, metadataType *string, afterId *Pagination, limit int32) (*SearchResult, error) {
 	req := &v1.SearchMemeRequest{
 		AccountId: accountId,
 		Query:     query,
 		PageSize:  limit,
+		Type:      metadataType,
 	}
 	if afterId != nil && afterId.Searcher != "" {
 		req.AfterId = &v1.PipelinePagination{

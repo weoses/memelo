@@ -3,13 +3,17 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/labstack/echo/v4"
 	"github.com/weoses/memelo/webapp/conf"
 	"github.com/weoses/memelo/webapp/service"
 )
+
+var typeTagRe = regexp.MustCompile(`(?i)\s*-type:(image|video)\s*`)
 
 type Handlers struct {
 	proxy     service.StorageProxy
@@ -49,7 +53,14 @@ func (h *Handlers) SearchMemes(c echo.Context) error {
 		}
 	}
 
-	result, err := h.proxy.Search(c.Request().Context(), h.accountId, query, pagination, limit)
+	var metadataType *string
+	if match := typeTagRe.FindStringSubmatch(query); match != nil {
+		t := strings.ToLower(match[1])
+		metadataType = &t
+		query = strings.TrimSpace(typeTagRe.ReplaceAllString(query, " "))
+	}
+
+	result, err := h.proxy.Search(c.Request().Context(), h.accountId, query, metadataType, pagination, limit)
 	if err != nil {
 		h.log.Error("search failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream search failed")

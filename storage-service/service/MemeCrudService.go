@@ -51,7 +51,7 @@ type UpdateMemeInput struct {
 }
 
 type MemeCrudService interface {
-	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchResult, error)
+	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error)
 	GetMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*MetadataWithUrls, error)
 	UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error)
@@ -124,8 +124,8 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
-func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchResult, error) {
-	elasticData, err := m.searchService.Search(ctx, accountId, query, afterId, size)
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchResult, error) {
+	elasticData, err := m.searchService.Search(ctx, accountId, query, metadataType, afterId, size)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
 	}
@@ -236,11 +236,11 @@ func (m *MemeCrudServiceImpl) GetMeme(ctx context.Context, accountId uuid.UUID, 
 }
 
 func (m *MemeCrudServiceImpl) GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error) {
-	var metadataTypes []entity.MetadataType
+	var metadataType *entity.MetadataType
 	if mediaType != "" {
-		metadataTypes = []entity.MetadataType{mediaType}
+		metadataType = &mediaType
 	}
-	result, err := m.metadataStorageService.GetRandom(ctx, accountId, metadataTypes)
+	result, err := m.metadataStorageService.GetRandom(ctx, accountId, metadataType)
 	if err != nil {
 		return nil, fmt.Errorf("GetRandomMeme: %w", err)
 	}
@@ -281,7 +281,7 @@ func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID
 	var sortKey entity.ElasticSortKey
 
 	for {
-		results, nextKey, err := m.metadataStorageService.GetByAccountIdOrderByCreated(ctx, accountId, sortKey, pageSize)
+		results, nextKey, err := m.metadataStorageService.GetByAccountIdOrderByCreated(ctx, accountId, nil, sortKey, pageSize)
 		if err != nil {
 			return fmt.Errorf("list memes failed: %w", err)
 		}

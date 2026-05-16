@@ -194,7 +194,13 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, fmt.Errorf("invalid pageSize")
 	}
 
-	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, afterId, pageSize)
+	var metadataType *entity.MetadataType
+	if t := req.GetType(); t != "" {
+		mt := entity.MetadataType(t)
+		metadataType = &mt
+	}
+
+	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, metadataType, afterId, pageSize)
 	if err != nil {
 		api.slogger.ErrorContext(ctx, "SearchMeme error", "query", req.Query)
 		return nil, err

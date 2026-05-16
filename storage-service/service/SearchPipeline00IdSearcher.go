@@ -16,7 +16,7 @@ type IdSearcher struct {
 	metadata storage.MetadataStorageService
 }
 
-func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
+func (s IdSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, _ *entity.MetadataType, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
 	if query == "" || sortKey != nil {
 		return []*entity.ElasticImageMetaData{}, nil, nil
 	}

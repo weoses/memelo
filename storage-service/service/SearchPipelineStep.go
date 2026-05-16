@@ -19,7 +19,7 @@ type PipelineAfterID struct {
 type SearchPipelineStep interface {
 	GetIndex() int
 	GetName() string
-	Search(ctx context.Context, accountId uuid.UUID, query string, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 }
 
 type SearcherBase struct {

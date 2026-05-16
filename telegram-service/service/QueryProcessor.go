@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -12,6 +13,8 @@ import (
 	"github.com/weoses/memelo/telegram-service/conf"
 	"github.com/weoses/memelo/telegram-service/entity"
 )
+
+var typeTagRe = regexp.MustCompile(`(?i)\s*-type:(image|video)\s*`)
 
 type QueryProcessorResult struct {
 	Results    []interface{}
@@ -66,28 +69,7 @@ func buildTelegramResults(ctx context.Context, log *slog.Logger, results []entit
 
 // SearchQueryProcessor handles plain search queries.
 type SearchQueryProcessor struct {
-	storage StorageConnector
-	config  *conf.Config
-	log     *slog.Logger
-}
-
-func (p *SearchQueryProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
-	params := entity.SearchParams{Query: strings.TrimSpace(query), Pagination: pagination}
-	searchResult, err := p.storage.ProcessSearchQuery(ctx, accountId, params, p.config.Inline.PageSize)
-	if err != nil {
-		return nil, fmt.Errorf("SearchQueryProcessor: %w", err)
-	}
-
-	results, err := buildTelegramResults(ctx, p.log, searchResult.Results, "")
-	if err != nil {
-		return nil, err
-	}
-
-	var nextPagination *entity.PaginationOffset
-	if len(results) == p.config.Inline.PageSize && p.config.Inline.PageSize > 0 {
-		nextPagination = searchResult.Pagination
-	}
-	return &QueryProcessorResult{Results: results, Pagination: nextPagination, CacheTime: 120}, nil
+	prefixSearchProcessor
 }
 
 func (p *SearchQueryProcessor) ProcessChosenQuery(_ context.Context, _ uuid.UUID, _ string) error {
@@ -105,7 +87,16 @@ type prefixSearchProcessor struct {
 }
 
 func (p *prefixSearchProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
-	params := entity.SearchParams{Query: strings.TrimSpace(strings.TrimPrefix(query, p.prefix)), Pagination: pagination}
+	queryString := strings.TrimSpace(strings.TrimPrefix(query, p.prefix))
+
+	var metadataType *string
+	if match := typeTagRe.FindStringSubmatch(queryString); match != nil {
+		t := strings.ToLower(match[1])
+		metadataType = &t
+		queryString = strings.TrimSpace(typeTagRe.ReplaceAllString(queryString, " "))
+	}
+
+	params := entity.SearchParams{Query: queryString, Type: metadataType, Pagination: pagination}
 	searchResult, err := p.storage.ProcessSearchQuery(ctx, accountId, params, p.config.Inline.PageSize)
 	if err != nil {
 		return nil, fmt.Errorf("prefixSearchProcessor: %w", err)
@@ -210,11 +201,13 @@ func (f *QueryProcessorFactoryImpl) GetProcessor(rawQuery string) QueryProcessor
 
 func NewQueryProcessorFactory(storage StorageConnector, config *conf.Config) QueryProcessorFactory {
 	return &QueryProcessorFactoryImpl{
-		searchProcessor: &SearchQueryProcessor{
+		searchProcessor: &SearchQueryProcessor{prefixSearchProcessor{
 			storage: storage,
 			config:  config,
 			log:     slog.With("service", "SearchQueryProcessor"),
-		},
+			prefix:  "",
+			mark:    "",
+		}},
 		deleteProcessor: &DeleteQueryProcessor{prefixSearchProcessor{
 			storage: storage,
 			config:  config,

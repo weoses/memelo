@@ -20,7 +20,7 @@ type HybridSearcher struct {
 	searchConfig *conf.SearchConfig
 }
 
-func (s HybridSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
+func (s HybridSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
 	if query == "" {
 		return []*entity.ElasticImageMetaData{}, nil, nil
 	}
@@ -32,7 +32,7 @@ func (s HybridSearcher) Search(ctx context.Context, accountId uuid.UUID, query s
 	}
 
 	results, nextKey, err := s.metadata.SearchHybridOrderByScore(
-		ctx, accountId, query, *embedding, s.searchConfig.Fuzziness, sortKey, size,
+		ctx, accountId, query, *embedding, s.searchConfig.Fuzziness, metadataType, sortKey, size,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("searcher %s failed: %w", s.GetName(), err)
