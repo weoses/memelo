@@ -46,7 +46,7 @@ func NewGeminiExtractor(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 	return &GeminiExtractor{
 		client:  client,
 		cfg:     c,
-		limiter: rate.NewLimiter(15, 15),
+		limiter: rate.NewLimiter(0.5, 1),
 		slogger: logger,
 	}, nil
 }
@@ -110,6 +110,7 @@ func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType 
 	if err := g.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("rate limiter: %w", err)
 	}
+	g.limiter.Allow()
 
 	mediaPart, err := g.buildMediaPart(ctx, data, mimeType)
 	if err != nil {
