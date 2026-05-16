@@ -40,9 +40,9 @@ func Module() fx.Option {
 		fx.Provide(ocr.NewImageConverter),
 		// LLM provider implementations — selected by extractor-provider / embedder-provider config.
 		// Override with fx.Decorate in tests.
-		fx.Provide(func(cfg *conf.Config, fe ocr.Video2FrameExtractor) (ocr.LlmMediaExtractor, error) {
+		fx.Provide(func(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 			if cfg.ExtractorProvider == "openrouter" {
-				return openrouterpkg.NewOpenRouterExtractor(cfg, fe)
+				return openrouterpkg.NewOpenRouterExtractor(cfg)
 			}
 			return gapi.NewGeminiExtractor(cfg)
 		}),

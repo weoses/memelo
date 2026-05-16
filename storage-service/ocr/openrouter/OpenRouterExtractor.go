@@ -9,7 +9,6 @@ import (
 
 	orsdk "github.com/OpenRouterTeam/go-sdk"
 	"github.com/OpenRouterTeam/go-sdk/models/components"
-	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
@@ -23,25 +22,23 @@ const orCaptionProp = "caption"
 const orToolName = "extract_metadata"
 
 type OpenRouterExtractor struct {
-	client       *orsdk.OpenRouter
-	cfg          *conf.OpenRouterExtractorConfig
-	frameExtract ocr.Video2FrameExtractor
-	limiter      *rate.Limiter
-	slogger      *slog.Logger
+	client  *orsdk.OpenRouter
+	cfg     *conf.OpenRouterExtractorConfig
+	limiter *rate.Limiter
+	slogger *slog.Logger
 }
 
-func NewOpenRouterExtractor(cfg *conf.Config, fe ocr.Video2FrameExtractor) (ocr.LlmMediaExtractor, error) {
+func NewOpenRouterExtractor(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 	c := cfg.OpenRouterExtractor
 	if c == nil {
 		return nil, fmt.Errorf("openrouter-extractor config is missing")
 	}
 	client := orsdk.New(orsdk.WithSecurity(c.ApiKey))
 	return &OpenRouterExtractor{
-		client:       client,
-		cfg:          c,
-		frameExtract: fe,
-		limiter:      rate.NewLimiter(2, 2),
-		slogger:      slog.With("service", "OpenRouterExtractor"),
+		client:  client,
+		cfg:     c,
+		limiter: rate.NewLimiter(2, 2),
+		slogger: slog.With("service", "OpenRouterExtractor"),
 	}, nil
 }
 
@@ -83,6 +80,21 @@ func (e *OpenRouterExtractor) buildImageMessage(ctx context.Context, data temp.D
 		components.CreateChatContentItemsImageURL(components.ChatContentImage{
 			Type:     components.ChatContentImageTypeImageURL,
 			ImageURL: components.ChatContentImageImageURL{URL: dataURL},
+		}),
+	})
+	return components.CreateChatMessagesUser(components.ChatUserMessage{Content: content}), nil
+}
+
+func (e *OpenRouterExtractor) buildVideoMessage(ctx context.Context, data temp.Data) (components.ChatMessages, error) {
+	dataURL, err := toDataURL(data, "video/mp4", e.slogger)
+	if err != nil {
+		return components.ChatMessages{}, fmt.Errorf("build video message: %w", err)
+	}
+
+	content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
+		components.CreateChatContentItemsVideoURL(components.ChatContentVideo{
+			Type:     components.ChatContentVideoTypeVideoURL,
+			VideoURL: components.ChatContentVideoInput{URL: dataURL},
 		}),
 	})
 	return components.CreateChatMessagesUser(components.ChatUserMessage{Content: content}), nil
@@ -148,13 +160,12 @@ func (e *OpenRouterExtractor) ProcessImage(ctx context.Context, data temp.Data) 
 func (e *OpenRouterExtractor) ProcessVideo(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
 	e.slogger.InfoContext(ctx, "ProcessVideo start")
 
-	frame, err := e.frameExtract.ExtractOneFrame(ctx, data)
+	item, err := e.buildVideoMessage(ctx, data)
 	if err != nil {
-		return nil, fmt.Errorf("ProcessVideo: extract frame: %w", err)
+		return nil, fmt.Errorf("ProcessVideo: failed to build video message %w", err)
 	}
-	defer helper.QuietClose(frame, e.slogger)
 
-	result, err := e.ProcessImage(ctx, frame)
+	result, err := e.sendChat(ctx, []components.ChatMessages{item})
 	if err != nil {
 		return nil, fmt.Errorf("ProcessVideo: %w", err)
 	}
