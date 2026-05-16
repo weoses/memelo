@@ -9,14 +9,17 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/temp"
+	"github.com/weoses/memelo/telegram-service/entity"
 )
 
 type MessageHandlerService interface {
 	ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 	ProcessVideoMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
+	ProcessDocumentMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
 const parseMode = "Markdown"
@@ -39,30 +42,18 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 	if len(message.Photo) >= 1 {
 		fileId = message.Photo[len(message.Photo)-1].FileID
 	}
-
 	if fileId == "" {
 		return nil, errors.New("messageHandlerService: message dont contain image")
 	}
-
-	fileURL, err := m.fileResolver.GetFileURL(ctx, fileId)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: GetFileURL failed, fileId: %s : %w", fileId, err)
-	}
-
-	s3data, err := m.downloadToS3(ctx, fileURL)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: downloadToS3 failed: %w", err)
-	}
-	defer helper.QuietClose(s3data, m.slogger)
 
 	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
 	}
 
-	result, err := m.storage.CreateMeme(ctx, s3data, "image/jpeg", accountId)
+	result, err := m.createMediaMeme(ctx, "image", fileId, accountId)
 	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: CreateMeme failed : %w", err)
+		return nil, err
 	}
 
 	m.slogger.InfoContext(ctx, "meme created",
@@ -90,25 +81,14 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 		return nil, errors.New("messageHandlerService: message does not contain a video")
 	}
 
-	fileURL, err := m.fileResolver.GetFileURL(ctx, message.Video.FileID)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: GetFileURL failed, fileId: %s : %w", message.Video.FileID, err)
-	}
-
-	s3data, err := m.downloadToS3(ctx, fileURL)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: downloadToS3 failed: %w", err)
-	}
-	defer helper.QuietClose(s3data, m.slogger)
-
 	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
 	}
 
-	result, err := m.storage.CreateVideo(ctx, s3data, accountId)
+	result, err := m.createMediaMeme(ctx, "video", message.Video.FileID, accountId)
 	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: CreateVideo failed : %w", err)
+		return nil, err
 	}
 
 	m.slogger.InfoContext(ctx, "video meme created",
@@ -124,6 +104,75 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 			strings.Join(result.Tags, ", ")),
 		ParseMode: parseMode,
 	}, nil
+}
+
+func (m MessageHandlerServiceImpl) ProcessDocumentMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
+	if message.Document == nil {
+		return nil, errors.New("messageHandlerService: message does not contain a document")
+	}
+
+	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
+	}
+
+	mimeType := message.Document.MimeType
+	if mimeType == "" {
+		return nil, errors.New("messageHandlerService: message has no mime type")
+	}
+
+	var typ string
+	if strings.HasPrefix(mimeType, "video/") {
+		typ = "video"
+	} else if strings.HasPrefix(mimeType, "image/") {
+		typ = "image"
+	} else {
+		return nil, errors.New("messageHandlerService: invalid mime type")
+	}
+
+	result, err := m.createMediaMeme(ctx, typ, message.Document.FileID, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	m.slogger.InfoContext(ctx, "document meme created",
+		"memeId", result.Id,
+		"duplicate", result.DuplicateStatus)
+
+	return &MessageHandlerResponse{
+		Message: fmt.Sprintf(
+			" Text: ```\n%s\n```\n"+
+				" Tags: ```%s```\n"+
+				" Caption: `%s`\n"+
+				" ID: `%s` \n"+
+				" Status: `%s`",
+			result.Text,
+			strings.Join(result.Tags, ", "),
+			result.Caption,
+			result.Id,
+			result.DuplicateStatus),
+		ParseMode: parseMode,
+	}, nil
+}
+
+func (m MessageHandlerServiceImpl) createMediaMeme(ctx context.Context, reqType string, fileId string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
+	fileURL, err := m.fileResolver.GetFileURL(ctx, fileId)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: GetFileURL failed, fileId: %s : %w", fileId, err)
+	}
+
+	s3data, err := m.downloadToS3(ctx, fileURL)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: downloadToS3 failed: %w", err)
+	}
+	defer helper.QuietClose(s3data, m.slogger)
+
+	result, err := m.storage.CreateMeme(ctx, s3data, reqType, accountId)
+	if err != nil {
+		return nil, fmt.Errorf("messageHandlerService: CreateMeme failed : %w", err)
+	}
+
+	return result, nil
 }
 
 func (m MessageHandlerServiceImpl) downloadToS3(ctx context.Context, fileURL string) (temp.S3BackedData, error) {

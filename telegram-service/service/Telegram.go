@@ -97,6 +97,8 @@ func (s *TelegramBotServiceImpl) handleMessage(ctx context.Context, requestMessa
 		answer, err = s.message.ProcessVideoMessage(ctx, requestMessage)
 	} else if requestMessage.Photo != nil {
 		answer, err = s.message.ProcessImageMessage(ctx, requestMessage)
+	} else if requestMessage.Document != nil {
+		answer, err = s.message.ProcessDocumentMessage(ctx, requestMessage)
 	} else {
 		err = errors.New("message dont contain any media temp")
 	}
