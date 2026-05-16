@@ -25,8 +25,7 @@ type StorageConnector interface {
 		pageSize int,
 	) (*entity.SearchQueryResult, error)
 
-	CreateMeme(ctx context.Context, data temp.S3BackedData, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
-	CreateVideo(ctx context.Context, data temp.S3BackedData, accountId uuid.UUID) (*entity.MemeCreateResult, error)
+	CreateMeme(ctx context.Context, data temp.S3BackedData, reqType string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
 
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
 
@@ -127,44 +126,25 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 	return qr, nil
 }
 
-func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, data temp.S3BackedData, mime string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
+func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, data temp.S3BackedData, reqType string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
 	s3path, err := data.GetS3Path(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("storageService: get s3 path for image failed: %w", err)
+		return nil, fmt.Errorf("storageService: get s3 path failed: %w", err)
 	}
 
-	response, err := s.cl.CreateMeme(ctx, &v1.CreateMemeRequest{
-		AccountId: accountId.String(),
-		Image:     &v1.MediaDataDto{S3Path: &s3path},
-	})
+	req := &v1.CreateMemeRequest{AccountId: accountId.String()}
+	switch reqType {
+	case "video":
+		req.Video = &v1.MediaDataDto{S3Path: &s3path}
+	case "image":
+		req.Image = &v1.MediaDataDto{S3Path: &s3path}
+	default:
+		return nil, fmt.Errorf("storageService: unknown type: %s", reqType)
+	}
+
+	response, err := s.cl.CreateMeme(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("storageService: create meme failed: %w", err)
-	}
-
-	memeId, err := uuid.Parse(response.Result.GetId())
-	if err != nil {
-		return nil, fmt.Errorf("storageService: failed to parse created meme id: %s: %w", response.Result.GetId(), err)
-	}
-	return &entity.MemeCreateResult{
-		Id:              memeId,
-		Text:            response.Result.GetOcrResult(),
-		DuplicateStatus: response.Status.String(),
-		Tags:            response.Result.GetTags(),
-	}, nil
-}
-
-func (s *StorageConnectorImpl) CreateVideo(ctx context.Context, data temp.S3BackedData, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
-	s3path, err := data.GetS3Path(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("storageService: get s3 path for video failed: %w", err)
-	}
-
-	response, err := s.cl.CreateMeme(ctx, &v1.CreateMemeRequest{
-		AccountId: accountId.String(),
-		Video:     &v1.MediaDataDto{S3Path: &s3path},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("storageService: create video meme failed: %w", err)
 	}
 
 	memeId, err := uuid.Parse(response.Result.GetId())
