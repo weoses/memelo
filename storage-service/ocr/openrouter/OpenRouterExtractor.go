@@ -46,15 +46,10 @@ func NewOpenRouterExtractor(cfg *conf.Config, fe ocr.Video2FrameExtractor) (ocr.
 }
 
 func (e *OpenRouterExtractor) buildTool() components.ChatFunctionTool {
-	desc := "Extract structured metadata from the media"
-	onScreenDesc := "Any text visible on screen (OCR)"
-	audioTransDesc := "Audio transcription or speech-to-text content from the media"
-	audioTrackDesc := "An audio track, song, that is at sound background. If it is not famous, or it to quiet, or you not sure, ignore it"
-	captionDesc := "A small caption summarizing the media content. Must not be more than 2-3 words"
-
 	const fieldType = "type"
 	const stringTyp = "string"
 	const fieldDescription = "description"
+	desc := e.cfg.OutputToolDescription
 	return components.CreateChatFunctionToolChatFunctionToolFunction(components.ChatFunctionToolFunction{
 		Type: components.ChatFunctionToolTypeFunction,
 		Function: components.ChatFunctionToolFunctionFunction{
@@ -63,10 +58,10 @@ func (e *OpenRouterExtractor) buildTool() components.ChatFunctionTool {
 			Parameters: map[string]any{
 				fieldType: "object",
 				"properties": map[string]any{
-					orOnScreenTextProp:    map[string]any{fieldType: stringTyp, fieldDescription: onScreenDesc},
-					orAudioTranscriptProp: map[string]any{fieldType: stringTyp, fieldDescription: audioTransDesc},
-					orAudioTrackProp:      map[string]any{fieldType: stringTyp, fieldDescription: audioTrackDesc},
-					orCaptionProp:         map[string]any{fieldType: stringTyp, fieldDescription: captionDesc},
+					orOnScreenTextProp:    map[string]any{fieldType: stringTyp, fieldDescription: e.cfg.OutputToolOnScreenTextDesc},
+					orAudioTranscriptProp: map[string]any{fieldType: stringTyp, fieldDescription: e.cfg.OutputToolTranscriptionDesc},
+					orAudioTrackProp:      map[string]any{fieldType: stringTyp, fieldDescription: e.cfg.OutputToolAudioTrackDesc},
+					orCaptionProp:         map[string]any{fieldType: stringTyp, fieldDescription: e.cfg.OutputToolCaptionDesc},
 				},
 				"required": []string{orCaptionProp},
 			},

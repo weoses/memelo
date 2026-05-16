@@ -82,10 +82,15 @@ type GeminiEmbeddingConfig struct {
 }
 
 type OpenRouterExtractorConfig struct {
-	ApiKey        string `mapstructure:"apikey"`
-	Model         string `mapstructure:"model"`
-	Prompt        string `mapstructure:"prompt"`
-	CombinePrompt string `mapstructure:"combine-prompt"`
+	ApiKey                      string `mapstructure:"apikey"`
+	Model                       string `mapstructure:"model"`
+	Prompt                      string `mapstructure:"prompt"`
+	CombinePrompt               string `mapstructure:"combine-prompt"`
+	OutputToolDescription       string `mapstructure:"output-tool-description"`
+	OutputToolTranscriptionDesc string `mapstructure:"output-tool-transcription-desc"`
+	OutputToolOnScreenTextDesc  string `mapstructure:"output-tool-on-screen-text-desc"`
+	OutputToolAudioTrackDesc    string `mapstructure:"output-tool-audio-track-desc"`
+	OutputToolCaptionDesc       string `mapstructure:"output-tool-caption-desc"`
 }
 
 type OpenRouterEmbeddingConfig struct {
