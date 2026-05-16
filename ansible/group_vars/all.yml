@@ -19,7 +19,7 @@ gemini_embedding_model: "gemini-embedding-2-preview"
 gemini_embedding_api_endpoint: ""
 
 # Gemini extractor model
-gemini_extractor_model: "gemini-3-flash-preview"
+gemini_extractor_model: "gemini-2.5-flash"
 gemini_extractor_api_endpoint: ""
 
 
