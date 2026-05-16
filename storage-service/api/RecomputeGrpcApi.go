@@ -37,7 +37,7 @@ func (r *RecomputeGrpcApiImpl) StartRecomputeJobById(ctx context.Context, reques
 			IncludeManualEdited: request.Options.IncludeManualEdited,
 		})
 	if err != nil {
-		return nil, fmt.Errorf("recompute start for job failed: %v", err)
+		return nil, fmt.Errorf("recompute start for job failed: %w", err)
 	}
 
 	return &v1.RecomputeJob{
