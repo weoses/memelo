@@ -78,9 +78,14 @@ embedder-provider: gemini    # gemini | openrouter
 
 openrouter-extractor:
   apikey:
-  model: openai/gpt-4o
-  prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for a parameter, leave it empty (except caption)."
-  combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
+  model: google/gemini-3-flash-preview
+  prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption)."
+  output-tool-description: "Extract structured metadata from the media"
+  output-tool-transcription-desc: "Audio transcription or speech-to-text content from the media"
+  output-tool-on-screen-text-desc: "Any text visible on screen (OCR)"
+  output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
+  output-tool-audio-track-desc: "An audio track, song, that is at sound background. If it is not famous, or it to quiet, or you not sure, ignore it"
+  combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap one another. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
 
 openrouter-embedding:
   apikey:
