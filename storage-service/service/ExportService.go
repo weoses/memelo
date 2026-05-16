@@ -64,7 +64,7 @@ func (e *ExportServiceImpl) Export(
 		var err error
 
 		if accountId != nil {
-			page, nextKey, err = e.metadataStorageService.GetByAccountIdOrderByCreated(ctx, *accountId, sortKey, exportPageSize)
+			page, nextKey, err = e.metadataStorageService.GetByAccountIdOrderByCreated(ctx, *accountId, nil, sortKey, exportPageSize)
 		} else {
 			page, nextKey, err = e.metadataStorageService.GetAll(ctx, sortKey, exportPageSize)
 		}

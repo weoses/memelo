@@ -21,6 +21,7 @@ message SearchMemeRequest {
   string query = 2;
   PipelinePagination after_id = 5;
   int32 page_size = 6;
+  optional string type = 7;
 }
 
 message SearchMemeResponse {

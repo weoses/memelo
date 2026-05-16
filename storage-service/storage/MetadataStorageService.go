@@ -98,6 +98,7 @@ type MetadataStorageService interface {
 	GetByAccountIdOrderByCreated(
 		ctx context.Context,
 		accountId uuid.UUID,
+		metadataType *entity.MetadataType,
 		sortKey entity.ElasticSortKey,
 		pageSize int,
 	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
@@ -108,6 +109,7 @@ type MetadataStorageService interface {
 		query string,
 		embedding entity.EmbeddingItem,
 		fuzziness string,
+		metadataType *entity.MetadataType,
 		sortKey entity.ElasticSortKey,
 		pageSize int,
 	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
@@ -136,7 +138,7 @@ type MetadataStorageService interface {
 
 	QueryByRaw(ctx context.Context, rawQuery map[string]interface{}, sortKey entity.ElasticSortKey, pageSize int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 
-	GetRandom(ctx context.Context, accountId uuid.UUID, types []entity.MetadataType) (*entity.ElasticImageMetaData, error)
+	GetRandom(ctx context.Context, accountId uuid.UUID, metadataType *entity.MetadataType) (*entity.ElasticImageMetaData, error)
 }
 
 type ElasticMetadataStorageServiceImpl struct {
@@ -151,6 +153,7 @@ type ElasticMetadataStorageServiceImpl struct {
 func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 	ctx context.Context,
 	accountId uuid.UUID,
+	metadataType *entity.MetadataType,
 	sortKey entity.ElasticSortKey,
 	pageSize int,
 ) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
@@ -159,7 +162,12 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 		"pageSize", pageSize,
 	)
 
-	q := e.accountIdQuery(accountId)
+	q := types.NewQuery()
+	q.Bool = types.NewBoolQuery()
+	q.Bool.Filter = []types.Query{*e.accountIdQuery(accountId)}
+	if tq := e.typeQuery(metadataType); tq != nil {
+		q.Bool.Filter = append(q.Bool.Filter, *tq)
+	}
 
 	result, err := e.runQuery(ctx, q, pageSize, sortKey)
 	if err != nil {
@@ -428,6 +436,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 	query string,
 	embedding entity.EmbeddingItem,
 	fuzziness string,
+	metadataType *entity.MetadataType,
 	sortKey entity.ElasticSortKey,
 	pageSize int,
 ) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
@@ -435,7 +444,14 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 
 	accountIdFilter := e.accountIdQuery(accountId)
 	bm25Query := e.stringAndAccountQuery(accountId, query, fuzziness)
-	knnQuery := e.embeddingV1KnnAllQuery(embedding, accountIdFilter, pageSize)
+	if tq := e.typeQuery(metadataType); tq != nil {
+		bm25Query.Bool.Must = append(bm25Query.Bool.Must, *tq)
+	}
+	knnFilters := []types.Query{*accountIdFilter}
+	if tq := e.typeQuery(metadataType); tq != nil {
+		knnFilters = append(knnFilters, *tq)
+	}
+	knnQuery := e.embeddingV1KnnAllQueryWithFilters(embedding, knnFilters, pageSize)
 
 	searchReq := e.client.Search().
 		Index(e.indexName).
@@ -543,14 +559,32 @@ func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQuery(
 	accountIdQuery *types.Query,
 	count int,
 ) *types.KnnSearch {
+	return e.embeddingV1KnnAllQueryWithFilters(img, []types.Query{*accountIdQuery}, count)
+}
 
+func (e *ElasticMetadataStorageServiceImpl) embeddingV1KnnAllQueryWithFilters(
+	img entity.EmbeddingItem,
+	filters []types.Query,
+	count int,
+) *types.KnnSearch {
 	query := types.NewKnnSearch()
 	query.Field = "EmbeddingList.Data"
 	query.QueryVector = img.Data
 	query.NumCandidates = helper.Addr(1000)
 	query.K = helper.Addr(count)
-	query.Filter = []types.Query{*accountIdQuery}
+	query.Filter = filters
 	return query
+}
+
+func (e *ElasticMetadataStorageServiceImpl) typeQuery(t *entity.MetadataType) *types.Query {
+	if t == nil {
+		return nil
+	}
+	q := types.NewQuery()
+	q.Match = map[string]types.MatchQuery{
+		"Type": {Query: string(*t), Fuzziness: 0, Operator: &operator.And},
+	}
+	return q
 }
 
 func (e *ElasticMetadataStorageServiceImpl) accountIdQuery(accountId uuid.UUID) *types.Query {
@@ -648,15 +682,15 @@ func unmarshalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDa
 func (e *ElasticMetadataStorageServiceImpl) GetRandom(
 	ctx context.Context,
 	accountId uuid.UUID,
-	metadataTypes []entity.MetadataType,
+	metadataType *entity.MetadataType,
 ) (*entity.ElasticImageMetaData, error) {
 	query := types.NewQuery()
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Filter = []types.Query{*e.accountIdQuery(accountId)}
-	for _, t := range metadataTypes {
+	if metadataType != nil {
 		typeQ := types.NewQuery()
 		typeQ.Match = map[string]types.MatchQuery{
-			"Type": {Query: string(t), Fuzziness: 0, Operator: &operator.And},
+			"Type": {Query: string(*metadataType), Fuzziness: 0, Operator: &operator.And},
 		}
 		query.Bool.Filter = append(query.Bool.Filter, *typeQ)
 	}

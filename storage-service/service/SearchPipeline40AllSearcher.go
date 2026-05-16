@@ -16,13 +16,13 @@ type AllSearcher struct {
 	metadata storage.MetadataStorageService
 }
 
-func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
+func (a AllSearcher) Search(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, sortKey entity.ElasticSortKey, size int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
 	if query != "" {
 		return []*entity.ElasticImageMetaData{}, nil, nil
 	}
 	a.slogger.InfoContext(ctx, "search", "query", query, "sortKey", sortKey, "size", size)
 
-	results, nextKey, err := a.metadata.GetByAccountIdOrderByCreated(ctx, accountId, sortKey, size)
+	results, nextKey, err := a.metadata.GetByAccountIdOrderByCreated(ctx, accountId, metadataType, sortKey, size)
 	if err != nil {
 		return nil, nil, fmt.Errorf("searcher %s failed: %w", a.GetName(), err)
 	}

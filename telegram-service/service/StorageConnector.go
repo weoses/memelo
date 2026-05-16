@@ -81,6 +81,7 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 		AccountId: accountId.String(),
 		Query:     params.Query,
 		PageSize:  int32(pageSize),
+		Type:      params.Type,
 	}
 	if params.Pagination != nil {
 		req.AfterId = &v1.PipelinePagination{

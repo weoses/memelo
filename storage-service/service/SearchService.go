@@ -16,7 +16,7 @@ type SearchServiceResponse struct {
 }
 
 type SearchService interface {
-	Search(ctx context.Context, accountId uuid.UUID, query string, afterId *PipelineAfterID, size int) (*SearchServiceResponse, error)
+	Search(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchServiceResponse, error)
 }
 
 type SearchServiceImpl struct {
@@ -28,6 +28,7 @@ func (m *SearchServiceImpl) Search(
 	ctx context.Context,
 	accountId uuid.UUID,
 	query string,
+	metadataType *entity.MetadataType,
 	afterId *PipelineAfterID,
 	size int,
 ) (*SearchServiceResponse, error) {
@@ -57,7 +58,7 @@ func (m *SearchServiceImpl) Search(
 		m.slogger.DebugContext(ctx, "Start searcher",
 			"searcher", searcherName)
 
-		data, returnedKey, err := searcher.Search(ctx, accountId, query, sortKey, size)
+		data, returnedKey, err := searcher.Search(ctx, accountId, query, metadataType, sortKey, size)
 
 		m.slogger.DebugContext(ctx, "End searcher",
 			"searcher", searcherName,

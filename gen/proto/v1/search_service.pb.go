@@ -129,6 +129,7 @@ type SearchMemeRequest struct {
 	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	AfterId       *PipelinePagination    `protobuf:"bytes,5,opt,name=after_id,json=afterId,proto3" json:"after_id,omitempty"`
 	PageSize      int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	Type          *string                `protobuf:"bytes,7,opt,name=type,proto3,oneof" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -189,6 +190,13 @@ func (x *SearchMemeRequest) GetPageSize() int32 {
 		return x.PageSize
 	}
 	return 0
+}
+
+func (x *SearchMemeRequest) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
 }
 
 type SearchMemeResponse struct {
@@ -797,13 +805,15 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\x04data\x18\x02 \x01(\fH\x01R\x04data\x88\x01\x01B\n" +
 	"\n" +
 	"\b_s3_pathB\a\n" +
-	"\x05_data\"\xa5\x01\n" +
+	"\x05_data\"\xc7\x01\n" +
 	"\x11SearchMemeRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12>\n" +
 	"\bafter_id\x18\x05 \x01(\v2#.proto.memelo.v1.PipelinePaginationR\aafterId\x12\x1b\n" +
-	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\"\x86\x01\n" +
+	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\x12\x17\n" +
+	"\x04type\x18\a \x01(\tH\x00R\x04type\x88\x01\x01B\a\n" +
+	"\x05_type\"\x86\x01\n" +
 	"\x12SearchMemeResponse\x122\n" +
 	"\aresults\x18\x01 \x03(\v2\x18.proto.memelo.v1.MemeDtoR\aresults\x12<\n" +
 	"\alast_id\x18\x03 \x01(\v2#.proto.memelo.v1.PipelinePaginationR\x06lastId\"\xba\x01\n" +
@@ -951,6 +961,7 @@ func file_proto_v1_search_service_proto_init() {
 	}
 	file_proto_v1_common_proto_init()
 	file_proto_v1_search_service_proto_msgTypes[0].OneofWrappers = []any{}
+	file_proto_v1_search_service_proto_msgTypes[1].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[3].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[9].OneofWrappers = []any{}
 	file_proto_v1_search_service_proto_msgTypes[11].OneofWrappers = []any{}

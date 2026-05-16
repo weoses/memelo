@@ -9,6 +9,7 @@ type PaginationOffset struct {
 
 type SearchParams struct {
 	Query      string
+	Type       *string
 	Pagination *PaginationOffset
 }
 
