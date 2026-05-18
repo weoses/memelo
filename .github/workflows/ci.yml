@@ -2,10 +2,10 @@ name: CI
 
 on:
   push:
-    branches:
+    branches-ignore:
       - "**"
-    tags-ignore:
-      - '**'
+    tags:
+      - 'v**'
 jobs:
   run-tests:
     runs-on: ubuntu-latest
@@ -57,57 +57,7 @@ jobs:
           push: true
           file: Dockerfile-${{matrix.service}}-service
           tags: |
-            ghcr.io/weoses/${{matrix.service}}-service:dev-${{ github.sha }}
+            ghcr.io/weoses/${{matrix.service}}-service:${{ github.ref_name }}
             ghcr.io/weoses/${{matrix.service}}-service:latest
           cache-from: type=registry,ref=ghcr.io/weoses/${{matrix.service}}-service:latest
           cache-to: type=inline
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs:
-      - run-tests
-      - build-services
-    strategy:
-      matrix:
-        target_env: [ test, production ]
-      max-parallel: 1 # Set to 1 for sequential, or more for parallel
-    environment: ${{ matrix.target_env == 'production' && 'production' || 'memelo-test' }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Run server setup
-        uses: dawidd6/action-ansible-playbook@v9
-        with:
-          requirements: requirements.yml
-          playbook: server_setup.yml
-          directory: ansible/
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          vault_password: ${{ secrets.VAULT_PASSWORD }}
-          options: |
-            --inventory inventory/${{ matrix.target_env  }}.yml
-            --limit ${{ matrix.target_env  }}
-
-      - name: Deploy via Ansible
-        uses: dawidd6/action-ansible-playbook@v9
-        with:
-          requirements: requirements.yml
-          playbook: deploy.yml
-          directory: ansible/
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          vault_password: ${{secrets.VAULT_PASSWORD}}
-          options: |
-            --inventory inventory/${{ matrix.target_env  }}.yml
-            --limit ${{ matrix.target_env  }}
-            --extra-vars release_version=dev-${{ github.sha }}
-            --extra-vars commit_hash=${{ github.sha }}
-            --extra-vars repo_url=${{ github.server_url }}/${{ github.repository }}.git
-
-      - name: Tests
-        uses: robherley/go-test-action@v0
-        with:
-          moduleDirectory: tests/e2e
-        env:
-          STORAGE_SERVICE_URI: ${{ secrets.TEST_STORAGE_SERVICE_URI }}
-          STORAGE_SERVICE_USERNAME: ${{ secrets.TEST_PROXY_USERNAME }}
-          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
-        if: ${{ matrix.target_env  == 'production' }}

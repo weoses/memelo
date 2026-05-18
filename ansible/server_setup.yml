@@ -1,7 +1,0 @@
----
-- name: Configure server
-  hosts: all
-  gather_facts: true
-  become: true
-  roles:
-    - server_setup

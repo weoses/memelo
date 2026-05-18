@@ -1,6 +1,0 @@
----
-- name: Deploy memelo
-  hosts: all
-  gather_facts: false
-  roles:
-    - deploy
