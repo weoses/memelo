@@ -14,9 +14,10 @@ type CommonExtractingConfig struct {
 }
 
 type SearchConfig struct {
-	SemanticDuplicateThreshold  float64
-	SemanticTextSearchThreshold float64
-	Fuzziness                   string
+	SemanticDuplicateThreshold        float64
+	PercentageDuplicatePartsThreshold float64
+	SemanticTextSearchThreshold       float64
+	Fuzziness                         string
 }
 
 type MetadataDbConfig struct {
@@ -68,6 +69,7 @@ type GeminiExtractorConfig struct {
 	Model                       string `mapstructure:"model"`
 	Prompt                      string `mapstructure:"prompt"`
 	CombinePrompt               string `mapstructure:"combine-prompt"`
+	DuplicatePrompt             string `mapstructure:"duplicate-prompt"`
 	OutputToolDescription       string `mapstructure:"output-tool-description"`
 	OutputToolTranscriptionDesc string `mapstructure:"output-tool-transcription-desc"`
 	OutputToolOnScreenTextDesc  string `mapstructure:"output-tool-on-screen-text-desc"`
@@ -86,6 +88,7 @@ type OpenRouterExtractorConfig struct {
 	Model                       string `mapstructure:"model"`
 	Prompt                      string `mapstructure:"prompt"`
 	CombinePrompt               string `mapstructure:"combine-prompt"`
+	DuplicatePrompt             string `mapstructure:"duplicate-prompt"`
 	OutputToolDescription       string `mapstructure:"output-tool-description"`
 	OutputToolTranscriptionDesc string `mapstructure:"output-tool-transcription-desc"`
 	OutputToolOnScreenTextDesc  string `mapstructure:"output-tool-on-screen-text-desc"`

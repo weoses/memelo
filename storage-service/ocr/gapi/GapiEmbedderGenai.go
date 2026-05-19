@@ -30,9 +30,9 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetImageEmbedding(ctx context.C
 	}
 
 	var part *genai.Part
-	if s3data, ok := rawImage.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+	if s3data, ok := rawImage.(temp.S3BackedData); ok {
 		if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-			i.slogger.InfoContext(ctx, "GetImageEmbedding using gcsUri", "uri", uri)
+			i.slogger.InfoContext(ctx, "GetImageEmbedding using signedUri", "uri", uri)
 			part = genai.NewPartFromURI(uri, "image/jpeg")
 		}
 	}
@@ -70,9 +70,9 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.C
 	}
 
 	var part *genai.Part
-	if s3data, ok := video.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+	if s3data, ok := video.(temp.S3BackedData); ok {
 		if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-			i.slogger.InfoContext(ctx, "GetVideoEmbedding using gcsUri", "uri", uri)
+			i.slogger.InfoContext(ctx, "GetVideoEmbedding using signedUri", "uri", uri)
 			part = genai.NewPartFromURI(uri, "video/mp4")
 		}
 	}

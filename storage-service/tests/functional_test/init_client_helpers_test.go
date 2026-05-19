@@ -45,6 +45,13 @@ func (c *TestClient) CreateMemeFromBytes(ctx context.Context, accountID string, 
 	})
 }
 
+func (c *TestClient) CreateVideoFromBytes(ctx context.Context, accountID string, videoData []byte) (*v1.CreateMemeResponse, error) {
+	return c.search.CreateMeme(ctx, &v1.CreateMemeRequest{
+		AccountId: accountID,
+		Video:     &v1.MediaDataDto{Data: videoData},
+	})
+}
+
 func (c *TestClient) SearchMeme(ctx context.Context, accountID, query string, pageSize int32) (*v1.SearchMemeResponse, error) {
 	return c.SearchMemePage(ctx, accountID, query, pageSize, nil)
 }

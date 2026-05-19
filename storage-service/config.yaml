@@ -10,6 +10,7 @@ extracting:
 
 search:
   SemanticDuplicateThreshold: 0.955
+  PercentageDuplicatePartsThreshold: 0.7
   SemanticTextSearchThreshold: 0.5
   Fuzziness: "AUTO:4,8"
 
@@ -67,6 +68,7 @@ gemini-extractor:
   output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
   output-tool-audio-track-desc: "An audio track, song, that is at sound background. If it is not famous, or it to quiet, or you not sure, ignore it"
   combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap one another. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
+  duplicate-prompt: "Are these two images is same, has same idea, same meaning, same characters, etc? Pass true to tool check_duplicate if images is same, or false otherwise."
 
 gemini-embedding:
   apikey:
@@ -86,6 +88,7 @@ openrouter-extractor:
   output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
   output-tool-audio-track-desc: "An audio track, song, that is at sound background. If it is not famous, or it to quiet, or you not sure, ignore it"
   combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap one another. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
+  duplicate-prompt: "Are these two images is same, has same idea, same meaning, same characters, etc? Pass true to tool check_duplicate if images is same, or false otherwise."
 
 openrouter-embedding:
   apikey:

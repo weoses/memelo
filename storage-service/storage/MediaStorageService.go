@@ -49,6 +49,7 @@ type MediaStorageService interface {
 	Save(ctx context.Context, id uuid.UUID, mediaType MediaType, data temp.Data) error
 	Read(ctx context.Context, id uuid.UUID, mediaType MediaType) (temp.Data, error)
 	GetUrl(ctx context.Context, id uuid.UUID, mediaType MediaType) (string, error)
+	GetS3BackedData(ctx context.Context, id uuid.UUID, mediaType MediaType) (temp.S3BackedData, error)
 	Delete(ctx context.Context, id uuid.UUID, mediaType MediaType) error
 }
 
@@ -66,6 +67,18 @@ func (m *MediaStorageServiceImpl) Read(ctx context.Context, id uuid.UUID, mediaT
 
 func (m *MediaStorageServiceImpl) GetUrl(ctx context.Context, id uuid.UUID, mediaType MediaType) (string, error) {
 	return m.storage.GetPresignedUrl(ctx, objectName(id, mediaType))
+}
+
+func (m *MediaStorageServiceImpl) GetS3BackedData(ctx context.Context, id uuid.UUID, mediaType MediaType) (temp.S3BackedData, error) {
+	path := objectName(id, mediaType)
+	return temp.NewS3BackedDataFromPath(
+		path,
+		m.storage.IsGs(),
+		m.storage.Read,
+		m.storage.GetUrl,
+		m.storage.GetPresignedUrl,
+		func(context.Context, string) error { return nil },
+	), nil
 }
 
 func (m *MediaStorageServiceImpl) Delete(ctx context.Context, id uuid.UUID, mediaType MediaType) error {
