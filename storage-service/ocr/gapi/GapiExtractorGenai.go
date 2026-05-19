@@ -74,9 +74,9 @@ func (g *GeminiExtractor) buildTool() *genai.Tool {
 }
 
 func (g *GeminiExtractor) buildMediaPart(ctx context.Context, data temp.Data, mimeType string) (*genai.Part, error) {
-	if s3data, ok := data.(temp.S3BackedData); ok && s3data.IsGsSupported() {
+	if s3data, ok := data.(temp.S3BackedData); ok {
 		if url, err := s3data.GetPresignedUrl(ctx); err == nil {
-			g.slogger.InfoContext(ctx, "buildMediaPart: using signed url", "uri", url)
+			g.slogger.InfoContext(ctx, "buildMediaPart: using signedUri", "uri", url)
 			return genai.NewPartFromURI(url, mimeType), nil
 		}
 	}
@@ -212,6 +212,72 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 	return nil, fmt.Errorf("model did not return %s call during combine", toolName)
 }
 
+func (g *GeminiExtractor) buildDuplicateTool() *genai.Tool {
+	desc := "Check whether the two provided images are duplicates"
+	return &genai.Tool{
+		FunctionDeclarations: []*genai.FunctionDeclaration{{
+			Name:        "check_duplicate",
+			Description: desc,
+			Parameters: &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"is_duplicate": {Type: genai.TypeBoolean},
+				},
+				Required: []string{"is_duplicate"},
+			},
+		}},
+	}
+}
+
+func (g *GeminiExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b temp.Data) (bool, error) {
+	g.slogger.InfoContext(ctx, "CheckDuplicate start")
+
+	if err := g.limiter.Wait(ctx); err != nil {
+		return false, fmt.Errorf("rate limiter: %w", err)
+	}
+
+	partA, err := g.buildMediaPart(ctx, a, "image/jpeg")
+	if err != nil {
+		return false, fmt.Errorf("CheckDuplicate: build part a: %w", err)
+	}
+	partB, err := g.buildMediaPart(ctx, b, "image/jpeg")
+	if err != nil {
+		return false, fmt.Errorf("CheckDuplicate: build part b: %w", err)
+	}
+
+	contents := []*genai.Content{
+		genai.NewContentFromParts([]*genai.Part{
+			{Text: g.cfg.DuplicatePrompt},
+			partA,
+			partB,
+		}, genai.RoleUser),
+	}
+
+	const toolName = "check_duplicate"
+	resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
+		Tools: []*genai.Tool{g.buildDuplicateTool()},
+		ToolConfig: &genai.ToolConfig{
+			FunctionCallingConfig: &genai.FunctionCallingConfig{
+				Mode:                 genai.FunctionCallingConfigModeAny,
+				AllowedFunctionNames: []string{toolName},
+			},
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("CheckDuplicate generate content: %w", err)
+	}
+
+	for _, cand := range resp.Candidates {
+		for _, part := range cand.Content.Parts {
+			if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
+				g.slogger.InfoContext(ctx, "CheckDuplicate done")
+				return boolArg(part.FunctionCall.Args, "is_duplicate"), nil
+			}
+		}
+	}
+	return false, fmt.Errorf("model did not return %s call", toolName)
+}
+
 func stringArg(args map[string]any, key string) string {
 	if v, ok := args[key]; ok {
 		if s, ok := v.(string); ok {
@@ -219,4 +285,13 @@ func stringArg(args map[string]any, key string) string {
 		}
 	}
 	return ""
+}
+
+func boolArg(args map[string]any, key string) bool {
+	if v, ok := args[key]; ok {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return false
 }

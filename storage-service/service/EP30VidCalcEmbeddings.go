@@ -26,7 +26,7 @@ func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext Met
 	}
 	pCtx.Embedding = []entity.EmbeddingItem{}
 
-	s.slogger.InfoContext(ctx, "calculating embeddings for video slices", "slices", len(pCtx.VideoSlices))
+	s.slogger.InfoContext(ctx, "VidCalcEmbeddingsPipelineStep: calculating embeddings for video slices", "slices", len(pCtx.VideoSlices))
 
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
@@ -39,7 +39,7 @@ func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext Met
 		embeddingsPtr := &embeddingsList
 
 		wg.Go(func() {
-			s.slogger.InfoContext(ctx, "embedding video slice", "index", i)
+			s.slogger.InfoContext(ctx, "Embedding video slice", "index", i)
 			sliceEmbeddings, err := s.embedder.GetVideoEmbedding(ctx, slice.Slice)
 
 			mu.Lock()
@@ -57,7 +57,7 @@ func (s *VidCalcEmbeddingsPipelineStep) Do(ctx context.Context, inputContext Met
 		return errors.Join(errorsList...)
 	}
 
-	s.slogger.InfoContext(ctx, "embeddings done", "total", len(embeddingsList))
+	s.slogger.InfoContext(ctx, "VidCalcEmbeddingsPipelineStep: done", "total", len(embeddingsList))
 	pCtx.Embedding = embeddingsList
 	return nil
 }

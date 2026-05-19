@@ -106,9 +106,10 @@ func buildTestConfig(esAddr, minioEndpoint, minioUser, minioPass string) *conf.C
 		Server: &commonconfig.ServerConfig{ListenAddress: ":0"},
 		Log:    &commonconfig.LoggingConfig{Level: "warn"},
 		Search: &conf.SearchConfig{
-			SemanticDuplicateThreshold:  0.95,
-			SemanticTextSearchThreshold: 0.7,
-			Fuzziness:                   "AUTO",
+			SemanticDuplicateThreshold:        0.95,
+			PercentageDuplicatePartsThreshold: 0.7,
+			SemanticTextSearchThreshold:       0.7,
+			Fuzziness:                         "AUTO",
 		},
 		Extracting: &conf.CommonExtractingConfig{
 			EmbeddingDimensions:   mockEmbeddingDimensions,

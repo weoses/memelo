@@ -17,4 +17,5 @@ type LlmMediaExtractor interface {
 	ProcessImage(ctx context.Context, data temp.Data) (*MediaExtractResult, error)
 	ProcessVideo(ctx context.Context, data temp.Data) (*MediaExtractResult, error)
 	CombineResults(ctx context.Context, results []MediaExtractResult) (*MediaExtractResult, error)
+	CheckDuplicate(ctx context.Context, a temp.Data, b temp.Data) (bool, error)
 }

@@ -204,6 +204,86 @@ func (e *OpenRouterExtractor) CombineResults(ctx context.Context, results []ocr.
 	return result, nil
 }
 
+func (e *OpenRouterExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b temp.Data) (bool, error) {
+	e.slogger.InfoContext(ctx, "CheckDuplicate start")
+	if err := e.limiter.Wait(ctx); err != nil {
+		return false, fmt.Errorf("rate limiter: %w", err)
+	}
+
+	dataURLa, err := toDataURL(a, "image/jpeg", e.slogger)
+	if err != nil {
+		return false, fmt.Errorf("CheckDuplicate: data url a: %w", err)
+	}
+	dataURLb, err := toDataURL(b, "image/jpeg", e.slogger)
+	if err != nil {
+		return false, fmt.Errorf("CheckDuplicate: data url b: %w", err)
+	}
+
+	content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
+		components.CreateChatContentItemsText(components.ChatContentText{
+			Type: components.ChatContentTextTypeText,
+			Text: e.cfg.DuplicatePrompt,
+		}),
+		components.CreateChatContentItemsImageURL(components.ChatContentImage{
+			Type:     components.ChatContentImageTypeImageURL,
+			ImageURL: components.ChatContentImageImageURL{URL: dataURLa},
+		}),
+		components.CreateChatContentItemsImageURL(components.ChatContentImage{
+			Type:     components.ChatContentImageTypeImageURL,
+			ImageURL: components.ChatContentImageImageURL{URL: dataURLb},
+		}),
+	})
+	msg := components.CreateChatMessagesUser(components.ChatUserMessage{Content: content})
+
+	const toolName = "check_duplicate"
+	desc := "Check whether the two provided images are duplicates"
+	tool := components.CreateChatFunctionToolChatFunctionToolFunction(components.ChatFunctionToolFunction{
+		Type: components.ChatFunctionToolTypeFunction,
+		Function: components.ChatFunctionToolFunctionFunction{
+			Name:        toolName,
+			Description: &desc,
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"is_duplicate": map[string]any{"type": "boolean"},
+				},
+				"required": []string{"is_duplicate"},
+			},
+		},
+	})
+
+	toolChoice := components.CreateChatToolChoiceChatNamedToolChoice(components.ChatNamedToolChoice{
+		Type:     components.ChatNamedToolChoiceTypeFunction,
+		Function: components.ChatNamedToolChoiceFunction{Name: toolName},
+	})
+
+	resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
+		Model:      &e.cfg.Model,
+		Messages:   []components.ChatMessages{msg},
+		Tools:      []components.ChatFunctionTool{tool},
+		ToolChoice: &toolChoice,
+	})
+	if err != nil {
+		return false, fmt.Errorf("CheckDuplicate chat send: %w", err)
+	}
+	if resp.ChatResult == nil || len(resp.ChatResult.Choices) == 0 {
+		return false, fmt.Errorf("CheckDuplicate: chat returned no choices")
+	}
+
+	toolCalls := resp.ChatResult.Choices[0].Message.ToolCalls
+	if len(toolCalls) == 0 {
+		return false, fmt.Errorf("model did not return %s call", toolName)
+	}
+
+	var args map[string]any
+	if err := json.Unmarshal([]byte(toolCalls[0].Function.Arguments), &args); err != nil {
+		return false, fmt.Errorf("CheckDuplicate: parse tool arguments: %w", err)
+	}
+
+	e.slogger.InfoContext(ctx, "CheckDuplicate done")
+	return boolArg(args, "is_duplicate"), nil
+}
+
 func stringArg(args map[string]any, key string) string {
 	if v, ok := args[key]; ok {
 		if s, ok := v.(string); ok {
@@ -211,4 +291,13 @@ func stringArg(args map[string]any, key string) string {
 		}
 	}
 	return ""
+}
+
+func boolArg(args map[string]any, key string) bool {
+	if v, ok := args[key]; ok {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return false
 }

@@ -13,9 +13,11 @@ import (
 const mockEmbeddingDimensions = 1408
 
 type MockLlmExtractor struct {
-	mu        sync.Mutex
-	result    *ocr.MediaExtractResult
-	callCount atomic.Int32
+	mu                      sync.Mutex
+	result                  *ocr.MediaExtractResult
+	callCount               atomic.Int32
+	checkDuplicateResult    atomic.Bool
+	checkDuplicateCallCount atomic.Int32
 }
 
 func (m *MockLlmExtractor) SetResult(r *ocr.MediaExtractResult) {
@@ -26,8 +28,15 @@ func (m *MockLlmExtractor) SetResult(r *ocr.MediaExtractResult) {
 
 func (m *MockLlmExtractor) CallCount() int32 { return m.callCount.Load() }
 
+func (m *MockLlmExtractor) SetCheckDuplicateResult(v bool) { m.checkDuplicateResult.Store(v) }
+func (m *MockLlmExtractor) CheckDuplicateCallCount() int32 {
+	return m.checkDuplicateCallCount.Load()
+}
+
 func (m *MockLlmExtractor) Reset() {
 	m.callCount.Store(0)
+	m.checkDuplicateCallCount.Store(0)
+	m.checkDuplicateResult.Store(false)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.result = nil
@@ -56,11 +65,19 @@ func (m *MockLlmExtractor) CombineResults(_ context.Context, _ []ocr.MediaExtrac
 	return m.get(), nil
 }
 
+func (m *MockLlmExtractor) CheckDuplicate(_ context.Context, _ temp.Data, _ temp.Data) (bool, error) {
+	m.checkDuplicateCallCount.Add(1)
+	return m.checkDuplicateResult.Load(), nil
+}
+
 type MockEmbeddingExtractor struct {
 	mu        sync.Mutex
 	static    []float32    // nil = unique mode
 	counter   atomic.Int32 // incremented per generateEmbedding call
 	callCount atomic.Int32
+
+	videoEmbeddingsPerCall int                      // embeddings returned per GetVideoEmbedding call (default 1)
+	videoEmbeddingQueue    [][]entity.EmbeddingItem // when non-empty, dequeued one batch per call
 }
 
 // UseUniqueEmbedding switches to unique-per-call mode (default after Reset).
@@ -79,6 +96,22 @@ func (m *MockEmbeddingExtractor) UseStaticEmbedding(v []float32) {
 
 func (m *MockEmbeddingExtractor) CallCount() int32 { return m.callCount.Load() }
 
+// SetVideoEmbeddingsPerCall configures how many embeddings GetVideoEmbedding returns per call
+// when no queue entry is available. Default is 1.
+func (m *MockEmbeddingExtractor) SetVideoEmbeddingsPerCall(n int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.videoEmbeddingsPerCall = n
+}
+
+// QueueVideoEmbeddings enqueues a batch to be returned by the next GetVideoEmbedding call.
+// Queued batches take priority over SetVideoEmbeddingsPerCall / UseStaticEmbedding.
+func (m *MockEmbeddingExtractor) QueueVideoEmbeddings(items []entity.EmbeddingItem) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.videoEmbeddingQueue = append(m.videoEmbeddingQueue, items)
+}
+
 // Reset clears state and returns to unique-per-call mode.
 func (m *MockEmbeddingExtractor) Reset() {
 	m.counter.Store(0)
@@ -86,6 +119,8 @@ func (m *MockEmbeddingExtractor) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.static = nil
+	m.videoEmbeddingsPerCall = 0
+	m.videoEmbeddingQueue = nil
 }
 
 // generateEmbedding returns a one-hot vector at a position derived from an
@@ -127,9 +162,27 @@ func (m *MockEmbeddingExtractor) GetTextEmbedding(_ context.Context, _ string) (
 
 func (m *MockEmbeddingExtractor) GetVideoEmbedding(_ context.Context, _ temp.Data) ([]entity.EmbeddingItem, error) {
 	m.callCount.Add(1)
-	return []entity.EmbeddingItem{{
-		Data:  m.get(),
-		Model: "mock-model",
-		Type:  entity.EmbeddingTypeVideo,
-	}}, nil
+
+	m.mu.Lock()
+	if len(m.videoEmbeddingQueue) > 0 {
+		batch := m.videoEmbeddingQueue[0]
+		m.videoEmbeddingQueue = m.videoEmbeddingQueue[1:]
+		m.mu.Unlock()
+		return batch, nil
+	}
+	n := m.videoEmbeddingsPerCall
+	m.mu.Unlock()
+
+	if n <= 0 {
+		n = 1
+	}
+	items := make([]entity.EmbeddingItem, n)
+	for i := range n {
+		items[i] = entity.EmbeddingItem{
+			Data:  m.get(),
+			Model: "mock-model",
+			Type:  entity.EmbeddingTypeVideo,
+		}
+	}
+	return items, nil
 }

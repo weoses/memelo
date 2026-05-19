@@ -9,7 +9,7 @@
       "Tag":       { "type": "keyword" },
       "EmbeddingV1.Data": {
         "type": "dense_vector",
-        "dims": {dims},
+        "dims": 1408,
         "index": true,
         "similarity": "cosine"
       },
@@ -18,7 +18,7 @@
         "properties": {
           "Data": {
             "type": "dense_vector",
-            "dims": {dims},
+            "dims": 1408,
             "index": true,
             "similarity": "cosine"
           }

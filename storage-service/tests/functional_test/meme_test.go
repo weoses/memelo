@@ -245,6 +245,7 @@ func TestDeduplicationByEmbedding(t *testing.T) {
 	staticVec := make([]float32, mockEmbeddingDimensions)
 	staticVec[0] = 1.0
 	testMockEmb.UseStaticEmbedding(staticVec)
+	testMockEx.SetCheckDuplicateResult(true)
 
 	// Two images with different bytes (different hash) but same embedding.
 	first, err := c.CreateMemeFromBytes(ctx, acct, minimalJPEG(1))
