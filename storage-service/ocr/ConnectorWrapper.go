@@ -2,6 +2,7 @@ package ocr
 
 import (
 	"context"
+	"time"
 
 	retry "github.com/avast/retry-go/v4"
 	"golang.org/x/time/rate"
@@ -32,6 +33,7 @@ func (w *ConnectorWrapper) Do(ctx context.Context, fn func() error) error {
 			return fn()
 		},
 		retry.Attempts(w.retryAttempt),
+		retry.Delay(time.Second),
 		retry.Context(ctx),
 	)
 }
