@@ -7,6 +7,7 @@ server:
 extracting:
   EmbeddingDimensions: 1408
   VideoSliceIntervalSec: 15
+  separate-audio: true
 
 search:
   SemanticDuplicateThreshold: 0.955
@@ -60,8 +61,12 @@ ffmpeg:
 gemini-extractor:
   apikey:
   apiendpoint:
-  model: gemini-3-flash-preview
-  prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  model-image: gemini-3-flash-preview
+  model-video: gemini-3-flash-preview
+  model-audio: gemini-3-flash-preview
+  image-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  video-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  audio-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
   output-tool-description: "Extract structured metadata from the media"
   output-tool-transcription-desc: "Audio transcription or speech-to-text content from the media. Preserve original language. Capture speech and music lyrics."
   output-tool-on-screen-text-desc: "Any text visible on screen (OCR). Preserve original language"
@@ -80,8 +85,12 @@ embedder-provider: gemini    # gemini | openrouter
 
 openrouter-extractor:
   apikey:
-  model: google/gemini-3-flash-preview
-  prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  model-image: google/gemini-3-flash-preview
+  model-video: google/gemini-3-flash-preview
+  model-audio: google/gemini-3-flash-preview
+  image-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  video-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  audio-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
   output-tool-description: "Extract structured metadata from the media"
   output-tool-transcription-desc: "Audio transcription or speech-to-text content from the media. Preserve original language. Capture speech and music lyrics."
   output-tool-on-screen-text-desc: "Any text visible on screen (OCR). Preserve original language"

@@ -1,6 +1,7 @@
 package functional_test
 
 import (
+	"bytes"
 	"context"
 	"sync"
 	"sync/atomic"
@@ -18,6 +19,11 @@ type MockLlmExtractor struct {
 	callCount               atomic.Int32
 	checkDuplicateResult    atomic.Bool
 	checkDuplicateCallCount atomic.Int32
+}
+
+func (m *MockLlmExtractor) ProcessAudio(_ context.Context, _ temp.Data) (*ocr.MediaExtractResult, error) {
+	m.callCount.Add(1)
+	return m.get(), nil
 }
 
 func (m *MockLlmExtractor) SetResult(r *ocr.MediaExtractResult) {
@@ -158,6 +164,12 @@ func (m *MockEmbeddingExtractor) GetTextEmbedding(_ context.Context, _ string) (
 		Model: "mock-model",
 		Type:  entity.EmbeddingTypeText,
 	}, nil
+}
+
+type MockVideo2AudioConverter struct{}
+
+func (m *MockVideo2AudioConverter) ConvertToMp3(_ context.Context, _ temp.Data) (temp.Data, error) {
+	return temp.DataTemp(bytes.NewReader([]byte{}))
 }
 
 func (m *MockEmbeddingExtractor) GetVideoEmbedding(_ context.Context, _ temp.Data) ([]entity.EmbeddingItem, error) {

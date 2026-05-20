@@ -2,13 +2,16 @@ package openrouter
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 
 	orsdk "github.com/OpenRouterTeam/go-sdk"
 	"github.com/OpenRouterTeam/go-sdk/models/components"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
@@ -74,7 +77,7 @@ func (e *OpenRouterExtractor) buildImageMessage(ctx context.Context, data temp.D
 	content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
 		components.CreateChatContentItemsText(components.ChatContentText{
 			Type: components.ChatContentTextTypeText,
-			Text: e.cfg.Prompt,
+			Text: e.cfg.ImageExtractPrompt,
 		}),
 		components.CreateChatContentItemsImageURL(components.ChatContentImage{
 			Type:     components.ChatContentImageTypeImageURL,
@@ -91,6 +94,10 @@ func (e *OpenRouterExtractor) buildVideoMessage(ctx context.Context, data temp.D
 	}
 
 	content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
+		components.CreateChatContentItemsText(components.ChatContentText{
+			Type: components.ChatContentTextTypeText,
+			Text: e.cfg.VideoExtractPrompt,
+		}),
 		components.CreateChatContentItemsVideoURL(components.ChatContentVideo{
 			Type:     components.ChatContentVideoTypeVideoURL,
 			VideoURL: components.ChatContentVideoInput{URL: dataURL},
@@ -99,14 +106,63 @@ func (e *OpenRouterExtractor) buildVideoMessage(ctx context.Context, data temp.D
 	return components.CreateChatMessagesUser(components.ChatUserMessage{Content: content}), nil
 }
 
-func (e *OpenRouterExtractor) sendChat(ctx context.Context, messages []components.ChatMessages) (*ocr.MediaExtractResult, error) {
+func (e *OpenRouterExtractor) buildAudioMessage(ctx context.Context, data temp.Data) (components.ChatMessages, error) {
+	r, err := data.Reader()
+	if err != nil {
+		return components.ChatMessages{}, fmt.Errorf("build audio message: read data: %w", err)
+	}
+	defer helper.QuietClose(r, e.slogger)
+
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return components.ChatMessages{}, fmt.Errorf("build audio message: read all: %w", err)
+	}
+
+	content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
+		components.CreateChatContentItemsText(components.ChatContentText{
+			Type: components.ChatContentTextTypeText,
+			Text: e.cfg.AudioExtractPrompt,
+		}),
+		components.CreateChatContentItemsInputAudio(components.ChatContentAudio{
+			InputAudio: components.ChatContentAudioInputAudio{
+				Data:   base64.StdEncoding.EncodeToString(raw),
+				Format: "mp3",
+			},
+		}),
+	})
+	return components.CreateChatMessagesUser(components.ChatUserMessage{Content: content}), nil
+}
+
+func (e *OpenRouterExtractor) ProcessAudio(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
+	e.slogger.InfoContext(ctx, "ProcessAudio start")
+
+	var result *ocr.MediaExtractResult
+	if err := e.wrapper.Do(ctx, func() error {
+		msg, err := e.buildAudioMessage(ctx, data)
+		if err != nil {
+			return fmt.Errorf("ProcessAudio: %w", err)
+		}
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg}, e.cfg.ModelAudio)
+		if err != nil {
+			return fmt.Errorf("ProcessAudio: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	e.slogger.InfoContext(ctx, "ProcessAudio done")
+	return result, nil
+}
+
+func (e *OpenRouterExtractor) sendChat(ctx context.Context, messages []components.ChatMessages, model string) (*ocr.MediaExtractResult, error) {
 	toolChoice := components.CreateChatToolChoiceChatNamedToolChoice(components.ChatNamedToolChoice{
 		Type:     components.ChatNamedToolChoiceTypeFunction,
 		Function: components.ChatNamedToolChoiceFunction{Name: orToolName},
 	})
 
 	resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
-		Model:      &e.cfg.Model,
+		Model:      &model,
 		Messages:   messages,
 		Tools:      []components.ChatFunctionTool{e.buildTool()},
 		ToolChoice: &toolChoice,
@@ -145,7 +201,7 @@ func (e *OpenRouterExtractor) ProcessImage(ctx context.Context, data temp.Data) 
 		if err != nil {
 			return err
 		}
-		result, err = e.sendChat(ctx, []components.ChatMessages{msg})
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg}, e.cfg.ModelImage)
 		if err != nil {
 			return fmt.Errorf("ProcessImage: %w", err)
 		}
@@ -167,7 +223,7 @@ func (e *OpenRouterExtractor) ProcessVideo(ctx context.Context, data temp.Data) 
 		if err != nil {
 			return fmt.Errorf("ProcessVideo: failed to build video message %w", err)
 		}
-		result, err = e.sendChat(ctx, []components.ChatMessages{msg})
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg}, e.cfg.ModelVideo)
 		if err != nil {
 			return fmt.Errorf("ProcessVideo: %w", err)
 		}
@@ -200,7 +256,7 @@ func (e *OpenRouterExtractor) CombineResults(ctx context.Context, results []ocr.
 			Content: components.CreateChatUserMessageContentStr(sb.String()),
 		})
 		var err error
-		result, err = e.sendChat(ctx, []components.ChatMessages{msg})
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg}, e.cfg.ModelImage)
 		if err != nil {
 			return fmt.Errorf("CombineResults: %w", err)
 		}
@@ -266,7 +322,7 @@ func (e *OpenRouterExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b
 		})
 
 		resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
-			Model:      &e.cfg.Model,
+			Model:      &e.cfg.ModelImage,
 			Messages:   []components.ChatMessages{msg},
 			Tools:      []components.ChatFunctionTool{tool},
 			ToolChoice: &toolChoice,

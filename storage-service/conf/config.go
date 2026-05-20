@@ -11,6 +11,7 @@ import (
 type CommonExtractingConfig struct {
 	EmbeddingDimensions   int
 	VideoSliceIntervalSec int
+	SeparateAudio         bool `mapstructure:"separate-audio"`
 }
 
 type SearchConfig struct {
@@ -66,8 +67,12 @@ type FfmpegConfig struct {
 type GeminiExtractorConfig struct {
 	ApiKey                      string `mapstructure:"apikey"`
 	ApiEndpoint                 string `mapstructure:"apiendpoint"`
-	Model                       string `mapstructure:"model"`
-	Prompt                      string `mapstructure:"prompt"`
+	ModelAudio                  string `mapstructure:"model-audio"`
+	ModelVideo                  string `mapstructure:"model-video"`
+	ModelImage                  string `mapstructure:"model-image"`
+	ImageExtractPrompt          string `mapstructure:"image-extract-prompt"`
+	VideoExtractPrompt          string `mapstructure:"video-extract-prompt"`
+	AudioExtractPrompt          string `mapstructure:"audio-extract-prompt"`
 	CombinePrompt               string `mapstructure:"combine-prompt"`
 	DuplicatePrompt             string `mapstructure:"duplicate-prompt"`
 	OutputToolDescription       string `mapstructure:"output-tool-description"`
@@ -85,8 +90,12 @@ type GeminiEmbeddingConfig struct {
 
 type OpenRouterExtractorConfig struct {
 	ApiKey                      string `mapstructure:"apikey"`
-	Model                       string `mapstructure:"model"`
-	Prompt                      string `mapstructure:"prompt"`
+	ModelAudio                  string `mapstructure:"model-audio"`
+	ModelVideo                  string `mapstructure:"model-video"`
+	ModelImage                  string `mapstructure:"model-image"`
+	ImageExtractPrompt          string `mapstructure:"image-extract-prompt"`
+	VideoExtractPrompt          string `mapstructure:"video-extract-prompt"`
+	AudioExtractPrompt          string `mapstructure:"audio-extract-prompt"`
 	CombinePrompt               string `mapstructure:"combine-prompt"`
 	DuplicatePrompt             string `mapstructure:"duplicate-prompt"`
 	OutputToolDescription       string `mapstructure:"output-tool-description"`

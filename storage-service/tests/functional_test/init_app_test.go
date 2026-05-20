@@ -25,6 +25,7 @@ func startTestServer(cfg *conf.Config, extractor ocr.LlmMediaExtractor, embedder
 		// Replace the real Gemini implementations and listener with test doubles.
 		fx.Decorate(func() net.Listener { return ln }),
 		fx.Decorate(func() ocr.LlmMediaExtractor { return extractor }),
+		fx.Decorate(func() ocr.Video2AudioConverter { return &MockVideo2AudioConverter{} }),
 		fx.Decorate(
 			fx.Annotate(
 				func() ocr.LlmEmbeddingExtractor { return embedder },

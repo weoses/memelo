@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/weoses/memelo/common/helper"
+	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
 )
@@ -18,8 +19,10 @@ const VidLlmExtractKey = "VidLlmExtractPipelineStep"
 type VidLlmExtractPipelineStep struct {
 	BasePipelineStep
 
-	extractor ocr.LlmMediaExtractor
-	slogger   *slog.Logger
+	extractor     ocr.LlmMediaExtractor
+	video2audio   ocr.Video2AudioConverter
+	separateAudio bool
+	slogger       *slog.Logger
 }
 
 func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pCtx *MetadataPipelineContext) error {
@@ -40,28 +43,25 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 	errs := make([]error, 0)
 	results := make([]OneSliceResult, len(pCtx.VideoSlices))
 
-	for i, slice := range pCtx.VideoSlices {
+	for _, slice := range pCtx.VideoSlices {
 		wg.Go(func() {
-			s.slogger.InfoContext(ctx, "processing slice", "index", i, "startTime", slice.SliceStartTime, "endTime", slice.SliceEndTime)
-			r, err := s.extractor.ProcessVideo(ctx, slice.Slice)
-
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil {
-				errs = append(errs, fmt.Errorf("slice %d: %w", i, err))
-				return
-			}
-			s.slogger.DebugContext(ctx, "processed slice",
-				"index", i,
-				"onScreenText", r.OnScreenText,
-				"audioTransription", r.AudioTranscript)
-
-			results[i] = OneSliceResult{
-				SliceNumber:    i,
-				SliceStartTime: slice.SliceStartTime,
-				SliceEndTime:   slice.SliceEndTime,
-				Result:         *r,
-			}
+			s.processSlice(ctx,
+				slice,
+				func(err error) {
+					mu.Lock()
+					defer mu.Unlock()
+					errs = append(errs, err)
+				},
+				func(result ocr.MediaExtractResult) {
+					mu.Lock()
+					defer mu.Unlock()
+					results = append(results, OneSliceResult{
+						SliceNumber:    slice.SliceNumber,
+						SliceStartTime: slice.SliceStartTime,
+						SliceEndTime:   slice.SliceEndTime,
+						Result:         result,
+					})
+				})
 		})
 	}
 	wg.Wait()
@@ -123,14 +123,103 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 	return nil
 }
 
-func NewVidLlmExtractPipelineStep(extractor ocr.LlmMediaExtractor) ExtractPipelineStep {
+func (s *VidLlmExtractPipelineStep) processSlice(
+	ctx context.Context,
+	slice VideoSlice,
+	appendErr func(err error),
+	appendResult func(ocr.MediaExtractResult)) {
+	ctxInProcess, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var videoResult *ocr.MediaExtractResult
+	var audioResult *ocr.MediaExtractResult
+
+	wg := sync.WaitGroup{}
+	wg.Go(func() {
+		s.slogger.InfoContext(ctxInProcess, "processing video slice part - extract llm data",
+			"index", slice.SliceNumber,
+			"startTime", slice.SliceStartTime,
+			"endTime", slice.SliceEndTime)
+		r, err := s.extractor.ProcessVideo(ctxInProcess, slice.Slice)
+		if err != nil {
+			appendErr(err)
+			cancel()
+			return
+		}
+		videoResult = r
+		s.slogger.DebugContext(ctxInProcess, "processed slice",
+			"index", slice.SliceNumber,
+			"onScreenText", r.OnScreenText,
+			"audioTransription", r.AudioTranscript)
+	})
+	wg.Go(func() {
+		if !s.separateAudio {
+			return
+		}
+
+		s.slogger.InfoContext(ctxInProcess, "processing audio slice part - extract mp3",
+			"index", slice.SliceNumber,
+			"startTime", slice.SliceStartTime,
+			"endTime", slice.SliceEndTime)
+
+		audioData, err := s.video2audio.ConvertToMp3(ctxInProcess, slice.Slice)
+		defer helper.QuietClose(audioData, s.slogger)
+		if err != nil {
+			appendErr(err)
+			cancel()
+			return
+		}
+
+		s.slogger.InfoContext(ctxInProcess, "processing audio slice part - extract llm data",
+			"index", slice.SliceNumber,
+			"startTime", slice.SliceStartTime,
+			"endTime", slice.SliceEndTime)
+
+		r, err := s.extractor.ProcessAudio(ctxInProcess, audioData)
+		if err != nil {
+			appendErr(err)
+			cancel()
+		}
+		audioResult = r
+		s.slogger.DebugContext(ctxInProcess, "processed audio slice part",
+			"index", slice.SliceNumber,
+			"onScreenText", r.OnScreenText,
+			"audioTransription", r.AudioTranscript)
+	})
+
+	wg.Wait()
+	select {
+	case <-ctxInProcess.Done():
+		return
+	default:
+	}
+
+	result := ocr.MediaExtractResult{}
+	if videoResult != nil {
+		result.OnScreenText = videoResult.OnScreenText
+		result.Caption = videoResult.Caption
+		result.AudioTranscript = videoResult.AudioTranscript
+		result.AudioTrack = videoResult.AudioTrack
+	}
+
+	if audioResult != nil {
+		result.AudioTranscript = audioResult.AudioTranscript
+		result.AudioTrack = audioResult.AudioTrack
+	}
+
+	appendResult(result)
+}
+
+func NewVidLlmExtractPipelineStep(extractor ocr.LlmMediaExtractor, converter ocr.Video2AudioConverter, cfg *conf.CommonExtractingConfig) ExtractPipelineStep {
 	return &VidLlmExtractPipelineStep{
 		BasePipelineStep: BasePipelineStep{
 			pos: 52,
 			typ: []entity.MetadataType{entity.VideoMetadataType},
 			key: VidLlmExtractKey,
 		},
-		extractor: extractor,
-		slogger:   slog.With("service", "VidLlmExtractPipelineStep"),
+		extractor:     extractor,
+		video2audio:   converter,
+		separateAudio: cfg.SeparateAudio,
+		slogger:       slog.With("service", "VidLlmExtractPipelineStep"),
 	}
 }

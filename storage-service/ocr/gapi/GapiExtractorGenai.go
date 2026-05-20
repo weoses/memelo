@@ -96,14 +96,18 @@ func (g *GeminiExtractor) buildMediaPart(ctx context.Context, data temp.Data, mi
 }
 
 func (g *GeminiExtractor) ProcessImage(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
-	return g.process(ctx, data, "image/jpeg")
+	return g.processWithPrompt(ctx, data, "image/jpeg", g.cfg.ModelImage, g.cfg.ImageExtractPrompt)
 }
 
 func (g *GeminiExtractor) ProcessVideo(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
-	return g.process(ctx, data, "video/mp4")
+	return g.processWithPrompt(ctx, data, "video/mp4", g.cfg.ModelVideo, g.cfg.VideoExtractPrompt)
 }
 
-func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType string) (*ocr.MediaExtractResult, error) {
+func (g *GeminiExtractor) ProcessAudio(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
+	return g.processWithPrompt(ctx, data, "audio/mpeg", g.cfg.ModelAudio, g.cfg.AudioExtractPrompt)
+}
+
+func (g *GeminiExtractor) processWithPrompt(ctx context.Context, data temp.Data, mimeType string, model string, prompt string) (*ocr.MediaExtractResult, error) {
 	g.slogger.InfoContext(ctx, "process start", "mimeType", mimeType)
 
 	var result *ocr.MediaExtractResult
@@ -115,7 +119,7 @@ func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType 
 
 		contents := []*genai.Content{
 			genai.NewContentFromParts([]*genai.Part{
-				{Text: g.cfg.Prompt},
+				{Text: prompt},
 				mediaPart,
 			}, genai.RoleUser),
 		}
@@ -123,7 +127,7 @@ func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType 
 		const toolName = "extract_metadata"
 		resp, err := g.client.Models.GenerateContent(
 			ctx,
-			g.cfg.Model,
+			model,
 			contents,
 			&genai.GenerateContentConfig{
 				Tools: []*genai.Tool{g.buildTool()},
@@ -184,7 +188,7 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 		}
 
 		const toolName = "extract_metadata"
-		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
+		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.ModelImage, contents, &genai.GenerateContentConfig{
 			Tools: []*genai.Tool{g.buildTool()},
 			ToolConfig: &genai.ToolConfig{
 				FunctionCallingConfig: &genai.FunctionCallingConfig{
@@ -261,7 +265,7 @@ func (g *GeminiExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b tem
 		}
 
 		const toolName = "check_duplicate"
-		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
+		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.ModelImage, contents, &genai.GenerateContentConfig{
 			Tools: []*genai.Tool{g.buildDuplicateTool()},
 			ToolConfig: &genai.ToolConfig{
 				FunctionCallingConfig: &genai.FunctionCallingConfig{
