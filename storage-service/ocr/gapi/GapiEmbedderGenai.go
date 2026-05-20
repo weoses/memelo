@@ -11,7 +11,6 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"golang.org/x/time/rate"
 	"google.golang.org/genai"
 )
 
@@ -19,89 +18,99 @@ type GcloudImageEmbeddingExtractorGenaiImpl struct {
 	client    *genai.Client
 	model     string
 	dimension int32
-	limiter   *rate.Limiter
+	wrapper   *ocr.ConnectorWrapper
 	slogger   *slog.Logger
 }
 
 func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetImageEmbedding(ctx context.Context, rawImage temp.Data) (*entity.EmbeddingItem, error) {
 	i.slogger.InfoContext(ctx, "GetImageEmbedding start")
-	if err := i.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	var part *genai.Part
-	if s3data, ok := rawImage.(temp.S3BackedData); ok {
-		if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-			i.slogger.InfoContext(ctx, "GetImageEmbedding using signedUri", "uri", uri)
-			part = genai.NewPartFromURI(uri, "image/jpeg")
+	var result *entity.EmbeddingItem
+	err := i.wrapper.Do(ctx, func() error {
+		var part *genai.Part
+		if s3data, ok := rawImage.(temp.S3BackedData); ok {
+			if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
+				i.slogger.InfoContext(ctx, "GetImageEmbedding using signedUri", "uri", uri)
+				part = genai.NewPartFromURI(uri, "image/jpeg")
+			}
 		}
-	}
-	if part == nil {
-		i.slogger.InfoContext(ctx, "GetImageEmbedding using inline bytes")
-		reader, err := rawImage.Reader()
-		if err != nil {
-			return nil, fmt.Errorf("GetImageEmbedding: read image: %w", err)
+		if part == nil {
+			i.slogger.InfoContext(ctx, "GetImageEmbedding using inline bytes")
+			reader, err := rawImage.Reader()
+			if err != nil {
+				return fmt.Errorf("GetImageEmbedding: read image: %w", err)
+			}
+			defer helper.QuietClose(reader, i.slogger)
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return fmt.Errorf("GetImageEmbedding: read all: %w", err)
+			}
+			part = genai.NewPartFromBytes(data, "image/jpeg")
 		}
-		defer helper.QuietClose(reader, i.slogger)
-		data, err := io.ReadAll(reader)
-		if err != nil {
-			return nil, fmt.Errorf("GetImageEmbedding: read all: %w", err)
-		}
-		part = genai.NewPartFromBytes(data, "image/jpeg")
-	}
 
-	resp, err := i.embedContent(ctx, part)
+		resp, err := i.embedContent(ctx, part)
+		if err != nil {
+			return fmt.Errorf("GetImageEmbedding: %w", err)
+		}
+
+		result = &entity.EmbeddingItem{
+			Data:  resp.Embeddings[0].Values,
+			Model: i.model,
+			Type:  entity.EmbeddingTypeImage,
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("GetImageEmbedding: %w", err)
+		return nil, err
 	}
 
 	i.slogger.InfoContext(ctx, "GetImageEmbedding done")
-	return &entity.EmbeddingItem{
-		Data:  resp.Embeddings[0].Values,
-		Model: i.model,
-		Type:  entity.EmbeddingTypeImage,
-	}, nil
+	return result, nil
 }
 
 func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.Context, video temp.Data) ([]entity.EmbeddingItem, error) {
 	i.slogger.InfoContext(ctx, "GetVideoEmbedding start")
-	if err := i.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	var part *genai.Part
-	if s3data, ok := video.(temp.S3BackedData); ok {
-		if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-			i.slogger.InfoContext(ctx, "GetVideoEmbedding using signedUri", "uri", uri)
-			part = genai.NewPartFromURI(uri, "video/mp4")
+	var items []entity.EmbeddingItem
+	err := i.wrapper.Do(ctx, func() error {
+		var part *genai.Part
+		if s3data, ok := video.(temp.S3BackedData); ok {
+			if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
+				i.slogger.InfoContext(ctx, "GetVideoEmbedding using signedUri", "uri", uri)
+				part = genai.NewPartFromURI(uri, "video/mp4")
+			}
 		}
-	}
-	if part == nil {
-		i.slogger.InfoContext(ctx, "GetVideoEmbedding using inline bytes")
-		reader, err := video.Reader()
-		if err != nil {
-			return nil, fmt.Errorf("GetVideoEmbedding: read video: %w", err)
+		if part == nil {
+			i.slogger.InfoContext(ctx, "GetVideoEmbedding using inline bytes")
+			reader, err := video.Reader()
+			if err != nil {
+				return fmt.Errorf("GetVideoEmbedding: read video: %w", err)
+			}
+			defer helper.QuietClose(reader, i.slogger)
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				return fmt.Errorf("GetVideoEmbedding: read all: %w", err)
+			}
+			part = genai.NewPartFromBytes(data, "video/mp4")
 		}
-		defer helper.QuietClose(reader, i.slogger)
-		data, err := io.ReadAll(reader)
-		if err != nil {
-			return nil, fmt.Errorf("GetVideoEmbedding: read all: %w", err)
-		}
-		part = genai.NewPartFromBytes(data, "video/mp4")
-	}
 
-	resp, err := i.embedContent(ctx, part)
+		resp, err := i.embedContent(ctx, part)
+		if err != nil {
+			return fmt.Errorf("GetVideoEmbedding: %w", err)
+		}
+
+		items = make([]entity.EmbeddingItem, len(resp.Embeddings))
+		for idx, emb := range resp.Embeddings {
+			items[idx] = entity.EmbeddingItem{
+				Data:  emb.Values,
+				Model: i.model,
+				Type:  entity.EmbeddingTypeVideo,
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("GetVideoEmbedding: %w", err)
-	}
-
-	items := make([]entity.EmbeddingItem, len(resp.Embeddings))
-	for idx, emb := range resp.Embeddings {
-		items[idx] = entity.EmbeddingItem{
-			Data:  emb.Values,
-			Model: i.model,
-			Type:  entity.EmbeddingTypeVideo,
-		}
+		return nil, err
 	}
 
 	i.slogger.InfoContext(ctx, "GetVideoEmbedding done", "segments", len(items))
@@ -110,21 +119,26 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.C
 
 func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetTextEmbedding(ctx context.Context, text string) (*entity.EmbeddingItem, error) {
 	i.slogger.InfoContext(ctx, "GetTextEmbedding start")
-	if err := i.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	resp, err := i.embedContent(ctx, genai.NewPartFromText(text))
+	var result *entity.EmbeddingItem
+	err := i.wrapper.Do(ctx, func() error {
+		resp, err := i.embedContent(ctx, genai.NewPartFromText(text))
+		if err != nil {
+			return fmt.Errorf("GetTextEmbedding: %w", err)
+		}
+		result = &entity.EmbeddingItem{
+			Data:  resp.Embeddings[0].Values,
+			Model: i.model,
+			Type:  entity.EmbeddingTypeText,
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("GetTextEmbedding: %w", err)
+		return nil, err
 	}
 
 	i.slogger.InfoContext(ctx, "GetTextEmbedding done")
-	return &entity.EmbeddingItem{
-		Data:  resp.Embeddings[0].Values,
-		Model: i.model,
-		Type:  entity.EmbeddingTypeText,
-	}, nil
+	return result, nil
 }
 
 func (i *GcloudImageEmbeddingExtractorGenaiImpl) embedContent(ctx context.Context, part *genai.Part) (*genai.EmbedContentResponse, error) {
@@ -163,7 +177,7 @@ func NewImageEmbeddingExtractorGenai(cfg *conf.Config) (ocr.LlmEmbeddingExtracto
 		client:    client,
 		model:     geminiConfig.Model,
 		dimension: int32(embeddingConfig.EmbeddingDimensions),
-		limiter:   rate.NewLimiter(40, 40),
+		wrapper:   ocr.NewConnectorWrapper(40, 3),
 		slogger:   slog.With("service", "LlmEmbeddingExtractor"),
 	}, nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"golang.org/x/time/rate"
 	"google.golang.org/genai"
 )
 
@@ -22,7 +21,7 @@ const captionProp = "caption"
 type GeminiExtractor struct {
 	client  *genai.Client
 	cfg     *conf.GeminiExtractorConfig
-	limiter *rate.Limiter
+	wrapper *ocr.ConnectorWrapper
 	slogger *slog.Logger
 }
 
@@ -46,7 +45,7 @@ func NewGeminiExtractor(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 	return &GeminiExtractor{
 		client:  client,
 		cfg:     c,
-		limiter: rate.NewLimiter(0.5, 1),
+		wrapper: ocr.NewConnectorWrapper(0.5, 3),
 		slogger: logger,
 	}, nil
 }
@@ -107,64 +106,64 @@ func (g *GeminiExtractor) ProcessVideo(ctx context.Context, data temp.Data) (*oc
 func (g *GeminiExtractor) process(ctx context.Context, data temp.Data, mimeType string) (*ocr.MediaExtractResult, error) {
 	g.slogger.InfoContext(ctx, "process start", "mimeType", mimeType)
 
-	if err := g.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
-	g.limiter.Allow()
+	var result *ocr.MediaExtractResult
+	err := g.wrapper.Do(ctx, func() error {
+		mediaPart, err := g.buildMediaPart(ctx, data, mimeType)
+		if err != nil {
+			return err
+		}
 
-	mediaPart, err := g.buildMediaPart(ctx, data, mimeType)
+		contents := []*genai.Content{
+			genai.NewContentFromParts([]*genai.Part{
+				{Text: g.cfg.Prompt},
+				mediaPart,
+			}, genai.RoleUser),
+		}
+
+		const toolName = "extract_metadata"
+		resp, err := g.client.Models.GenerateContent(
+			ctx,
+			g.cfg.Model,
+			contents,
+			&genai.GenerateContentConfig{
+				Tools: []*genai.Tool{g.buildTool()},
+				ToolConfig: &genai.ToolConfig{
+					FunctionCallingConfig: &genai.FunctionCallingConfig{
+						Mode:                 genai.FunctionCallingConfigModeAny,
+						AllowedFunctionNames: []string{toolName},
+					},
+				},
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("generate content: %w", err)
+		}
+
+		for _, cand := range resp.Candidates {
+			for _, part := range cand.Content.Parts {
+				if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
+					args := part.FunctionCall.Args
+					result = &ocr.MediaExtractResult{
+						OnScreenText:    stringArg(args, onScreenTextProp),
+						AudioTranscript: stringArg(args, audioTranscriptProp),
+						AudioTrack:      stringArg(args, audioTrackProp),
+						Caption:         stringArg(args, captionProp),
+					}
+					return nil
+				}
+			}
+		}
+		return fmt.Errorf("model did not return %s call", toolName)
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	contents := []*genai.Content{
-		genai.NewContentFromParts([]*genai.Part{
-			{Text: g.cfg.Prompt},
-			mediaPart,
-		}, genai.RoleUser),
-	}
-
-	const toolName = "extract_metadata"
-	resp, err := g.client.Models.GenerateContent(
-		ctx,
-		g.cfg.Model,
-		contents,
-		&genai.GenerateContentConfig{
-			Tools: []*genai.Tool{g.buildTool()},
-			ToolConfig: &genai.ToolConfig{
-				FunctionCallingConfig: &genai.FunctionCallingConfig{
-					Mode:                 genai.FunctionCallingConfigModeAny,
-					AllowedFunctionNames: []string{toolName},
-				},
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("generate content: %w", err)
-	}
-
-	for _, cand := range resp.Candidates {
-		for _, part := range cand.Content.Parts {
-			if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
-				args := part.FunctionCall.Args
-				g.slogger.InfoContext(ctx, "process done")
-				return &ocr.MediaExtractResult{
-					OnScreenText:    stringArg(args, onScreenTextProp),
-					AudioTranscript: stringArg(args, audioTranscriptProp),
-					AudioTrack:      stringArg(args, audioTrackProp),
-					Caption:         stringArg(args, captionProp),
-				}, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("model did not return %s call", toolName)
+	g.slogger.InfoContext(ctx, "process done")
+	return result, nil
 }
 
 func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.MediaExtractResult) (*ocr.MediaExtractResult, error) {
-	if err := g.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
-
 	var sb strings.Builder
 	sb.WriteString(g.cfg.CombinePrompt)
 	sb.WriteString("\n\n")
@@ -177,39 +176,49 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 	}
 
 	g.slogger.DebugContext(ctx, "combine prompt", "prompt", sb.String())
-	contents := []*genai.Content{
-		genai.NewContentFromParts([]*genai.Part{{Text: sb.String()}}, genai.RoleUser),
-	}
 
-	const toolName = "extract_metadata"
-	resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
-		Tools: []*genai.Tool{g.buildTool()},
-		ToolConfig: &genai.ToolConfig{
-			FunctionCallingConfig: &genai.FunctionCallingConfig{
-				Mode:                 genai.FunctionCallingConfigModeAny,
-				AllowedFunctionNames: []string{toolName},
+	var result *ocr.MediaExtractResult
+	err := g.wrapper.Do(ctx, func() error {
+		contents := []*genai.Content{
+			genai.NewContentFromParts([]*genai.Part{{Text: sb.String()}}, genai.RoleUser),
+		}
+
+		const toolName = "extract_metadata"
+		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
+			Tools: []*genai.Tool{g.buildTool()},
+			ToolConfig: &genai.ToolConfig{
+				FunctionCallingConfig: &genai.FunctionCallingConfig{
+					Mode:                 genai.FunctionCallingConfigModeAny,
+					AllowedFunctionNames: []string{toolName},
+				},
 			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("combine results generate content: %w", err)
-	}
+		})
+		if err != nil {
+			return fmt.Errorf("combine results generate content: %w", err)
+		}
 
-	for _, cand := range resp.Candidates {
-		for _, part := range cand.Content.Parts {
-			if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
-				args := part.FunctionCall.Args
-				g.slogger.InfoContext(ctx, "combine results done")
-				return &ocr.MediaExtractResult{
-					OnScreenText:    stringArg(args, onScreenTextProp),
-					AudioTranscript: stringArg(args, audioTranscriptProp),
-					AudioTrack:      stringArg(args, audioTrackProp),
-					Caption:         stringArg(args, captionProp),
-				}, nil
+		for _, cand := range resp.Candidates {
+			for _, part := range cand.Content.Parts {
+				if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
+					args := part.FunctionCall.Args
+					result = &ocr.MediaExtractResult{
+						OnScreenText:    stringArg(args, onScreenTextProp),
+						AudioTranscript: stringArg(args, audioTranscriptProp),
+						AudioTrack:      stringArg(args, audioTrackProp),
+						Caption:         stringArg(args, captionProp),
+					}
+					return nil
+				}
 			}
 		}
+		return fmt.Errorf("model did not return %s call during combine", toolName)
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("model did not return %s call during combine", toolName)
+
+	g.slogger.InfoContext(ctx, "combine results done")
+	return result, nil
 }
 
 func (g *GeminiExtractor) buildDuplicateTool() *genai.Tool {
@@ -232,50 +241,55 @@ func (g *GeminiExtractor) buildDuplicateTool() *genai.Tool {
 func (g *GeminiExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b temp.Data) (bool, error) {
 	g.slogger.InfoContext(ctx, "CheckDuplicate start")
 
-	if err := g.limiter.Wait(ctx); err != nil {
-		return false, fmt.Errorf("rate limiter: %w", err)
-	}
+	var isDuplicate bool
+	err := g.wrapper.Do(ctx, func() error {
+		partA, err := g.buildMediaPart(ctx, a, "image/jpeg")
+		if err != nil {
+			return fmt.Errorf("CheckDuplicate: build part a: %w", err)
+		}
+		partB, err := g.buildMediaPart(ctx, b, "image/jpeg")
+		if err != nil {
+			return fmt.Errorf("CheckDuplicate: build part b: %w", err)
+		}
 
-	partA, err := g.buildMediaPart(ctx, a, "image/jpeg")
-	if err != nil {
-		return false, fmt.Errorf("CheckDuplicate: build part a: %w", err)
-	}
-	partB, err := g.buildMediaPart(ctx, b, "image/jpeg")
-	if err != nil {
-		return false, fmt.Errorf("CheckDuplicate: build part b: %w", err)
-	}
+		contents := []*genai.Content{
+			genai.NewContentFromParts([]*genai.Part{
+				{Text: g.cfg.DuplicatePrompt},
+				partA,
+				partB,
+			}, genai.RoleUser),
+		}
 
-	contents := []*genai.Content{
-		genai.NewContentFromParts([]*genai.Part{
-			{Text: g.cfg.DuplicatePrompt},
-			partA,
-			partB,
-		}, genai.RoleUser),
-	}
-
-	const toolName = "check_duplicate"
-	resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
-		Tools: []*genai.Tool{g.buildDuplicateTool()},
-		ToolConfig: &genai.ToolConfig{
-			FunctionCallingConfig: &genai.FunctionCallingConfig{
-				Mode:                 genai.FunctionCallingConfigModeAny,
-				AllowedFunctionNames: []string{toolName},
+		const toolName = "check_duplicate"
+		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.Model, contents, &genai.GenerateContentConfig{
+			Tools: []*genai.Tool{g.buildDuplicateTool()},
+			ToolConfig: &genai.ToolConfig{
+				FunctionCallingConfig: &genai.FunctionCallingConfig{
+					Mode:                 genai.FunctionCallingConfigModeAny,
+					AllowedFunctionNames: []string{toolName},
+				},
 			},
-		},
-	})
-	if err != nil {
-		return false, fmt.Errorf("CheckDuplicate generate content: %w", err)
-	}
+		})
+		if err != nil {
+			return fmt.Errorf("CheckDuplicate generate content: %w", err)
+		}
 
-	for _, cand := range resp.Candidates {
-		for _, part := range cand.Content.Parts {
-			if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
-				g.slogger.InfoContext(ctx, "CheckDuplicate done")
-				return boolArg(part.FunctionCall.Args, "is_duplicate"), nil
+		for _, cand := range resp.Candidates {
+			for _, part := range cand.Content.Parts {
+				if part.FunctionCall != nil && part.FunctionCall.Name == toolName {
+					isDuplicate = boolArg(part.FunctionCall.Args, "is_duplicate")
+					return nil
+				}
 			}
 		}
+		return fmt.Errorf("model did not return %s call", toolName)
+	})
+	if err != nil {
+		return false, err
 	}
-	return false, fmt.Errorf("model did not return %s call", toolName)
+
+	g.slogger.InfoContext(ctx, "CheckDuplicate done")
+	return isDuplicate, nil
 }
 
 func stringArg(args map[string]any, key string) string {

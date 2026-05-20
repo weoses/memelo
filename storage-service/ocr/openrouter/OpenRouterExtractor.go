@@ -12,7 +12,6 @@ import (
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"golang.org/x/time/rate"
 )
 
 const orOnScreenTextProp = "on_screen_text"
@@ -24,7 +23,7 @@ const orToolName = "extract_metadata"
 type OpenRouterExtractor struct {
 	client  *orsdk.OpenRouter
 	cfg     *conf.OpenRouterExtractorConfig
-	limiter *rate.Limiter
+	wrapper *ocr.ConnectorWrapper
 	slogger *slog.Logger
 }
 
@@ -37,7 +36,7 @@ func NewOpenRouterExtractor(cfg *conf.Config) (ocr.LlmMediaExtractor, error) {
 	return &OpenRouterExtractor{
 		client:  client,
 		cfg:     c,
-		limiter: rate.NewLimiter(2, 2),
+		wrapper: ocr.NewConnectorWrapper(2, 3),
 		slogger: slog.With("service", "OpenRouterExtractor"),
 	}, nil
 }
@@ -139,18 +138,20 @@ func (e *OpenRouterExtractor) sendChat(ctx context.Context, messages []component
 
 func (e *OpenRouterExtractor) ProcessImage(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
 	e.slogger.InfoContext(ctx, "ProcessImage start")
-	if err := e.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	msg, err := e.buildImageMessage(ctx, data)
-	if err != nil {
+	var result *ocr.MediaExtractResult
+	if err := e.wrapper.Do(ctx, func() error {
+		msg, err := e.buildImageMessage(ctx, data)
+		if err != nil {
+			return err
+		}
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg})
+		if err != nil {
+			return fmt.Errorf("ProcessImage: %w", err)
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-
-	result, err := e.sendChat(ctx, []components.ChatMessages{msg})
-	if err != nil {
-		return nil, fmt.Errorf("ProcessImage: %w", err)
 	}
 
 	e.slogger.InfoContext(ctx, "ProcessImage done")
@@ -160,14 +161,19 @@ func (e *OpenRouterExtractor) ProcessImage(ctx context.Context, data temp.Data) 
 func (e *OpenRouterExtractor) ProcessVideo(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
 	e.slogger.InfoContext(ctx, "ProcessVideo start")
 
-	item, err := e.buildVideoMessage(ctx, data)
-	if err != nil {
-		return nil, fmt.Errorf("ProcessVideo: failed to build video message %w", err)
-	}
-
-	result, err := e.sendChat(ctx, []components.ChatMessages{item})
-	if err != nil {
-		return nil, fmt.Errorf("ProcessVideo: %w", err)
+	var result *ocr.MediaExtractResult
+	if err := e.wrapper.Do(ctx, func() error {
+		msg, err := e.buildVideoMessage(ctx, data)
+		if err != nil {
+			return fmt.Errorf("ProcessVideo: failed to build video message %w", err)
+		}
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg})
+		if err != nil {
+			return fmt.Errorf("ProcessVideo: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	e.slogger.InfoContext(ctx, "ProcessVideo done")
@@ -176,9 +182,6 @@ func (e *OpenRouterExtractor) ProcessVideo(ctx context.Context, data temp.Data) 
 
 func (e *OpenRouterExtractor) CombineResults(ctx context.Context, results []ocr.MediaExtractResult) (*ocr.MediaExtractResult, error) {
 	e.slogger.InfoContext(ctx, "CombineResults start")
-	if err := e.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
 	var sb strings.Builder
 	sb.WriteString(e.cfg.CombinePrompt)
@@ -191,13 +194,19 @@ func (e *OpenRouterExtractor) CombineResults(ctx context.Context, results []ocr.
 		}
 	}
 
-	msg := components.CreateChatMessagesUser(components.ChatUserMessage{
-		Content: components.CreateChatUserMessageContentStr(sb.String()),
-	})
-
-	result, err := e.sendChat(ctx, []components.ChatMessages{msg})
-	if err != nil {
-		return nil, fmt.Errorf("CombineResults: %w", err)
+	var result *ocr.MediaExtractResult
+	if err := e.wrapper.Do(ctx, func() error {
+		msg := components.CreateChatMessagesUser(components.ChatUserMessage{
+			Content: components.CreateChatUserMessageContentStr(sb.String()),
+		})
+		var err error
+		result, err = e.sendChat(ctx, []components.ChatMessages{msg})
+		if err != nil {
+			return fmt.Errorf("CombineResults: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	e.slogger.InfoContext(ctx, "CombineResults done")
@@ -206,82 +215,87 @@ func (e *OpenRouterExtractor) CombineResults(ctx context.Context, results []ocr.
 
 func (e *OpenRouterExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b temp.Data) (bool, error) {
 	e.slogger.InfoContext(ctx, "CheckDuplicate start")
-	if err := e.limiter.Wait(ctx); err != nil {
-		return false, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	dataURLa, err := toDataURL(a, "image/jpeg", e.slogger)
-	if err != nil {
-		return false, fmt.Errorf("CheckDuplicate: data url a: %w", err)
-	}
-	dataURLb, err := toDataURL(b, "image/jpeg", e.slogger)
-	if err != nil {
-		return false, fmt.Errorf("CheckDuplicate: data url b: %w", err)
-	}
+	var isDuplicate bool
+	if err := e.wrapper.Do(ctx, func() error {
+		dataURLa, err := toDataURL(a, "image/jpeg", e.slogger)
+		if err != nil {
+			return fmt.Errorf("CheckDuplicate: data url a: %w", err)
+		}
+		dataURLb, err := toDataURL(b, "image/jpeg", e.slogger)
+		if err != nil {
+			return fmt.Errorf("CheckDuplicate: data url b: %w", err)
+		}
 
-	content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
-		components.CreateChatContentItemsText(components.ChatContentText{
-			Type: components.ChatContentTextTypeText,
-			Text: e.cfg.DuplicatePrompt,
-		}),
-		components.CreateChatContentItemsImageURL(components.ChatContentImage{
-			Type:     components.ChatContentImageTypeImageURL,
-			ImageURL: components.ChatContentImageImageURL{URL: dataURLa},
-		}),
-		components.CreateChatContentItemsImageURL(components.ChatContentImage{
-			Type:     components.ChatContentImageTypeImageURL,
-			ImageURL: components.ChatContentImageImageURL{URL: dataURLb},
-		}),
-	})
-	msg := components.CreateChatMessagesUser(components.ChatUserMessage{Content: content})
+		content := components.CreateChatUserMessageContentArrayOfChatContentItems([]components.ChatContentItems{
+			components.CreateChatContentItemsText(components.ChatContentText{
+				Type: components.ChatContentTextTypeText,
+				Text: e.cfg.DuplicatePrompt,
+			}),
+			components.CreateChatContentItemsImageURL(components.ChatContentImage{
+				Type:     components.ChatContentImageTypeImageURL,
+				ImageURL: components.ChatContentImageImageURL{URL: dataURLa},
+			}),
+			components.CreateChatContentItemsImageURL(components.ChatContentImage{
+				Type:     components.ChatContentImageTypeImageURL,
+				ImageURL: components.ChatContentImageImageURL{URL: dataURLb},
+			}),
+		})
+		msg := components.CreateChatMessagesUser(components.ChatUserMessage{Content: content})
 
-	const toolName = "check_duplicate"
-	desc := "Check whether the two provided images are duplicates"
-	tool := components.CreateChatFunctionToolChatFunctionToolFunction(components.ChatFunctionToolFunction{
-		Type: components.ChatFunctionToolTypeFunction,
-		Function: components.ChatFunctionToolFunctionFunction{
-			Name:        toolName,
-			Description: &desc,
-			Parameters: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"is_duplicate": map[string]any{"type": "boolean"},
+		const toolName = "check_duplicate"
+		desc := "Check whether the two provided images are duplicates"
+		tool := components.CreateChatFunctionToolChatFunctionToolFunction(components.ChatFunctionToolFunction{
+			Type: components.ChatFunctionToolTypeFunction,
+			Function: components.ChatFunctionToolFunctionFunction{
+				Name:        toolName,
+				Description: &desc,
+				Parameters: map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"is_duplicate": map[string]any{"type": "boolean"},
+					},
+					"required": []string{"is_duplicate"},
 				},
-				"required": []string{"is_duplicate"},
 			},
-		},
-	})
+		})
 
-	toolChoice := components.CreateChatToolChoiceChatNamedToolChoice(components.ChatNamedToolChoice{
-		Type:     components.ChatNamedToolChoiceTypeFunction,
-		Function: components.ChatNamedToolChoiceFunction{Name: toolName},
-	})
+		toolChoice := components.CreateChatToolChoiceChatNamedToolChoice(components.ChatNamedToolChoice{
+			Type:     components.ChatNamedToolChoiceTypeFunction,
+			Function: components.ChatNamedToolChoiceFunction{Name: toolName},
+		})
 
-	resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
-		Model:      &e.cfg.Model,
-		Messages:   []components.ChatMessages{msg},
-		Tools:      []components.ChatFunctionTool{tool},
-		ToolChoice: &toolChoice,
-	})
-	if err != nil {
-		return false, fmt.Errorf("CheckDuplicate chat send: %w", err)
-	}
-	if resp.ChatResult == nil || len(resp.ChatResult.Choices) == 0 {
-		return false, fmt.Errorf("CheckDuplicate: chat returned no choices")
-	}
+		resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
+			Model:      &e.cfg.Model,
+			Messages:   []components.ChatMessages{msg},
+			Tools:      []components.ChatFunctionTool{tool},
+			ToolChoice: &toolChoice,
+		})
+		if err != nil {
+			return fmt.Errorf("CheckDuplicate chat send: %w", err)
+		}
+		if resp.ChatResult == nil || len(resp.ChatResult.Choices) == 0 {
+			return fmt.Errorf("CheckDuplicate: chat returned no choices")
+		}
 
-	toolCalls := resp.ChatResult.Choices[0].Message.ToolCalls
-	if len(toolCalls) == 0 {
-		return false, fmt.Errorf("model did not return %s call", toolName)
-	}
+		toolCalls := resp.ChatResult.Choices[0].Message.ToolCalls
+		if len(toolCalls) == 0 {
+			return fmt.Errorf("model did not return %s call", toolName)
+		}
 
-	var args map[string]any
-	if err := json.Unmarshal([]byte(toolCalls[0].Function.Arguments), &args); err != nil {
-		return false, fmt.Errorf("CheckDuplicate: parse tool arguments: %w", err)
+		var args map[string]any
+		if err := json.Unmarshal([]byte(toolCalls[0].Function.Arguments), &args); err != nil {
+			return fmt.Errorf("CheckDuplicate: parse tool arguments: %w", err)
+		}
+
+		isDuplicate = boolArg(args, "is_duplicate")
+		return nil
+	}); err != nil {
+		return false, err
 	}
 
 	e.slogger.InfoContext(ctx, "CheckDuplicate done")
-	return boolArg(args, "is_duplicate"), nil
+	return isDuplicate, nil
 }
 
 func stringArg(args map[string]any, key string) string {

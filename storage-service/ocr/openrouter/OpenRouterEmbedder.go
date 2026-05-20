@@ -14,14 +14,13 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"golang.org/x/time/rate"
 )
 
 type OpenRouterEmbedder struct {
 	client       *orsdk.OpenRouter
 	model        string
 	frameExtract ocr.Video2FrameExtractor
-	limiter      *rate.Limiter
+	wrapper      *ocr.ConnectorWrapper
 	slogger      *slog.Logger
 }
 
@@ -35,79 +34,84 @@ func NewOpenRouterEmbedder(cfg *conf.Config, fe ocr.Video2FrameExtractor) (ocr.L
 		client:       client,
 		model:        c.Model,
 		frameExtract: fe,
-		limiter:      rate.NewLimiter(10, 10),
+		wrapper:      ocr.NewConnectorWrapper(10, 3),
 		slogger:      slog.With("service", "OpenRouterEmbedder"),
 	}, nil
 }
 
 func (e *OpenRouterEmbedder) GetTextEmbedding(ctx context.Context, text string) (*entity.EmbeddingItem, error) {
 	e.slogger.InfoContext(ctx, "GetTextEmbedding start")
-	if err := e.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	input := operations.CreateInputUnionArrayOfStr([]string{text})
-	resp, err := e.client.Embeddings.Generate(ctx, operations.CreateEmbeddingsRequest{
-		Model:          e.model,
-		Input:          input,
-		EncodingFormat: operations.EncodingFormatFloat.ToPointer(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("GetTextEmbedding: %w", err)
-	}
-
-	vec, err := extractEmbedding(resp)
-	if err != nil {
-		return nil, fmt.Errorf("GetTextEmbedding: %w", err)
+	var result *entity.EmbeddingItem
+	if err := e.wrapper.Do(ctx, func() error {
+		input := operations.CreateInputUnionArrayOfStr([]string{text})
+		resp, err := e.client.Embeddings.Generate(ctx, operations.CreateEmbeddingsRequest{
+			Model:          e.model,
+			Input:          input,
+			EncodingFormat: operations.EncodingFormatFloat.ToPointer(),
+		})
+		if err != nil {
+			return fmt.Errorf("GetTextEmbedding: %w", err)
+		}
+		vec, err := extractEmbedding(resp)
+		if err != nil {
+			return fmt.Errorf("GetTextEmbedding: %w", err)
+		}
+		result = &entity.EmbeddingItem{
+			Data:  vec,
+			Model: e.model,
+			Type:  entity.EmbeddingTypeText,
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	e.slogger.InfoContext(ctx, "GetTextEmbedding done")
-	return &entity.EmbeddingItem{
-		Data:  vec,
-		Model: e.model,
-		Type:  entity.EmbeddingTypeText,
-	}, nil
+	return result, nil
 }
 
 func (e *OpenRouterEmbedder) GetImageEmbedding(ctx context.Context, rawImage temp.Data) (*entity.EmbeddingItem, error) {
 	e.slogger.InfoContext(ctx, "GetImageEmbedding start")
-	if err := e.limiter.Wait(ctx); err != nil {
-		return nil, fmt.Errorf("rate limiter: %w", err)
-	}
 
-	dataURL, err := toDataURL(rawImage, "image/jpeg", e.slogger)
-	if err != nil {
-		return nil, fmt.Errorf("GetImageEmbedding: %w", err)
-	}
-
-	input := operations.CreateInputUnionArrayOfInput([]operations.Input{{
-		Content: []operations.Content{
-			operations.CreateContentImageURL(operations.ContentImageURL{
-				ImageURL: operations.ImageURL{URL: dataURL},
-				Type:     operations.TypeImageURLImageURL,
-			}),
-		},
-	}})
-	resp, err := e.client.Embeddings.Generate(ctx, operations.CreateEmbeddingsRequest{
-		Model:          e.model,
-		Input:          input,
-		EncodingFormat: operations.EncodingFormatFloat.ToPointer(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("GetImageEmbedding: %w", err)
-	}
-
-	vec, err := extractEmbedding(resp)
-	if err != nil {
-		return nil, fmt.Errorf("GetImageEmbedding: %w", err)
+	var result *entity.EmbeddingItem
+	if err := e.wrapper.Do(ctx, func() error {
+		dataURL, err := toDataURL(rawImage, "image/jpeg", e.slogger)
+		if err != nil {
+			return fmt.Errorf("GetImageEmbedding: %w", err)
+		}
+		input := operations.CreateInputUnionArrayOfInput([]operations.Input{{
+			Content: []operations.Content{
+				operations.CreateContentImageURL(operations.ContentImageURL{
+					ImageURL: operations.ImageURL{URL: dataURL},
+					Type:     operations.TypeImageURLImageURL,
+				}),
+			},
+		}})
+		resp, err := e.client.Embeddings.Generate(ctx, operations.CreateEmbeddingsRequest{
+			Model:          e.model,
+			Input:          input,
+			EncodingFormat: operations.EncodingFormatFloat.ToPointer(),
+		})
+		if err != nil {
+			return fmt.Errorf("GetImageEmbedding: %w", err)
+		}
+		vec, err := extractEmbedding(resp)
+		if err != nil {
+			return fmt.Errorf("GetImageEmbedding: %w", err)
+		}
+		result = &entity.EmbeddingItem{
+			Data:  vec,
+			Model: e.model,
+			Type:  entity.EmbeddingTypeImage,
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	e.slogger.InfoContext(ctx, "GetImageEmbedding done")
-	return &entity.EmbeddingItem{
-		Data:  vec,
-		Model: e.model,
-		Type:  entity.EmbeddingTypeImage,
-	}, nil
+	return result, nil
 }
 
 func (e *OpenRouterEmbedder) GetVideoEmbedding(ctx context.Context, video temp.Data) ([]entity.EmbeddingItem, error) {
