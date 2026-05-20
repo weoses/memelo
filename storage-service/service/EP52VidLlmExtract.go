@@ -41,7 +41,7 @@ func (s *VidLlmExtractPipelineStep) Do(ctx context.Context, inputContext Metadat
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
 	errs := make([]error, 0)
-	results := make([]OneSliceResult, len(pCtx.VideoSlices))
+	results := make([]OneSliceResult, 0)
 
 	for _, slice := range pCtx.VideoSlices {
 		wg.Go(func() {
