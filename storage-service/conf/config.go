@@ -9,8 +9,8 @@ import (
 )
 
 type CommonExtractingConfig struct {
-	EmbeddingDimensions   int
-	VideoSliceIntervalSec int
+	EmbeddingDimensions   int  `mapstructure:"embedding-dimensions"`
+	VideoSliceIntervalSec int  `mapstructure:"video-slice-interval-sec"`
 	SeparateAudio         bool `mapstructure:"separate-audio"`
 }
 
