@@ -173,6 +173,10 @@ func NewImageEmbeddingExtractorGenai(cfg *conf.Config) (ocr.LlmEmbeddingExtracto
 		return nil, fmt.Errorf("NewImageEmbeddingExtractor: create genai client: %w", err)
 	}
 
+	slog.Info("New GcloudImageEmbeddingExtractorGenaiImpl",
+		"model", geminiConfig.Model,
+		"dimension", embeddingConfig.EmbeddingDimensions,
+	)
 	return &GcloudImageEmbeddingExtractorGenaiImpl{
 		client:    client,
 		model:     geminiConfig.Model,
