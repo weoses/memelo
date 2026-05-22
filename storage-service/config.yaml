@@ -5,8 +5,8 @@ server:
   ListenAddress: :7001
 
 extracting:
-  EmbeddingDimensions: 1408
-  VideoSliceIntervalSec: 15
+  embedding-dimensions: 1408
+  video-slice-interval-sec: 15
   separate-audio: true
 
 search:
