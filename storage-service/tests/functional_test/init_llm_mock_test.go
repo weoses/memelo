@@ -168,7 +168,11 @@ func (m *MockEmbeddingExtractor) GetTextEmbedding(_ context.Context, _ string) (
 
 type MockVideo2AudioConverter struct{}
 
-func (m *MockVideo2AudioConverter) ConvertToMp3(_ context.Context, _ temp.Data) (temp.Data, error) {
+func (m *MockVideo2AudioConverter) ExtractAudio(_ context.Context, _ temp.Data) (temp.Data, error) {
+	return temp.DataTemp(bytes.NewReader([]byte{}))
+}
+
+func (m *MockVideo2AudioConverter) CutAudio(_ context.Context, _ temp.Data) (temp.Data, error) {
 	return temp.DataTemp(bytes.NewReader([]byte{}))
 }
 

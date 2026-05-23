@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/weoses/memelo/common/helper"
+	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
@@ -140,7 +141,20 @@ func (s *VidLlmExtractPipelineStep) processSlice(
 			"index", slice.SliceNumber,
 			"startTime", slice.SliceStartTime,
 			"endTime", slice.SliceEndTime)
-		r, err := s.extractor.ProcessVideo(ctxInProcess, slice.Slice)
+
+		var videoData temp.Data = slice.Slice
+		if s.separateAudio {
+			cut, err := s.video2audio.CutAudio(ctxInProcess, slice.Slice)
+			defer helper.QuietClose(cut, s.slogger)
+			if err != nil {
+				appendErr(err)
+				cancel()
+				return
+			}
+			videoData = cut
+		}
+
+		r, err := s.extractor.ProcessVideo(ctxInProcess, videoData)
 		if err != nil {
 			appendErr(err)
 			cancel()
@@ -162,7 +176,7 @@ func (s *VidLlmExtractPipelineStep) processSlice(
 			"startTime", slice.SliceStartTime,
 			"endTime", slice.SliceEndTime)
 
-		audioData, err := s.video2audio.ConvertToMp3(ctxInProcess, slice.Slice)
+		audioData, err := s.video2audio.ExtractAudio(ctxInProcess, slice.Slice)
 		defer helper.QuietClose(audioData, s.slogger)
 		if err != nil {
 			appendErr(err)
