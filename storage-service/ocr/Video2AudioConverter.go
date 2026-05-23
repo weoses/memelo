@@ -7,5 +7,6 @@ import (
 )
 
 type Video2AudioConverter interface {
-	ConvertToMp3(ctx context.Context, video temp.Data) (temp.Data, error)
+	ExtractAudio(ctx context.Context, video temp.Data) (temp.Data, error)
+	CutAudio(ctx context.Context, video temp.Data) (temp.Data, error)
 }
