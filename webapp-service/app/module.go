@@ -31,6 +31,7 @@ func Module() fx.Option {
 		fx.Provide(storage.NewS3OperationsAdapter),
 		fx.Provide(commonservice.NewTmpDataS3Service),
 		fx.Provide(service.NewUploadService),
+		fx.Provide(service.NewAuthService),
 		fx.Provide(api.NewHandlers),
 		fx.Provide(func(c *conf.Config) (net.Listener, error) {
 			return net.Listen("tcp", c.Server.ListenAddress)
@@ -39,7 +40,7 @@ func Module() fx.Option {
 	)
 }
 
-func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS, cfg *conf.Config) {
+func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, authSvc service.AuthService, dist embed.FS, cfg *conf.Config) {
 	distFS, err := fs.Sub(dist, "frontend/dist")
 	if err != nil {
 		panic(err)
@@ -62,15 +63,34 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS, c
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.GET("/api/memes", h.SearchMemes)
-	e.POST("/api/memes/get-upload-url", h.GetUploadUrl)
-	e.POST("/api/memes/parse-by-token", h.ParseByToken)
-	e.GET("/api/memes/:id", h.GetMeme)
-	e.PATCH("/api/memes/:id", h.UpdateMeme)
-	e.DELETE("/api/memes/:id", h.DeleteMeme)
-	e.POST("/api/memes/:id/recompute", h.RecomputeMeme)
-	e.POST("/api/memes/:id/update-media/:field", h.UpdateMemeMedia)
+	e.POST("/api/auth/login", h.Login)
+	e.POST("/api/auth/refresh", h.Refresh)
 	e.GET("/api/health", h.Health)
+
+	jwtMiddleware := func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			authHeader := c.Request().Header.Get("Authorization")
+			if len(authHeader) < 8 || authHeader[:7] != "Bearer " {
+				return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid authorization header")
+			}
+			userID, err := authSvc.ExtractUserID(authHeader[7:])
+			if err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired token")
+			}
+			c.Set("user_id", userID)
+			return next(c)
+		}
+	}
+
+	memes := e.Group("/api/memes", jwtMiddleware)
+	memes.GET("", h.SearchMemes)
+	memes.POST("/get-upload-url", h.GetUploadUrl)
+	memes.POST("/parse-by-token", h.ParseByToken)
+	memes.GET("/:id", h.GetMeme)
+	memes.PATCH("/:id", h.UpdateMeme)
+	memes.DELETE("/:id", h.DeleteMeme)
+	memes.POST("/:id/recompute", h.RecomputeMeme)
+	memes.POST("/:id/update-media/:field", h.UpdateMemeMedia)
 
 	e.GET("/*", func(c echo.Context) error {
 		return c.HTMLBlob(http.StatusOK, indexHTML)

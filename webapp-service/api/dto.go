@@ -2,6 +2,48 @@ package api
 
 import "github.com/weoses/memelo/webapp/service"
 
+// Request types
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type GetUploadUrlRequest struct {
+	Mime   string `json:"mime"`
+	Length int64  `json:"length"`
+}
+
+type ParseByTokenRequest struct {
+	Token string `json:"token"`
+}
+
+type UpdateMemeRequest struct {
+	Caption         *string `json:"caption"`
+	OnScreenText    *string `json:"on_screen_text"`
+	AudioTranscript *string `json:"audio_transcript"`
+	AudioTrack      *string `json:"audio_track"`
+}
+
+type UpdateMemeMediaRequest struct {
+	Token string `json:"token"`
+}
+
+// Response types
+
+type LoginResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
 type MemeResponse struct {
 	Id              string   `json:"id"`
 	Caption         string   `json:"caption"`

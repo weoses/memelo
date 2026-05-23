@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -18,17 +20,27 @@ var typeTagRe = regexp.MustCompile(`(?i)\s*-type:(image|video)\s*`)
 type Handlers struct {
 	proxy     service.StorageProxy
 	upload    service.UploadService
+	auth      service.AuthService
 	accountId string
 	log       *slog.Logger
 }
 
-func NewHandlers(proxy service.StorageProxy, upload service.UploadService, cfg *conf.Config) *Handlers {
+func NewHandlers(proxy service.StorageProxy, upload service.UploadService, auth service.AuthService, cfg *conf.Config) *Handlers {
 	return &Handlers{
-		proxy:     proxy,
-		upload:    upload,
-		accountId: cfg.Account.Id,
-		log:       slog.With("component", "api_handlers"),
+		proxy:  proxy,
+		upload: upload,
+		auth:   auth,
+		log:    slog.With("component", "api_handlers"),
 	}
+}
+
+// resolveAccountId returns the user-id from the JWT context, falling back to
+// the configured account ID while null-uid tokens are in use.
+func (h *Handlers) resolveAccountId(c echo.Context) (string, error) {
+	if uid, ok := c.Get("user_id").(string); ok && uid != "" {
+		return uid, nil
+	}
+	return "", errors.New("no user_id")
 }
 
 func (h *Handlers) Health(c echo.Context) error {
@@ -36,6 +48,10 @@ func (h *Handlers) Health(c echo.Context) error {
 }
 
 func (h *Handlers) SearchMemes(c echo.Context) error {
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
+	}
 	query := c.QueryParam("q")
 	limitStr := c.QueryParam("limit")
 	limit := int32(20)
@@ -60,7 +76,7 @@ func (h *Handlers) SearchMemes(c echo.Context) error {
 		query = strings.TrimSpace(typeTagRe.ReplaceAllString(query, " "))
 	}
 
-	result, err := h.proxy.Search(c.Request().Context(), h.accountId, query, metadataType, pagination, limit)
+	result, err := h.proxy.Search(c.Request().Context(), accountId, query, metadataType, pagination, limit)
 	if err != nil {
 		h.log.Error("search failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream search failed")
@@ -69,10 +85,7 @@ func (h *Handlers) SearchMemes(c echo.Context) error {
 }
 
 func (h *Handlers) GetUploadUrl(c echo.Context) error {
-	var body struct {
-		Mime   string `json:"mime"`
-		Length int64  `json:"length"`
-	}
+	var body GetUploadUrlRequest
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
@@ -92,14 +105,17 @@ func (h *Handlers) GetUploadUrl(c echo.Context) error {
 }
 
 func (h *Handlers) ParseByToken(c echo.Context) error {
-	var body struct {
-		Token string `json:"token"`
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
 	}
+
+	var body ParseByTokenRequest
 	if err := c.Bind(&body); err != nil || body.Token == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing token")
 	}
 
-	result, err := h.upload.ParseByToken(c.Request().Context(), h.accountId, body.Token)
+	result, err := h.upload.ParseByToken(c.Request().Context(), accountId, body.Token)
 	if err != nil {
 		h.log.Error("parse by token failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid or expired token")
@@ -108,8 +124,13 @@ func (h *Handlers) ParseByToken(c echo.Context) error {
 }
 
 func (h *Handlers) GetMeme(c echo.Context) error {
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
+	}
+
 	id := c.Param("id")
-	result, err := h.proxy.GetMeme(c.Request().Context(), h.accountId, id)
+	result, err := h.proxy.GetMeme(c.Request().Context(), accountId, id)
 	if err != nil {
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return echo.NewHTTPError(http.StatusNotFound, "meme not found")
@@ -121,17 +142,17 @@ func (h *Handlers) GetMeme(c echo.Context) error {
 }
 
 func (h *Handlers) UpdateMeme(c echo.Context) error {
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
+	}
+
 	id := c.Param("id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
 
-	var body struct {
-		Caption         *string `json:"caption"`
-		OnScreenText    *string `json:"on_screen_text"`
-		AudioTranscript *string `json:"audio_transcript"`
-		AudioTrack      *string `json:"audio_track"`
-	}
+	var body UpdateMemeRequest
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
 	}
@@ -142,7 +163,7 @@ func (h *Handlers) UpdateMeme(c echo.Context) error {
 		AudioTranscript: body.AudioTranscript,
 		AudioTrack:      body.AudioTrack,
 	}
-	result, err := h.proxy.UpdateMeme(c.Request().Context(), h.accountId, id, params)
+	result, err := h.proxy.UpdateMeme(c.Request().Context(), accountId, id, params)
 	if err != nil {
 		h.log.Error("update meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream update failed")
@@ -151,11 +172,16 @@ func (h *Handlers) UpdateMeme(c echo.Context) error {
 }
 
 func (h *Handlers) DeleteMeme(c echo.Context) error {
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
+	}
+
 	id := c.Param("id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
-	if err := h.proxy.DeleteMeme(c.Request().Context(), h.accountId, id); err != nil {
+	if err := h.proxy.DeleteMeme(c.Request().Context(), accountId, id); err != nil {
 		h.log.Error("delete meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream delete failed")
 	}
@@ -163,11 +189,15 @@ func (h *Handlers) DeleteMeme(c echo.Context) error {
 }
 
 func (h *Handlers) RecomputeMeme(c echo.Context) error {
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
+	}
 	id := c.Param("id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
-	result, err := h.proxy.RecomputeById(c.Request().Context(), h.accountId, id)
+	result, err := h.proxy.RecomputeById(c.Request().Context(), accountId, id)
 	if err != nil {
 		h.log.Error("recompute meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream recompute failed")
@@ -176,6 +206,10 @@ func (h *Handlers) RecomputeMeme(c echo.Context) error {
 }
 
 func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
+	accountId, err := h.resolveAccountId(c)
+	if err != nil {
+		return fmt.Errorf("could not resolve account id: %w", err)
+	}
 	id := c.Param("id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
@@ -186,9 +220,7 @@ func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "field must be 'original' or 'thumbnail'")
 	}
 
-	var body struct {
-		Token string `json:"token"`
-	}
+	var body UpdateMemeMediaRequest
 	if err := c.Bind(&body); err != nil || body.Token == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing token")
 	}
@@ -206,7 +238,7 @@ func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
 		params.ThumbnailS3Path = &s3path
 	}
 
-	result, err := h.proxy.UpdateMeme(c.Request().Context(), h.accountId, id, params)
+	result, err := h.proxy.UpdateMeme(c.Request().Context(), accountId, id, params)
 	if err != nil {
 		h.log.Error("update meme media failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream update failed")
