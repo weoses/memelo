@@ -80,6 +80,10 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 			end = totalDuration
 		}
 
+		if (end - start) < overlap {
+			break
+		}
+
 		segmentPath := filepath.Join(dir, fmt.Sprintf("segment_%05d.mp4", len(slices)))
 		startSec := strconv.FormatFloat(start.Seconds(), 'f', -1, 64)
 		durationSec := strconv.FormatFloat(interval.Seconds(), 'f', -1, 64)
