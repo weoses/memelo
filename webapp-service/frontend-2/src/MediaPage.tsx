@@ -1,14 +1,15 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import NavBar from './components/NavBar'
+import NavBar, {Tab} from './components/NavBar'
 // import BottomNav from './components/BottomNav'
 import MemeGrid from './components/MemeGrid'
 import DetailsDialog from './components/DetailsDialog'
 import UploadDialog from './components/UploadDialog'
 import DeleteConfirmDialog from './components/DeleteConfirmDialog'
 import ProgressDialog from './components/ProgressDialog'
-import { Meme, deleteMeme, recomputeMeme } from './api/client'
+import { Meme, deleteMeme, recomputeMeme, apiLogout } from './api/client'
 import { useMediaStore } from './store/mediaStore'
+import { useAuthStore } from './store/authStore'
 
 const _cfg = (window as Window & { __MEMELO_CONFIG__?: { baseUrl?: string } }).__MEMELO_CONFIG__
 const BASE = _cfg?.baseUrl ? _cfg.baseUrl.replace(/\/$/, '') + '/' : ''
@@ -21,7 +22,6 @@ function mediaUrl(query?: string, id?: string): string {
   return `${MEDIA_PAGE_PATH}${params.size ? '?' + params : ''}`
 }
 
-type NavTab = 'gallery' | 'statistics' | 'collections' | 'favorites'
 type MobileTab = 'gallery' | 'upload'
 
 export default function MediaPage() {
@@ -31,7 +31,7 @@ export default function MediaPage() {
   const [notFound, setNotFound] = useState(false)
   const [confirmDeleteMeme, setConfirmDeleteMeme] = useState<Meme | null>(null)
   const [recomputingMeme, setRecomputingMeme] = useState<Meme | null>(null)
-  const [navTab, setNavTab] = useState<NavTab>('gallery')
+  const [navTab, setNavTab] = useState<Tab>('gallery')
   const [mobileTab, setMobileTab] = useState<MobileTab>('gallery')
 
   const { memes, hasMore, prependMeme, getById, setDetachedMeme, removeMeme, updateMeme } = useMediaStore(
@@ -153,6 +153,12 @@ export default function MediaPage() {
 
   const handleUploadClick = useCallback(() => setUploadOpen(true), [])
 
+  const handleLogout = useCallback(async () => {
+    await apiLogout()
+    useAuthStore.getState().logout()
+    window.location.replace('/login')
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#111111] text-white flex flex-col">
       <NavBar
@@ -161,10 +167,17 @@ export default function MediaPage() {
         query={query}
         onQueryChange={handleQueryChange}
         onUploadClick={handleUploadClick}
+        onLogout={handleLogout}
       />
 
       <main className="flex-1 p-4">
-        <MemeGrid query={query} onSelect={handleSelect} />
+        <MemeGrid
+          query={query}
+          onSelect={handleSelect}
+          onCardDownload={handleDownload}
+          onCardRecompute={handleRecompute}
+          onCardDelete={handleDelete}
+        />
       </main>
 
       {/* <BottomNav activeTab={mobileTab} onTabChange={setMobileTab} /> */}

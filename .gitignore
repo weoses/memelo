@@ -8,3 +8,6 @@ node_modules/
 frontend/dist/
 
 /webapp-service/frontend/dist
+/webapp-service/design/
+/webapp-service/frontend-2/dist
+/webapp-service/frontend-2/.vite

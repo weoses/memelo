@@ -56,9 +56,12 @@ function buildRows(memes: Meme[], containerWidth: number): RowItem[][] {
 interface Props {
   query: string
   onSelect: (index: number) => void
+  onCardDownload: (meme: Meme) => void
+  onCardRecompute: (meme: Meme) => void
+  onCardDelete: (meme: Meme) => void
 }
 
-export default function MemeGrid({ query, onSelect }: Props) {
+export default function MemeGrid({ query, onSelect, onCardDownload, onCardRecompute, onCardDelete }: Props) {
   const { memes, loading, load, loadMore } = useMediaStore(
     useShallow(s => ({ memes: s.memes, loading: s.loading, load: s.load, loadMore: s.loadMore }))
   )
@@ -111,7 +114,13 @@ export default function MemeGrid({ query, onSelect }: Props) {
             <div key={rowIdx} className="flex" style={{ gap: GUTTER, height: row[0]?.h }}>
               {row.map(({ meme, w, h, index }) => (
                 <div key={meme.id} style={{ width: w, height: h, flexShrink: 0 }}>
-                  <MemeCard meme={meme} onClick={() => onSelect(index)} />
+                  <MemeCard
+                    meme={meme}
+                    onClick={() => onSelect(index)}
+                    onDownload={() => onCardDownload(meme)}
+                    onRecompute={() => onCardRecompute(meme)}
+                    onDelete={() => onCardDelete(meme)}
+                  />
                 </div>
               ))}
             </div>

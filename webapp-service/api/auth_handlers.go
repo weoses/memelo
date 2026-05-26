@@ -21,6 +21,10 @@ func (h *Handlers) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, LoginResponse{AccessToken: access, RefreshToken: refresh})
 }
 
+func (h *Handlers) Logout(c echo.Context) error {
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (h *Handlers) Refresh(c echo.Context) error {
 	var body RefreshRequest
 	if err := c.Bind(&body); err != nil || body.RefreshToken == "" {

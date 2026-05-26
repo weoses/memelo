@@ -1,11 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { apiLogin } from './api/client'
 
-interface Props {
-  onLogin: () => void
-}
-
-export default function LoginPage({ onLogin }: Props) {
+export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +13,8 @@ export default function LoginPage({ onLogin }: Props) {
     setLoading(true)
     try {
       await apiLogin(username, password)
-      onLogin()
+      const redirectUrl = new URLSearchParams(window.location.search).get('redirect_url')
+      window.location.replace(redirectUrl || '/media')
     } catch {
       setError('Invalid credentials. Please try again.')
     } finally {

@@ -1,7 +1,7 @@
 import { useAuthStore } from '../store/authStore'
 
 const _cfg = (window as Window & { __MEMELO_CONFIG__?: { baseUrl?: string } }).__MEMELO_CONFIG__
-const BASE = _cfg?.baseUrl ? _cfg.baseUrl.replace(/\/$/, '') + '/' : ''
+export const BASE = _cfg?.baseUrl ? _cfg.baseUrl.replace(/\/$/, '') + '/' : ''
 
 async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const store = useAuthStore.getState()
@@ -32,10 +32,18 @@ async function apiFetch(input: string, init: RequestInit = {}): Promise<Response
       }
     }
     useAuthStore.getState().logout()
-    window.location.href = '/login'
+    window.location.replace(`/login?redirect_url=${encodeURIComponent(window.location.href)}`)
   }
 
   return res
+}
+
+export async function apiLogout(): Promise<void> {
+  try {
+    await apiFetch(`${BASE}api/auth/logout`, { method: 'POST' })
+  } catch {
+    // ignore — token clearing happens regardless
+  }
 }
 
 export async function apiLogin(username: string, password: string): Promise<void> {

@@ -82,6 +82,8 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, authSvc service.
 		}
 	}
 
+	e.POST("/api/auth/logout", h.Logout, jwtMiddleware)
+
 	memes := e.Group("/api/memes", jwtMiddleware)
 	memes.GET("", h.SearchMemes)
 	memes.POST("/get-upload-url", h.GetUploadUrl)
