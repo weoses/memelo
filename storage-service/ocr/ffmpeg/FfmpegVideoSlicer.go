@@ -80,7 +80,7 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 			end = totalDuration
 		}
 
-		if (end - start) < overlap {
+		if (end-start) < overlap && start > 0 {
 			break
 		}
 
