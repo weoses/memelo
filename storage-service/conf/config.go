@@ -110,6 +110,13 @@ type OpenRouterEmbeddingConfig struct {
 	Model  string `mapstructure:"model"`
 }
 
+type KafkaConfig struct {
+	Brokers            []string `mapstructure:"brokers"`
+	ParseConsumerGroup string   `mapstructure:"parse-consumer-group"`
+	ParseRequestTopic  string   `mapstructure:"parse-request-topic"`
+	ParseResponseTopic string   `mapstructure:"parse-response-topic"`
+}
+
 type Config struct {
 	Server              *commonconfig.ServerConfig       `mapstructure:"server"`
 	Log                 *commonconfig.LoggingConfig      `mapstructure:"log"`
@@ -127,6 +134,7 @@ type Config struct {
 	EmbedderProvider    string                           `mapstructure:"embedder-provider"`
 	OpenRouterExtractor *OpenRouterExtractorConfig       `mapstructure:"openrouter-extractor"`
 	OpenRouterEmbedding *OpenRouterEmbeddingConfig       `mapstructure:"openrouter-embedding"`
+	Kafka               *KafkaConfig                     `mapstructure:"kafka"`
 }
 
 func NewConfig() (*Config, error) {

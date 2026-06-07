@@ -102,3 +102,10 @@ openrouter-extractor:
 openrouter-embedding:
   apikey:
   model: nvidia/llama-nemotron-embed-vl-1b-v2
+
+
+kafka:
+  brokers: []
+  parse-consumer-group: storage-service-parse
+  parse-request-topic: parse-request
+  parse-response-topic: parse-response

@@ -11,6 +11,7 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/temp"
+	"github.com/weoses/memelo/storage-service/utils"
 
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -129,53 +130,7 @@ func (api *SearchServiceApi) DeleteMeme(ctx context.Context, request *v1.DeleteM
 }
 
 func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *v1.MemeDto {
-	dto := &v1.MemeDto{
-		Id:        urls.Metadata.ImageId.String(),
-		OcrResult: urls.Metadata.Result,
-		MediaOriginal: &v1.ImageDto{
-			Url: urls.UrlOriginal,
-		},
-		ImageThumbnail: &v1.ImageDto{
-			Url:         urls.UrlThumb,
-			ImageWidth:  helper.Addr(int32(urls.Metadata.ThumbSize.Width)),
-			ImageHeight: helper.Addr(int32(urls.Metadata.ThumbSize.Height)),
-		},
-		Tags:   urls.Metadata.Tags,
-		Type:   string(urls.Metadata.Type),
-		Edited: urls.Metadata.Edited,
-	}
-
-	if urls.Metadata.ImageSize != nil {
-		dto.MediaOriginal.ImageWidth = helper.Addr(int32(urls.Metadata.ImageSize.Width))
-		dto.MediaOriginal.ImageHeight = helper.Addr(int32(urls.Metadata.ImageSize.Height))
-	}
-
-	if urls.Metadata.ResultData != nil {
-		dto.Caption = urls.Metadata.ResultData.Caption
-		dto.OnScreenText = urls.Metadata.ResultData.OnScreenText
-		dto.AudioTranscript = urls.Metadata.ResultData.AudioTranscript
-		dto.AudioTrack = urls.Metadata.ResultData.AudioTrack
-	}
-
-	// TODO not now
-	//if urls.Metadata.ResultPerVideoSlices != nil {
-	//	dto.ResultDataByTime = helper.TransformSlice(
-	//		urls.Metadata.ResultPerVideoSlices,
-	//		make([]*v1.TimeCodeResultData, 0),
-	//		func(slice entity.ResultPerVideoSlice) *v1.TimeCodeResultData {
-	//			return &v1.TimeCodeResultData{
-	//				Start: int32(slice.SliceStartTime),
-	//				End:   int32(slice.SliceEndTime),
-	//				Data: &v1.ResultData{
-	//					OnScreenText:    slice.Result.OnScreenText,
-	//					AudioTranscript: slice.Result.AudioTranscript,
-	//					AudioTrack:      slice.Result.AudioTrack,
-	//				},
-	//			}
-	//		})
-	//}
-
-	return dto
+	return utils.MetadataToMemeDto(urls)
 }
 
 func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error) {
@@ -188,7 +143,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, fmt.Errorf("error parsing AccountId: %w", err)
 	}
 
-	afterId := pipelineAfterIDFromProto(req.AfterId)
+	afterId := utils.PipelineAfterIDFromProto(req.AfterId)
 	pageSize := int(req.PageSize)
 	if pageSize == 0 {
 		return nil, fmt.Errorf("invalid pageSize")
@@ -213,7 +168,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 			data.Result,
 			make([]*v1.MemeDto, len(data.Result)),
 			api.metadataToMemeDto),
-		LastId: pipelineAfterIDToProto(data.AfterID),
+		LastId: utils.PipelineAfterIDToProto(data.AfterID),
 	}, nil
 }
 
@@ -317,23 +272,7 @@ func (api *SearchServiceApi) GetRandomMeme(ctx context.Context, req *v1.GetRando
 }
 
 func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto) (temp.S3BackedData, bool, error) {
-	if media.GetS3Path() != "" {
-		result, err := api.dataService.WrapS3Path(ctx, media.GetS3Path())
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to create backed temp by s3 path: %w", err)
-		}
-		return result, false, nil
-	}
-
-	if media.GetData() != nil {
-		data, err := api.dataService.ByBytes(ctx, "application/octet-stream", media.GetData())
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to get data from bytes: %w", err)
-		}
-		return data, true, nil
-	}
-
-	return nil, false, errors.New("media temp is empty")
+	return utils.ToData(ctx, api.dataService, media)
 }
 
 func NewSearchServiceApi(crud service.MemeCrudService, dataService commonservice.TmpDataService) v1connect.SearchServiceHandler {

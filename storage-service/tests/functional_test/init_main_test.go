@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"testing"
 
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	kafkago "github.com/segmentio/kafka-go"
 	"github.com/testcontainers/testcontainers-go"
 	tcElastic "github.com/testcontainers/testcontainers-go/modules/elasticsearch"
+	tcKafka "github.com/testcontainers/testcontainers-go/modules/kafka"
 	tcMinio "github.com/testcontainers/testcontainers-go/modules/minio"
 	commonconfig "github.com/weoses/memelo/common/config"
 	"github.com/weoses/memelo/storage-service/conf"
@@ -25,18 +28,20 @@ const (
 )
 
 var (
-	testAddr        string
-	testStop        func()
-	testMockEx      *MockLlmExtractor
-	testMockEmb     *MockEmbeddingExtractor
-	testEsClient    *elasticsearch8.Client
-	testMinioClient *minio.Client
+	testAddr         string
+	testStop         func()
+	testMockEx       *MockLlmExtractor
+	testMockEmb      *MockEmbeddingExtractor
+	testEsClient     *elasticsearch8.Client
+	testMinioClient  *minio.Client
+	testKafkaBrokers []string
+	testKafkaClient  *KafkaTestClient
 )
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	// Start Elasticsearch
+	// Listen Elasticsearch
 	esContainer, err := tcElastic.Run(ctx,
 		"docker.elastic.co/elasticsearch/elasticsearch:8.16.2",
 		testcontainers.WithEnv(map[string]string{
@@ -57,7 +62,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("create es client: %v", err)
 	}
 
-	// Start MinIO
+	// Listen MinIO
 	minioContainer, err := tcMinio.Run(ctx, "minio/minio:latest")
 	if err != nil {
 		log.Fatalf("start minio: %v", err)
@@ -77,7 +82,25 @@ func TestMain(m *testing.M) {
 		log.Fatalf("create minio client: %v", err)
 	}
 
-	cfg := buildTestConfig(esAddress, minioEndpoint, minioContainer.Username, minioContainer.Password)
+	kafkaLogger := slog.With("container", "Kafka")
+	kafkaContainer, err := tcKafka.Run(ctx,
+		"confluentinc/confluent-local:7.5.0",
+		testcontainers.WithLogger(slog.NewLogLogger(kafkaLogger.Handler(), slog.LevelInfo)))
+	if err != nil {
+		log.Fatalf("start kafka: %v", err)
+	}
+	defer func() { _ = kafkaContainer.Terminate(ctx) }()
+
+	testKafkaBrokers, err = kafkaContainer.Brokers(ctx)
+	if err != nil {
+		log.Fatalf("kafka brokers: %v", err)
+	}
+
+	if err := createKafkaTopics(ctx, testKafkaBrokers[0]); err != nil {
+		log.Fatalf("create kafka topics: %v", err)
+	}
+
+	cfg := buildTestConfig(esAddress, minioEndpoint, minioContainer.Username, minioContainer.Password, testKafkaBrokers)
 
 	testMockEx = &MockLlmExtractor{}
 	testMockEmb = &MockEmbeddingExtractor{}
@@ -88,10 +111,12 @@ func TestMain(m *testing.M) {
 	}
 	defer testStop()
 
+	testKafkaClient = NewKafkaTestClient(testKafkaBrokers, testKafkaRequestTopic, testKafkaResponseTopic)
+
 	os.Exit(m.Run())
 }
 
-func buildTestConfig(esAddr, minioEndpoint, minioUser, minioPass string) *conf.Config {
+func buildTestConfig(esAddr, minioEndpoint, minioUser, minioPass string, kafkaBrokers []string) *conf.Config {
 	storageConfig := func(bucket string) *commonconfig.MediaStorageConfig {
 		return &commonconfig.MediaStorageConfig{
 			Endpoint:  minioEndpoint,
@@ -135,6 +160,12 @@ func buildTestConfig(esAddr, minioEndpoint, minioUser, minioPass string) *conf.C
 		},
 		GeminiExtractor: &conf.GeminiExtractorConfig{},
 		GeminiEmbedding: &conf.GeminiEmbeddingConfig{},
+		Kafka: &conf.KafkaConfig{
+			Brokers:            kafkaBrokers,
+			ParseConsumerGroup: testKafkaConsumerGroup,
+			ParseRequestTopic:  testKafkaRequestTopic,
+			ParseResponseTopic: testKafkaResponseTopic,
+		},
 	}
 }
 
@@ -154,6 +185,7 @@ func resetState(t *testing.T) {
 
 	testMockEx.Reset()
 	testMockEmb.Reset()
+	testKafkaClient.resetReader()
 }
 
 // testClient returns a ready-to-use TestClient pointed at the running test server.
@@ -165,5 +197,32 @@ func testClient() *TestClient {
 // suffix must be in hex alphabet
 
 func accountID(suffix string) string {
-	return fmt.Sprintf("00000000-0000-0000-0000-%s", fmt.Sprintf("%012s", suffix))
+	return fmt.Sprintf("00000000-0000-0000-0000-%s", fmt.Sprintf("%012X", suffix))
+}
+
+// createKafkaTopics creates the request and response topics before any test runs.
+// In a single-node cluster the broker is also the controller, so one dial suffices.
+func createKafkaTopics(ctx context.Context, broker string) error {
+	conn, err := kafkago.DialContext(ctx, "tcp", broker)
+	if err != nil {
+		return fmt.Errorf("dial %s: %w", broker, err)
+	}
+	defer conn.Close()
+
+	controller, err := conn.Controller()
+	if err != nil {
+		return fmt.Errorf("get controller: %w", err)
+	}
+
+	controllerAddr := fmt.Sprintf("%s:%d", controller.Host, controller.Port)
+	cConn, err := kafkago.DialContext(ctx, "tcp", controllerAddr)
+	if err != nil {
+		return fmt.Errorf("dial controller %s: %w", controllerAddr, err)
+	}
+	defer cConn.Close()
+
+	return cConn.CreateTopics(
+		kafkago.TopicConfig{Topic: testKafkaRequestTopic, NumPartitions: 1, ReplicationFactor: 1},
+		kafkago.TopicConfig{Topic: testKafkaResponseTopic, NumPartitions: 1, ReplicationFactor: 1},
+	)
 }

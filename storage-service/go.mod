@@ -4,19 +4,25 @@ go 1.25.0
 
 require (
 	connectrpc.com/connect v1.19.1
+	github.com/OpenRouterTeam/go-sdk v0.4.1
+	github.com/avast/retry-go/v4 v4.7.0
 	github.com/bluele/gcache v0.0.2
+	github.com/goccy/go-json v0.10.4
 	github.com/google/uuid v1.6.0
 	github.com/h2non/bimg v1.1.9
 	github.com/pkg/errors v0.9.1
+	github.com/segmentio/kafka-go v0.4.47
 	github.com/spf13/viper v1.21.0
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/elasticsearch v0.42.0
+	github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/minio v0.42.0
 	github.com/weoses/memelo/common v0.0.0-00010101000000-000000000000
 	github.com/weoses/memelo/gen v0.0.0-00010101000000-000000000000
 	go.uber.org/fx v1.23.0
 	golang.org/x/time v0.14.0
 	google.golang.org/genai v1.54.0
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -26,8 +32,6 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/OpenRouterTeam/go-sdk v0.4.1 // indirect
-	github.com/avast/retry-go/v4 v4.7.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
@@ -51,7 +55,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.11 // indirect
@@ -74,6 +77,7 @@ require (
 	github.com/moby/term v0.5.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rs/xid v1.6.0 // indirect
@@ -97,7 +101,6 @@ require (
 	golang.org/x/mod v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260203192932-546029d2fa20 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )
 
 require (

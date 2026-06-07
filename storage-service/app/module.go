@@ -9,9 +9,11 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-playground/validator/v10"
+	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
+	"github.com/weoses/memelo/storage-service/kafka"
 	"github.com/weoses/memelo/storage-service/middleware"
 	"github.com/weoses/memelo/storage-service/ocr"
 	"github.com/weoses/memelo/storage-service/ocr/ffmpeg"
@@ -124,12 +126,33 @@ func Module() fx.Option {
 		fx.Provide(api.NewSearchServiceApi),
 		fx.Provide(api.NewExportServiceApi),
 
+		fx.Provide(func(cfg *conf.Config) (*kafka.KafkaReceiver[v1.KafkaCreateMemeRequest], error) {
+			return kafka.NewKafkaReceiver[v1.KafkaCreateMemeRequest](cfg)
+		}),
+		fx.Provide(func(cfg *conf.Config) (*kafka.KafkaProducer[*v1.KafkaCreateMemeResponse], error) {
+			return kafka.NewKafkaProducer[*v1.KafkaCreateMemeResponse](cfg)
+		}),
+		fx.Provide(api.NewCreateMemeKafkaController),
+		fx.Provide(
+			fx.Annotate(
+				func(c *api.CreateMemeKafkaController) Starter { return c },
+				fx.ResultTags(`group:"starters"`),
+			),
+		),
+		fx.Provide(
+			fx.Annotate(
+				func(c *api.CreateMemeKafkaController) Stopper { return c },
+				fx.ResultTags(`group:"stoppers"`),
+			),
+		),
+
 		fx.Provide(func(c *conf.Config) (net.Listener, error) {
 			return net.Listen("tcp", c.Server.ListenAddress)
 		}),
 
 		fx.Invoke(fx.Annotate(storage2.RunMigrations, fx.ParamTags(`group:"migrators"`))),
 		fx.Invoke(startup),
+		fx.Invoke(fx.Annotate(registerLifecycle, fx.ParamTags(``, `group:"starters"`, `group:"stoppers"`))),
 	)
 }
 
