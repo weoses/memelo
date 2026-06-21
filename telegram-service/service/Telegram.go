@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -14,13 +14,9 @@ import (
 
 const (
 	msgProcessing = "⏳ Processing..."
-	msgStartFmt   = "Welcome to Memelo Bot!\n\n" +
+	msgStartIntro = "Welcome to Memelo Bot!\n\n" +
 		"Send me an image or video to save it as a meme.\n\n" +
-		"Use inline mode to search your collection:\n" +
-		"• @%s <query> — search by text\n" +
-		"• @%s /random — get a random meme\n" +
-		"• @%s /delete <query> — delete memes\n" +
-		"• @%s /recompute <query> — recompute meme metadata"
+		"Use inline mode to search your collection:"
 )
 
 type TelegramBotService interface {
@@ -95,9 +91,19 @@ func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-
 func (s *TelegramBotServiceImpl) handleCommand(ctx context.Context, requestMessage *tgbotapi.Message) {
 	switch requestMessage.Command() {
 	case "start":
-		botName := s.bot.Self.UserName
-		text := fmt.Sprintf(msgStartFmt, botName, botName, botName, botName)
-		msg := tgbotapi.NewMessage(requestMessage.Chat.ID, text)
+		var userId int64
+		if requestMessage.From != nil {
+			userId = requestMessage.From.ID
+		}
+		var sb strings.Builder
+		sb.WriteString(msgStartIntro)
+		for _, line := range s.inline.HelpLines(userId) {
+			sb.WriteString("\n• @")
+			sb.WriteString(s.bot.Self.UserName)
+			sb.WriteString(" ")
+			sb.WriteString(line)
+		}
+		msg := tgbotapi.NewMessage(requestMessage.Chat.ID, sb.String())
 		msg.ReplyToMessageID = requestMessage.MessageID
 		if _, err := s.bot.Send(msg); err != nil {
 			s.log.ErrorContext(ctx, "Failed to send start message", "error", err)
