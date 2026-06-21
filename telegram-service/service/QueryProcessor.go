@@ -25,10 +25,17 @@ type QueryProcessorResult struct {
 type QueryProcessor interface {
 	Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error)
 	ProcessChosenQuery(ctx context.Context, accountId uuid.UUID, resultId string) error
+	HelpText() string
+}
+
+type QueryProcessorEntry struct {
+	Permission string
+	Processor  QueryProcessor
 }
 
 type QueryProcessorFactory interface {
 	GetProcessor(rawQuery string) QueryProcessor
+	Entries() []QueryProcessorEntry
 }
 
 func buildTelegramResults(ctx context.Context, log *slog.Logger, results []entity.MemeSearchResult, mark string) ([]interface{}, error) {
@@ -79,12 +86,15 @@ func (p *SearchQueryProcessor) ProcessChosenQuery(_ context.Context, _ uuid.UUID
 // prefixSearchProcessor is a shared base for processors that strip a prefix,
 // search, and show results with a fixed caption mark.
 type prefixSearchProcessor struct {
-	storage StorageConnector
-	config  *conf.Config
-	log     *slog.Logger
-	prefix  string
-	mark    string
+	storage  StorageConnector
+	config   *conf.Config
+	log      *slog.Logger
+	prefix   string
+	mark     string
+	helpText string
 }
+
+func (p *prefixSearchProcessor) HelpText() string { return p.helpText }
 
 func (p *prefixSearchProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, pagination *entity.PaginationOffset) (*QueryProcessorResult, error) {
 	queryString := strings.TrimSpace(strings.TrimPrefix(query, p.prefix))
@@ -136,9 +146,12 @@ func (p *DeleteQueryProcessor) ProcessChosenQuery(ctx context.Context, accountId
 // The query parameter is a media type specifier ("image", "video", or ""), not a search term.
 // Pagination is intentionally ignored — random results have no meaningful cursor.
 type RandomQueryProcessor struct {
-	storage StorageConnector
-	log     *slog.Logger
+	storage  StorageConnector
+	log      *slog.Logger
+	helpText string
 }
+
+func (p *RandomQueryProcessor) HelpText() string { return p.helpText }
 
 func (p *RandomQueryProcessor) Process(ctx context.Context, accountId uuid.UUID, query string, _ *entity.PaginationOffset) (*QueryProcessorResult, error) {
 	mediaType := strings.TrimSpace(strings.TrimPrefix(query, randomPrefix))
@@ -201,32 +214,45 @@ func (f *QueryProcessorFactoryImpl) GetProcessor(rawQuery string) QueryProcessor
 	}
 }
 
+func (f *QueryProcessorFactoryImpl) Entries() []QueryProcessorEntry {
+	return []QueryProcessorEntry{
+		{Permission: PermissionSearch, Processor: f.searchProcessor},
+		{Permission: PermissionSearch, Processor: f.randomProcessor},
+		{Permission: PermissionDelete, Processor: f.deleteProcessor},
+		{Permission: PermissionRecompute, Processor: f.recomputeProcessor},
+	}
+}
+
 func NewQueryProcessorFactory(storage StorageConnector, config *conf.Config) QueryProcessorFactory {
 	return &QueryProcessorFactoryImpl{
 		searchProcessor: &SearchQueryProcessor{prefixSearchProcessor{
-			storage: storage,
-			config:  config,
-			log:     slog.With("service", "SearchQueryProcessor"),
-			prefix:  "",
-			mark:    "",
+			storage:  storage,
+			config:   config,
+			log:      slog.With("service", "SearchQueryProcessor"),
+			prefix:   "",
+			mark:     "",
+			helpText: "<query> — search by text",
 		}},
 		deleteProcessor: &DeleteQueryProcessor{prefixSearchProcessor{
-			storage: storage,
-			config:  config,
-			log:     slog.With("service", "DeleteQueryProcessor"),
-			prefix:  inlineDeletePrefix,
-			mark:    "Deleted",
+			storage:  storage,
+			config:   config,
+			log:      slog.With("service", "DeleteQueryProcessor"),
+			prefix:   inlineDeletePrefix,
+			mark:     "Deleted",
+			helpText: "/delete <query> — delete memes",
 		}},
 		randomProcessor: &RandomQueryProcessor{
-			storage: storage,
-			log:     slog.With("service", "RandomQueryProcessor"),
+			storage:  storage,
+			log:      slog.With("service", "RandomQueryProcessor"),
+			helpText: "/random — get a random meme",
 		},
 		recomputeProcessor: &RecomputeQueryProcessor{prefixSearchProcessor{
-			storage: storage,
-			config:  config,
-			log:     slog.With("service", "RecomputeQueryProcessor"),
-			prefix:  inlineRecomputePrefix,
-			mark:    "Recompute",
+			storage:  storage,
+			config:   config,
+			log:      slog.With("service", "RecomputeQueryProcessor"),
+			prefix:   inlineRecomputePrefix,
+			mark:     "Recompute",
+			helpText: "/recompute <query> — recompute meme metadata",
 		}},
 	}
 }

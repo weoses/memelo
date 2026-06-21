@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -26,6 +27,8 @@ type InlineHandlerService interface {
 		ctx context.Context,
 		request *tgbotapi.ChosenInlineResult,
 	) error
+
+	HelpLines(userId int64) []string
 }
 
 type InineHandlerServiceImpl struct {
@@ -64,6 +67,16 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 	return err
 }
 
+func (i *InineHandlerServiceImpl) HelpLines(userId int64) []string {
+	var lines []string
+	for _, entry := range i.factory.Entries() {
+		if i.permissionService.IsAllowed(userId, entry.Permission) {
+			lines = append(lines, entry.Processor.HelpText())
+		}
+	}
+	return lines
+}
+
 // ProcessQuery implements InlineService.
 func (i *InineHandlerServiceImpl) ProcessQuery(
 	ctx context.Context,
@@ -78,7 +91,7 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 	processor := i.factory.GetProcessor(request.Query)
 	permission := permissionForQuery(request.Query)
 
-	return InvokeWithPermission(ctx, i.permissionService, userId, permission, func() (*tgbotapi.InlineConfig, error) {
+	cfg, err := InvokeWithPermission(ctx, i.permissionService, userId, permission, func() (*tgbotapi.InlineConfig, error) {
 		result, err := processor.Process(ctx, i.staticAccountId, request.Query, util.ParseOffset(request.Offset))
 		if err != nil {
 			return nil, fmt.Errorf("ProcessQuery: processor failed: %w", err)
@@ -107,6 +120,22 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 			Results:       result.Results,
 		}, nil
 	})
+	if errors.Is(err, ErrForbidden) {
+		return &tgbotapi.InlineConfig{
+			InlineQueryID: request.ID,
+			Results: []interface{}{
+				tgbotapi.InlineQueryResultArticle{
+					Type:  "article",
+					ID:    "forbidden",
+					Title: msgForbidden,
+					InputMessageContent: tgbotapi.InputTextMessageContent{
+						Text: msgForbidden,
+					},
+				},
+			},
+		}, nil
+	}
+	return cfg, err
 }
 
 func NewInlineService(
