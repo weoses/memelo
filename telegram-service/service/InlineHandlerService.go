@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	"github.com/weoses/memelo/telegram-service/util"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 	"github.com/weoses/memelo/telegram-service/conf"
+	"github.com/weoses/memelo/telegram-service/util"
 )
 
 const inlineDeletePrefix = "/delete"
@@ -28,11 +29,23 @@ type InlineHandlerService interface {
 }
 
 type InineHandlerServiceImpl struct {
-	userAccount UserAccountService
-	storage     StorageConnector
-	config      *conf.Config
-	log         *slog.Logger
-	factory     QueryProcessorFactory
+	permissionService PermissionService
+	storage           StorageConnector
+	config            *conf.Config
+	log               *slog.Logger
+	factory           QueryProcessorFactory
+	staticAccountId   uuid.UUID
+}
+
+func permissionForQuery(query string) string {
+	switch {
+	case strings.HasPrefix(query, inlineDeletePrefix):
+		return PermissionDelete
+	case strings.HasPrefix(query, inlineRecomputePrefix):
+		return PermissionRecompute
+	default:
+		return PermissionSearch
+	}
 }
 
 func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, request *tgbotapi.ChosenInlineResult) error {
@@ -43,13 +56,12 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 		"messageId", request.InlineMessageID)
 
 	processor := i.factory.GetProcessor(request.Query)
+	permission := permissionForQuery(request.Query)
 
-	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
-	if err != nil {
-		return fmt.Errorf("ProcessChosenInlineQuery: MapUserToAccount failed, userId=%d: %w", userId, err)
-	}
-
-	return processor.ProcessChosenQuery(ctx, accountId, request.ResultID)
+	_, err := InvokeWithPermission(ctx, i.permissionService, userId, permission, func() (struct{}, error) {
+		return struct{}{}, processor.ProcessChosenQuery(ctx, i.staticAccountId, request.ResultID)
+	})
+	return err
 }
 
 // ProcessQuery implements InlineService.
@@ -63,54 +75,52 @@ func (i *InineHandlerServiceImpl) ProcessQuery(
 		"query", request.Query,
 		"offset", request.Offset)
 
-	accountId, err := i.userAccount.MapUserToAccount(ctx, userId)
-	if err != nil {
-		return nil, err
-	}
-
 	processor := i.factory.GetProcessor(request.Query)
+	permission := permissionForQuery(request.Query)
 
-	result, err := processor.Process(ctx, accountId, request.Query, util.ParseOffset(request.Offset))
-	if err != nil {
-		return nil, fmt.Errorf("ProcessQuery: processor failed: %w", err)
-	}
+	return InvokeWithPermission(ctx, i.permissionService, userId, permission, func() (*tgbotapi.InlineConfig, error) {
+		result, err := processor.Process(ctx, i.staticAccountId, request.Query, util.ParseOffset(request.Offset))
+		if err != nil {
+			return nil, fmt.Errorf("ProcessQuery: processor failed: %w", err)
+		}
 
-	i.log.InfoContext(ctx, "Process query result",
-		"userId", userId,
-		"requestId", request.ID,
-		"resultListSize", len(result.Results))
+		i.log.InfoContext(ctx, "Process query result",
+			"userId", userId,
+			"requestId", request.ID,
+			"resultListSize", len(result.Results))
 
-	nextOffset := ""
-	if result.Pagination != nil {
-		nextOffset = util.SerializeOffset(result.Pagination)
-	}
+		nextOffset := ""
+		if result.Pagination != nil {
+			nextOffset = util.SerializeOffset(result.Pagination)
+		}
 
-	i.log.InfoContext(ctx, "Search next offset",
-		"userId", userId,
-		"requestId", request.ID,
-		"nextOffset", nextOffset)
+		i.log.InfoContext(ctx, "Search next offset",
+			"userId", userId,
+			"requestId", request.ID,
+			"nextOffset", nextOffset)
 
-	return &tgbotapi.InlineConfig{
-		InlineQueryID: request.ID,
-		CacheTime:     result.CacheTime,
-		IsPersonal:    true,
-		NextOffset:    nextOffset,
-		Results:       result.Results,
-	}, nil
+		return &tgbotapi.InlineConfig{
+			InlineQueryID: request.ID,
+			CacheTime:     result.CacheTime,
+			IsPersonal:    true,
+			NextOffset:    nextOffset,
+			Results:       result.Results,
+		}, nil
+	})
 }
 
 func NewInlineService(
-	userAccount UserAccountService,
+	permissionService PermissionService,
 	storage StorageConnector,
 	config *conf.Config,
 	factory QueryProcessorFactory,
 ) InlineHandlerService {
-
 	return &InineHandlerServiceImpl{
-		userAccount: userAccount,
-		storage:     storage,
-		config:      config,
-		log:         slog.With("service", "InlineHandlerService"),
-		factory:     factory,
+		permissionService: permissionService,
+		storage:           storage,
+		config:            config,
+		log:               slog.With("service", "InlineHandlerService"),
+		factory:           factory,
+		staticAccountId:   uuid.MustParse(config.UserAccount.StaticUuid),
 	}
 }

@@ -65,7 +65,7 @@ func main() {
 		fx.Provide(tgstorage.NewTmpDataService),
 		fx.Provide(service.NewStorageConnector),
 		fx.Provide(fx.Annotate(service.NewTelegramFileResolverService, fx.From(new(*tgbotapi.BotAPI)))),
-		fx.Provide(service.NewUserAccountService),
+		fx.Provide(service.NewPermissionService),
 		fx.Provide(service.NewMessageHandlerService),
 		fx.Provide(service.NewQueryProcessorFactory),
 		fx.Provide(service.NewInlineService),
