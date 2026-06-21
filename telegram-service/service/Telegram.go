@@ -4,11 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/telegram-service/conf"
+)
+
+const (
+	msgProcessing = "⏳ Processing..."
+	msgStartFmt   = "Welcome to Memelo Bot!\n\n" +
+		"Send me an image or video to save it as a meme.\n\n" +
+		"Use inline mode to search your collection:\n" +
+		"• @%s <query> — search by text\n" +
+		"• @%s /random — get a random meme\n" +
+		"• @%s /delete <query> — delete memes\n" +
+		"• @%s /recompute <query> — recompute meme metadata"
 )
 
 type TelegramBotService interface {
@@ -81,15 +93,33 @@ func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-
 }
 
 func (s *TelegramBotServiceImpl) handleCommand(ctx context.Context, requestMessage *tgbotapi.Message) {
-	s.log.InfoContext(ctx, "Bot message request")
-	s.log.DebugContext(ctx, "Bot message request details",
-		"request", requestMessage)
+	switch requestMessage.Command() {
+	case "start":
+		botName := s.bot.Self.UserName
+		text := fmt.Sprintf(msgStartFmt, botName, botName, botName, botName)
+		msg := tgbotapi.NewMessage(requestMessage.Chat.ID, text)
+		msg.ReplyToMessageID = requestMessage.MessageID
+		if _, err := s.bot.Send(msg); err != nil {
+			s.log.ErrorContext(ctx, "Failed to send start message", "error", err)
+		}
+	default:
+		s.log.InfoContext(ctx, "Unknown command", "command", requestMessage.Command())
+	}
 }
 
 func (s *TelegramBotServiceImpl) handleMessage(ctx context.Context, requestMessage *tgbotapi.Message) {
 	s.log.InfoContext(ctx, "Bot message request")
 	s.log.DebugContext(ctx, "Bot message request details",
 		"request", requestMessage)
+
+	var processingMsgID int
+	processingNotif := tgbotapi.NewMessage(requestMessage.Chat.ID, msgProcessing)
+	processingNotif.ReplyToMessageID = requestMessage.MessageID
+	if sent, err := s.bot.Send(processingNotif); err == nil {
+		processingMsgID = sent.MessageID
+	} else {
+		s.log.ErrorContext(ctx, "Failed to send processing message", "error", err)
+	}
 
 	var answer *MessageHandlerResponse
 	var err error
@@ -105,15 +135,26 @@ func (s *TelegramBotServiceImpl) handleMessage(ctx context.Context, requestMessa
 
 	if err != nil {
 		s.log.ErrorContext(ctx, "Failed to process message", "error", err)
-		s.sendCommonErrorMessage(ctx, requestMessage, err)
+		errText := err.Error()
+		if errors.Is(err, ErrForbidden) {
+			errText = msgForbidden
+		}
+		if editErr := s.editMessage(requestMessage.Chat.ID, processingMsgID, errText, ""); editErr != nil {
+			errorResponseMessage := tgbotapi.NewMessage(requestMessage.Chat.ID, errText)
+			errorResponseMessage.ReplyToMessageID = requestMessage.MessageID
+			if _, sendErr := s.bot.Send(errorResponseMessage); sendErr != nil {
+				s.log.ErrorContext(ctx, "Failed to send error message", "error", sendErr)
+			}
+		}
 		return
 	}
 
-	err = s.sendCommonResponseMessage(ctx, requestMessage, answer)
-	if err != nil {
-		s.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
-		s.sendCommonErrorMessage(ctx, requestMessage, err)
-		return
+	if err = s.editMessage(requestMessage.Chat.ID, processingMsgID, answer.Message, answer.ParseMode); err != nil {
+		s.log.ErrorContext(ctx, "Failed to edit processing message", "error", err)
+		if sendErr := s.sendCommonResponseMessage(ctx, requestMessage, answer); sendErr != nil {
+			s.log.ErrorContext(ctx, "Failed to send message to bot", "error", sendErr)
+			s.sendCommonErrorMessage(ctx, requestMessage, sendErr)
+		}
 	}
 }
 
@@ -132,6 +173,16 @@ func (s *TelegramBotServiceImpl) sendCommonErrorMessage(ctx context.Context, req
 	if err != nil {
 		s.log.ErrorContext(ctx, "Failed to send message to bot", "error", err)
 	}
+}
+
+func (s *TelegramBotServiceImpl) editMessage(chatID int64, msgID int, text, parseMode string) error {
+	if msgID == 0 {
+		return errors.New("no message to edit")
+	}
+	edit := tgbotapi.NewEditMessageText(chatID, msgID, text)
+	edit.ParseMode = parseMode
+	_, err := s.bot.Send(edit)
+	return err
 }
 
 func (s *TelegramBotServiceImpl) handleInlineRequest(ctx context.Context, update *tgbotapi.Update) {
