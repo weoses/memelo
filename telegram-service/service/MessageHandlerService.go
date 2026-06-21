@@ -23,7 +23,10 @@ type MessageHandlerService interface {
 	ProcessDocumentMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
-const parseMode = "Markdown"
+const (
+	parseMode    = "Markdown"
+	msgForbidden = "You are not allowed to perform this action."
+)
 
 type MessageHandlerResponse struct {
 	Message   string
