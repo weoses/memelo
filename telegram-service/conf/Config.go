@@ -16,10 +16,6 @@ type InlineConfig struct {
 	PageSize int
 }
 
-type PostgresConfig struct {
-	DSN string
-}
-
 type StorageServiceConfig struct {
 	Uri string
 }
@@ -32,16 +28,27 @@ type WebhookConfig struct {
 	ExternalUrl string
 }
 
+type PermissionEntryConfig struct {
+	AllowedUserIds []int64 `mapstructure:"AllowedUserIds"`
+}
+
+type PermissionsConfig struct {
+	Create    *PermissionEntryConfig `mapstructure:"Create"`
+	Delete    *PermissionEntryConfig `mapstructure:"Delete"`
+	Recompute *PermissionEntryConfig `mapstructure:"Recompute"`
+	Search    *PermissionEntryConfig `mapstructure:"Search"`
+}
+
 type Config struct {
 	Server         *commonconfig.ServerConfig       `mapstructure:"server"`
 	Log            *commonconfig.LoggingConfig      `mapstructure:"log"`
 	Webhook        *WebhookConfig                   `mapstructure:"webhook"`
 	Telegram       *TelegramConfig                  `mapstructure:"telegram"`
-	Postgres       *PostgresConfig                  `mapstructure:"postgres"`
 	Inline         *InlineConfig                    `mapstructure:"inline"`
 	StorageService *StorageServiceConfig            `mapstructure:"storage-service"`
 	UserAccount    *UserAccountConfig               `mapstructure:"user-account"`
 	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
+	Permissions    *PermissionsConfig               `mapstructure:"permissions"`
 }
 
 func NewConfig() (*Config, error) {

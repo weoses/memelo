@@ -13,6 +13,7 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/temp"
+	"github.com/weoses/memelo/telegram-service/conf"
 	"github.com/weoses/memelo/telegram-service/entity"
 )
 
@@ -30,129 +31,130 @@ type MessageHandlerResponse struct {
 }
 
 type MessageHandlerServiceImpl struct {
-	storage            StorageConnector
-	fileResolver       TelegramFileResolverService
-	userAccountService UserAccountService
-	tmpDataService     commonservice.TmpDataService
-	slogger            *slog.Logger
+	storage           StorageConnector
+	fileResolver      TelegramFileResolverService
+	permissionService PermissionService
+	tmpDataService    commonservice.TmpDataService
+	slogger           *slog.Logger
+	staticAccountId   uuid.UUID
 }
 
 func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
-	var fileId string
-	if len(message.Photo) >= 1 {
-		fileId = message.Photo[len(message.Photo)-1].FileID
+	if message.From == nil {
+		return nil, errors.New("messageHandlerService: message has no sender")
 	}
-	if fileId == "" {
-		return nil, errors.New("messageHandlerService: message dont contain image")
-	}
+	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
+		var fileId string
+		if len(message.Photo) >= 1 {
+			fileId = message.Photo[len(message.Photo)-1].FileID
+		}
+		if fileId == "" {
+			return nil, errors.New("messageHandlerService: message dont contain image")
+		}
 
-	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
-	}
+		result, err := m.createMediaMeme(ctx, "image", fileId, m.staticAccountId)
+		if err != nil {
+			return nil, err
+		}
 
-	result, err := m.createMediaMeme(ctx, "image", fileId, accountId)
-	if err != nil {
-		return nil, err
-	}
+		m.slogger.InfoContext(ctx, "meme created",
+			"imageId", result.Id,
+			"duplicate", result.DuplicateStatus)
 
-	m.slogger.InfoContext(ctx, "meme created",
-		"imageId", result.Id,
-		"duplicate", result.DuplicateStatus)
-
-	return &MessageHandlerResponse{
-		Message: fmt.Sprintf(
-			" Text: ```\n%s\n```\n"+
-				" Tags: ```%s```\n"+
-				" Caption: `%s`\n"+
-				" ID: `%s` \n"+
-				" Status: `%s`",
-			result.Text,
-			strings.Join(result.Tags, ", "),
-			result.Caption,
-			result.Id,
-			result.DuplicateStatus),
-		ParseMode: parseMode,
-	}, nil
+		return &MessageHandlerResponse{
+			Message: fmt.Sprintf(
+				" Text: ```\n%s\n```\n"+
+					" Tags: ```%s```\n"+
+					" Caption: `%s`\n"+
+					" ID: `%s` \n"+
+					" Status: `%s`",
+				result.Text,
+				strings.Join(result.Tags, ", "),
+				result.Caption,
+				result.Id,
+				result.DuplicateStatus),
+			ParseMode: parseMode,
+		}, nil
+	})
 }
 
 func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
-	if message.Video == nil {
-		return nil, errors.New("messageHandlerService: message does not contain a video")
+	if message.From == nil {
+		return nil, errors.New("messageHandlerService: message has no sender")
 	}
+	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
+		if message.Video == nil {
+			return nil, errors.New("messageHandlerService: message does not contain a video")
+		}
 
-	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
-	}
+		result, err := m.createMediaMeme(ctx, "video", message.Video.FileID, m.staticAccountId)
+		if err != nil {
+			return nil, err
+		}
 
-	result, err := m.createMediaMeme(ctx, "video", message.Video.FileID, accountId)
-	if err != nil {
-		return nil, err
-	}
+		m.slogger.InfoContext(ctx, "video meme created",
+			"memeId", result.Id,
+			"duplicate", result.DuplicateStatus)
 
-	m.slogger.InfoContext(ctx, "video meme created",
-		"memeId", result.Id,
-		"duplicate", result.DuplicateStatus)
-
-	return &MessageHandlerResponse{
-		Message: fmt.Sprintf(
-			"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
-			result.Text,
-			result.Id,
-			result.DuplicateStatus,
-			strings.Join(result.Tags, ", ")),
-		ParseMode: parseMode,
-	}, nil
+		return &MessageHandlerResponse{
+			Message: fmt.Sprintf(
+				"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+				result.Text,
+				result.Id,
+				result.DuplicateStatus,
+				strings.Join(result.Tags, ", ")),
+			ParseMode: parseMode,
+		}, nil
+	})
 }
 
 func (m MessageHandlerServiceImpl) ProcessDocumentMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
-	if message.Document == nil {
-		return nil, errors.New("messageHandlerService: message does not contain a document")
+	if message.From == nil {
+		return nil, errors.New("messageHandlerService: message has no sender")
 	}
+	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
+		if message.Document == nil {
+			return nil, errors.New("messageHandlerService: message does not contain a document")
+		}
 
-	accountId, err := m.userAccountService.MapUserToAccount(ctx, message.Chat.ID)
-	if err != nil {
-		return nil, fmt.Errorf("messageHandlerService: MapUserToAccount failed : %w", err)
-	}
+		mimeType := message.Document.MimeType
+		if mimeType == "" {
+			return nil, errors.New("messageHandlerService: message has no mime type")
+		}
 
-	mimeType := message.Document.MimeType
-	if mimeType == "" {
-		return nil, errors.New("messageHandlerService: message has no mime type")
-	}
+		var typ string
+		if strings.HasPrefix(mimeType, "video/") {
+			typ = "video"
+		} else if strings.HasPrefix(mimeType, "image/") {
+			typ = "image"
+		} else {
+			return nil, errors.New("messageHandlerService: invalid mime type")
+		}
 
-	var typ string
-	if strings.HasPrefix(mimeType, "video/") {
-		typ = "video"
-	} else if strings.HasPrefix(mimeType, "image/") {
-		typ = "image"
-	} else {
-		return nil, errors.New("messageHandlerService: invalid mime type")
-	}
+		result, err := m.createMediaMeme(ctx, typ, message.Document.FileID, m.staticAccountId)
+		if err != nil {
+			return nil, err
+		}
 
-	result, err := m.createMediaMeme(ctx, typ, message.Document.FileID, accountId)
-	if err != nil {
-		return nil, err
-	}
+		m.slogger.InfoContext(ctx, "document meme created",
+			"memeId", result.Id,
+			"duplicate", result.DuplicateStatus)
 
-	m.slogger.InfoContext(ctx, "document meme created",
-		"memeId", result.Id,
-		"duplicate", result.DuplicateStatus)
-
-	return &MessageHandlerResponse{
-		Message: fmt.Sprintf(
-			" Text: ```\n%s\n```\n"+
-				" Tags: ```%s```\n"+
-				" Caption: `%s`\n"+
-				" ID: `%s` \n"+
-				" Status: `%s`",
-			result.Text,
-			strings.Join(result.Tags, ", "),
-			result.Caption,
-			result.Id,
-			result.DuplicateStatus),
-		ParseMode: parseMode,
-	}, nil
+		return &MessageHandlerResponse{
+			Message: fmt.Sprintf(
+				" Text: ```\n%s\n```\n"+
+					" Tags: ```%s```\n"+
+					" Caption: `%s`\n"+
+					" ID: `%s` \n"+
+					" Status: `%s`",
+				result.Text,
+				strings.Join(result.Tags, ", "),
+				result.Caption,
+				result.Id,
+				result.DuplicateStatus),
+			ParseMode: parseMode,
+		}, nil
+	})
 }
 
 func (m MessageHandlerServiceImpl) createMediaMeme(ctx context.Context, reqType string, fileId string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
@@ -208,14 +210,17 @@ func (m MessageHandlerServiceImpl) downloadToS3(ctx context.Context, fileURL str
 func NewMessageHandlerService(
 	storage StorageConnector,
 	fileResolver TelegramFileResolverService,
-	userAccountService UserAccountService,
+	permissionService PermissionService,
 	tmpDataService commonservice.TmpDataService,
+	cfg *conf.Config,
 ) MessageHandlerService {
+	staticAccountId := uuid.MustParse(cfg.UserAccount.StaticUuid)
 	return &MessageHandlerServiceImpl{
-		storage:            storage,
-		fileResolver:       fileResolver,
-		userAccountService: userAccountService,
-		tmpDataService:     tmpDataService,
-		slogger:            slog.With("service", "MessageHandlerService"),
+		storage:           storage,
+		fileResolver:      fileResolver,
+		permissionService: permissionService,
+		tmpDataService:    tmpDataService,
+		slogger:           slog.With("service", "MessageHandlerService"),
+		staticAccountId:   staticAccountId,
 	}
 }

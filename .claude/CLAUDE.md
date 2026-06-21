@@ -3,6 +3,7 @@
 ## Project layout
 
 - `storage-service/` — main Go service (media storage, extraction, search)
+- `telegram-service/` — integration with telegram
 - `proto/v1/` — protobuf definitions; regenerate with `buf generate` from repo root
 - `gen/proto/v1/` — generated Go code, do not edit manually
 - `common/` — shared utilities (helper, temp data, config)

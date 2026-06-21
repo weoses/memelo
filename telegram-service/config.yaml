@@ -8,9 +8,6 @@ telegram:
   Token:
   Debug: false
 
-postgres:
-  DSN:
-
 inline:
   PageSize: 20
 
@@ -30,3 +27,13 @@ temp-storage:
   SecretKey:
   Bucket: melo-temp
   Secure: false
+
+permissions:
+  Create:
+    AllowedUserIds: []
+  Delete:
+    AllowedUserIds: []
+  Recompute:
+    AllowedUserIds: []
+  Search:
+    AllowedUserIds: []
