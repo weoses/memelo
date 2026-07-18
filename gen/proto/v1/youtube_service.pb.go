@@ -77,10 +77,13 @@ func (DownloadJobState) EnumDescriptor() ([]byte, []int) {
 }
 
 type DownloadVideoRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	YoutubeUrl    string                 `protobuf:"bytes,1,opt,name=youtube_url,json=youtubeUrl,proto3" json:"youtube_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	YoutubeUrl string                 `protobuf:"bytes,1,opt,name=youtube_url,json=youtubeUrl,proto3" json:"youtube_url,omitempty"`
+	// retention_seconds controls how long the job and its S3 object are kept.
+	// < 0: never expire; > 0: expire after N seconds; = 0: use service default.
+	RetentionSeconds int32 `protobuf:"varint,2,opt,name=retention_seconds,json=retentionSeconds,proto3" json:"retention_seconds,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *DownloadVideoRequest) Reset() {
@@ -118,6 +121,13 @@ func (x *DownloadVideoRequest) GetYoutubeUrl() string {
 		return x.YoutubeUrl
 	}
 	return ""
+}
+
+func (x *DownloadVideoRequest) GetRetentionSeconds() int32 {
+	if x != nil {
+		return x.RetentionSeconds
+	}
+	return 0
 }
 
 type DownloadVideoSyncResponse struct {
@@ -340,10 +350,11 @@ var File_proto_v1_youtube_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_youtube_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eproto/v1/youtube_service.proto\x12\x0fproto.memelo.v1\"7\n" +
+	"\x1eproto/v1/youtube_service.proto\x12\x0fproto.memelo.v1\"d\n" +
 	"\x14DownloadVideoRequest\x12\x1f\n" +
 	"\vyoutube_url\x18\x01 \x01(\tR\n" +
-	"youtubeUrl\"Q\n" +
+	"youtubeUrl\x12+\n" +
+	"\x11retention_seconds\x18\x02 \x01(\x05R\x10retentionSeconds\"Q\n" +
 	"\x19DownloadVideoSyncResponse\x12\x17\n" +
 	"\as3_path\x18\x01 \x01(\tR\x06s3Path\x12\x1b\n" +
 	"\tmime_type\x18\x02 \x01(\tR\bmimeType\"3\n" +

@@ -8,7 +8,8 @@ import (
 )
 
 type DownloadRequest struct {
-	YoutubeURL string
+	YoutubeURL       string
+	RetentionSeconds int32
 }
 
 type VideoDownloadResult struct {
@@ -27,10 +28,11 @@ const (
 )
 
 type DownloadJob struct {
-	JobId     string
-	State     JobState
-	Result    *VideoDownloadResult
-	Error     error
-	CreatedAt time.Time
-	Mu        sync.RWMutex
+	JobId        string
+	State        JobState
+	Result       *VideoDownloadResult
+	Error        error
+	CreatedAt    time.Time
+	EffectiveTTL time.Duration // negative means never expire
+	Mu           sync.RWMutex
 }

@@ -84,7 +84,10 @@ func (api *YouTubeServiceApi) parseRequest(req *v1.DownloadVideoRequest) (entity
 	if req.YoutubeUrl == "" {
 		return entity.DownloadRequest{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("youtube_url is required"))
 	}
-	return entity.DownloadRequest{YoutubeURL: req.YoutubeUrl}, nil
+	return entity.DownloadRequest{
+		YoutubeURL:       req.YoutubeUrl,
+		RetentionSeconds: req.RetentionSeconds,
+	}, nil
 }
 
 func toProtoJobState(state entity.JobState) v1.DownloadJobState {

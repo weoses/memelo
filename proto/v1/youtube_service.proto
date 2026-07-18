@@ -11,6 +11,9 @@ service YouTubeService {
 
 message DownloadVideoRequest {
   string youtube_url = 1;
+  // retention_seconds controls how long the job and its S3 object are kept.
+  // < 0: never expire; > 0: expire after N seconds; = 0: use service default.
+  int32 retention_seconds = 2;
 }
 
 message DownloadVideoSyncResponse {

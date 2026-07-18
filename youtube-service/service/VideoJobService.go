@@ -33,15 +33,30 @@ type videoJobServiceImpl struct {
 func (s *videoJobServiceImpl) RunSync(ctx context.Context, req entity.DownloadRequest) (*entity.VideoDownloadResult, error) {
 	s.semaphore <- struct{}{}
 	defer func() { <-s.semaphore }()
-	return s.downloadAndStore(ctx, req)
+	store, err := s.downloadAndStore(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("downloadAndStore: %w", err)
+	}
+
+	ttl := resolveEffectiveTTL(req.RetentionSeconds, s.jobTTL)
+	if ttl >= 0 {
+		go func() {
+			time.Sleep(ttl)
+			s.log.Info("Cleaning up sync s3 object", "s3Path", store.S3Path)
+			helper.QuietClose(store.S3Data, s.log)
+		}()
+	}
+
+	return store, nil
 }
 
-func (s *videoJobServiceImpl) CreateJob(ctx context.Context, req entity.DownloadRequest) (string, error) {
+func (s *videoJobServiceImpl) CreateJob(_ context.Context, req entity.DownloadRequest) (string, error) {
 	jobId := uuid.NewString()
 	job := &entity.DownloadJob{
-		JobId:     jobId,
-		State:     entity.JobStatePending,
-		CreatedAt: time.Now(),
+		JobId:        jobId,
+		State:        entity.JobStatePending,
+		CreatedAt:    time.Now(),
+		EffectiveTTL: resolveEffectiveTTL(req.RetentionSeconds, s.jobTTL),
 	}
 	s.jobs.Store(jobId, job)
 
@@ -95,7 +110,7 @@ func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.D
 	if err != nil {
 		return nil, fmt.Errorf("failed to open temp file: %w", err)
 	}
-	defer f.Close()
+	defer helper.QuietClose(f, s.log)
 
 	s3data, err := s.tmpDataService.ByReader(ctx, mimeType, f)
 	if err != nil {
@@ -124,21 +139,41 @@ func (s *videoJobServiceImpl) startTTLCleaner() {
 			s.jobs.Range(func(key, value any) bool {
 				job := value.(*entity.DownloadJob)
 				job.Mu.RLock()
-				expired := now.Sub(job.CreatedAt) > s.jobTTL
+				ttl := job.EffectiveTTL
+				elapsed := now.Sub(job.CreatedAt)
 				job.Mu.RUnlock()
-				if expired {
-					job.Mu.Lock()
-					if job.Result != nil && job.Result.S3Data != nil {
+				if ttl < 0 || elapsed <= ttl {
+					return true
+				}
+				job.Mu.Lock()
+				s3Path := ""
+				if job.Result != nil {
+					s3Path = job.Result.S3Path
+					if job.Result.S3Data != nil {
 						helper.QuietClose(job.Result.S3Data, s.log)
 						job.Result.S3Data = nil
 					}
-					job.Mu.Unlock()
-					s.jobs.Delete(key)
 				}
+				job.Mu.Unlock()
+				s.log.Info("Cleaned up expired job", "jobId", job.JobId, "s3Path", s3Path)
+				s.jobs.Delete(key)
 				return true
 			})
 		}
 	}()
+}
+
+// resolveEffectiveTTL maps the per-request retention_seconds value to a duration.
+// < 0 → never expire (returns -1); > 0 → that many seconds; = 0 → defaultTTL.
+func resolveEffectiveTTL(retentionSeconds int32, defaultTTL time.Duration) time.Duration {
+	switch {
+	case retentionSeconds < 0:
+		return -1
+	case retentionSeconds > 0:
+		return time.Duration(retentionSeconds) * time.Second
+	default:
+		return defaultTTL
+	}
 }
 
 func NewVideoJobService(
