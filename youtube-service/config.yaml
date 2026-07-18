@@ -1,0 +1,21 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :7004
+
+storage-service:
+  Uri: "http://localhost:7001"
+
+temp-storage:
+  Endpoint:
+  AccessKey:
+  SecretKey:
+  Bucket: melo-temp
+  Secure: false
+
+youtube:
+  MaxVideoSizeBytes: 524288000
+  TempDir: ""
+  MaxConcurrentDownloads: 4
+  JobTtlSeconds: 3600

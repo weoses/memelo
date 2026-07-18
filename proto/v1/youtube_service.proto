@@ -1,0 +1,51 @@
+syntax = "proto3";
+import "proto/v1/common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+service YouTubeService {
+  rpc DownloadVideoSync(DownloadVideoRequest) returns (DownloadVideoSyncResponse);
+  rpc DownloadVideoAsync(DownloadVideoRequest) returns (DownloadVideoAsyncResponse);
+  rpc GetDownloadJobStatus(GetDownloadJobStatusRequest) returns (GetDownloadJobStatusResponse);
+}
+
+message DownloadVideoRequest {
+  string youtube_url = 1;
+  string account_id = 2;
+}
+
+enum VideoDownloadStatus {
+  VIDEO_STATUS_UNSPECIFIED = 0;
+  VIDEO_STATUS_NEW = 1;
+  VIDEO_STATUS_DUPLICATE = 2;
+}
+
+message DownloadVideoSyncResponse {
+  MemeDto result = 1;
+  VideoDownloadStatus status = 2;
+}
+
+message DownloadVideoAsyncResponse {
+  string job_id = 1;
+}
+
+message GetDownloadJobStatusRequest {
+  string job_id = 1;
+}
+
+enum DownloadJobState {
+  JOB_STATE_UNSPECIFIED = 0;
+  JOB_STATE_PENDING = 1;
+  JOB_STATE_RUNNING = 2;
+  JOB_STATE_DONE = 3;
+  JOB_STATE_FAILED = 4;
+}
+
+message GetDownloadJobStatusResponse {
+  string job_id = 1;
+  DownloadJobState state = 2;
+  optional MemeDto result = 3;
+  optional VideoDownloadStatus create_status = 4;
+  optional string error = 5;
+}

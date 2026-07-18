@@ -20,6 +20,10 @@ type StorageServiceConfig struct {
 	Uri string
 }
 
+type YoutubeServiceConfig struct {
+	Uri string
+}
+
 type UserAccountConfig struct {
 	StaticUuid string
 }
@@ -46,6 +50,7 @@ type Config struct {
 	Telegram       *TelegramConfig                  `mapstructure:"telegram"`
 	Inline         *InlineConfig                    `mapstructure:"inline"`
 	StorageService *StorageServiceConfig            `mapstructure:"storage-service"`
+	YoutubeService *YoutubeServiceConfig            `mapstructure:"youtube-service"`
 	UserAccount    *UserAccountConfig               `mapstructure:"user-account"`
 	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
 	Permissions    *PermissionsConfig               `mapstructure:"permissions"`

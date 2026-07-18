@@ -21,6 +21,7 @@ type MessageHandlerService interface {
 	ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 	ProcessVideoMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 	ProcessDocumentMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
+	ProcessYouTubeMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
 const (
@@ -38,6 +39,7 @@ type MessageHandlerServiceImpl struct {
 	fileResolver      TelegramFileResolverService
 	permissionService PermissionService
 	tmpDataService    commonservice.TmpDataService
+	youtubeConnector  YouTubeConnector
 	slogger           *slog.Logger
 	staticAccountId   uuid.UUID
 }
@@ -160,6 +162,32 @@ func (m MessageHandlerServiceImpl) ProcessDocumentMessage(ctx context.Context, m
 	})
 }
 
+func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
+	if message.From == nil {
+		return nil, errors.New("messageHandlerService: message has no sender")
+	}
+	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
+		result, err := m.youtubeConnector.DownloadVideoSync(ctx, message.Text, m.staticAccountId)
+		if err != nil {
+			return nil, fmt.Errorf("messageHandlerService: YouTube download failed: %w", err)
+		}
+
+		m.slogger.InfoContext(ctx, "youtube meme created",
+			"memeId", result.Id,
+			"duplicate", result.DuplicateStatus)
+
+		return &MessageHandlerResponse{
+			Message: fmt.Sprintf(
+				"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+				result.Text,
+				result.Id,
+				result.DuplicateStatus,
+				strings.Join(result.Tags, ", ")),
+			ParseMode: parseMode,
+		}, nil
+	})
+}
+
 func (m MessageHandlerServiceImpl) createMediaMeme(ctx context.Context, reqType string, fileId string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
 	fileURL, err := m.fileResolver.GetFileURL(ctx, fileId)
 	if err != nil {
@@ -215,6 +243,7 @@ func NewMessageHandlerService(
 	fileResolver TelegramFileResolverService,
 	permissionService PermissionService,
 	tmpDataService commonservice.TmpDataService,
+	youtubeConnector YouTubeConnector,
 	cfg *conf.Config,
 ) MessageHandlerService {
 	staticAccountId := uuid.MustParse(cfg.UserAccount.StaticUuid)
@@ -223,6 +252,7 @@ func NewMessageHandlerService(
 		fileResolver:      fileResolver,
 		permissionService: permissionService,
 		tmpDataService:    tmpDataService,
+		youtubeConnector:  youtubeConnector,
 		slogger:           slog.With("service", "MessageHandlerService"),
 		staticAccountId:   staticAccountId,
 	}

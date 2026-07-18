@@ -7,40 +7,43 @@ import (
 	"net"
 	"net/http"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/common/config"
-	"github.com/weoses/memelo/telegram-service/conf"
-	"github.com/weoses/memelo/telegram-service/service"
-	tgstorage "github.com/weoses/memelo/telegram-service/storage"
+	"github.com/weoses/memelo/gen/proto/v1/v1connect"
+	"github.com/weoses/memelo/youtube-service/api"
+	"github.com/weoses/memelo/youtube-service/conf"
+	"github.com/weoses/memelo/youtube-service/service"
+	ytstorage "github.com/weoses/memelo/youtube-service/storage"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
-func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) {
+func Startup(lc fx.Lifecycle, cfg *conf.Config, apiHandler *api.YouTubeServiceApi) {
 	var srv *http.Server
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			if err := svc.RegisterWebhook(); err != nil {
-				return err
-			}
 			mux := http.NewServeMux()
-			mux.Handle("/webhook", svc.Handler())
+			mux.Handle(v1connect.NewYouTubeServiceHandler(apiHandler))
 			mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
+
 			srv = &http.Server{
 				Addr:    cfg.Server.ListenAddress,
-				Handler: mux,
+				Handler: h2c.NewHandler(mux, &http2.Server{}),
 			}
+
 			ln, err := net.Listen("tcp", cfg.Server.ListenAddress)
 			if err != nil {
 				return err
 			}
+
 			go func() { _ = srv.Serve(ln) }()
+			slog.Info("youtube-service started", "addr", cfg.Server.ListenAddress)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			_ = svc.RemoveWebhook()
 			return srv.Shutdown(ctx)
 		},
 	})
@@ -60,17 +63,12 @@ func main() {
 			return &fxevent.SlogLogger{Logger: slog.With()}
 		}),
 		fx.Supply(cfg),
-		fx.Provide(service.NewTelegramBot),
-		fx.Provide(tgstorage.NewTmpDataServiceS3Adapter),
-		fx.Provide(tgstorage.NewTmpDataService),
+		fx.Provide(ytstorage.NewTmpDataServiceS3Adapter),
+		fx.Provide(ytstorage.NewTmpDataService),
 		fx.Provide(service.NewStorageConnector),
-		fx.Provide(service.NewYouTubeConnector),
-		fx.Provide(fx.Annotate(service.NewTelegramFileResolverService, fx.From(new(*tgbotapi.BotAPI)))),
-		fx.Provide(service.NewPermissionService),
-		fx.Provide(service.NewMessageHandlerService),
-		fx.Provide(service.NewQueryProcessorFactory),
-		fx.Provide(service.NewInlineService),
-		fx.Provide(service.NewTelegramBotService),
+		fx.Provide(service.NewYouTubeDownloader),
+		fx.Provide(service.NewVideoJobService),
+		fx.Provide(api.NewYouTubeServiceApi),
 		fx.Invoke(Startup),
 	).Run()
 }

@@ -83,6 +83,7 @@ services:
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       WEBHOOK_EXTERNALURL: ${TELEGRAM_WEBHOOK_EXTERNALURL}
       STORAGE_SERVICE_URI: http://storage-service:7001
+      YOUTUBE_SERVICE_URI: http://youtube-service:7004
       POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
       TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
@@ -99,6 +100,32 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      storage-service:
+        condition: service_healthy
+      youtube-service:
+        condition: service_healthy
+
+  youtube-service:
+    build:
+      dockerfile: Dockerfile-youtube-service
+    image: ghcr.io/weoses/youtube-service:${RELEASE_VERSION:-latest}
+    environment:
+      STORAGE_SERVICE_URI: http://storage-service:7001
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
+      TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
+      TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
+      TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
+      YOUTUBE_MAXVIDEOSIZEBYTES: ${YOUTUBE_MAX_VIDEO_SIZE_BYTES:-524288000}
+      YOUTUBE_MAXCONCURRENTDOWNLOADS: ${YOUTUBE_MAX_CONCURRENT_DOWNLOADS:-4}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7003:7003"
+    volumes:
+      - "./youtube-service/config.yaml:/app/config/config.yaml"
+    networks:
+      - env
+    depends_on:
       storage-service:
         condition: service_healthy
 
