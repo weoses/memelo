@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"syscall"
@@ -20,12 +22,13 @@ type YouTubeDownloader interface {
 }
 
 type youTubeDownloaderImpl struct {
-	cfg *conf.YouTubeConfig
-	log *slog.Logger
+	cfg    *conf.YouTubeConfig
+	client youtube.Client
+	log    *slog.Logger
 }
 
 func (d *youTubeDownloaderImpl) Download(ctx context.Context, url string) (string, string, error) {
-	client := youtube.Client{}
+	client := d.client
 
 	video, err := client.GetVideoContext(ctx, url)
 	if err != nil {
@@ -115,8 +118,19 @@ func (d *youTubeDownloaderImpl) checkDiskSpace(required int64) error {
 }
 
 func NewYouTubeDownloader(cfg *conf.Config) (YouTubeDownloader, error) {
+	ytClient := youtube.Client{}
+	if cfg.YouTube.ProxyUrl != "" {
+		proxyURL, err := url.Parse(cfg.YouTube.ProxyUrl)
+		if err != nil {
+			return nil, fmt.Errorf("YouTubeDownloader: invalid proxy URL %q: %w", cfg.YouTube.ProxyUrl, err)
+		}
+		ytClient.HTTPClient = &http.Client{
+			Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
+		}
+	}
 	return &youTubeDownloaderImpl{
-		cfg: cfg.YouTube,
-		log: slog.With("service", "YouTubeDownloader"),
+		cfg:    cfg.YouTube,
+		client: ytClient,
+		log:    slog.With("service", "YouTubeDownloader"),
 	}, nil
 }

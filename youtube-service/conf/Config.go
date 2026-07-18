@@ -12,6 +12,7 @@ type YouTubeConfig struct {
 	TempDir                string
 	MaxConcurrentDownloads int
 	JobTtlSeconds          int
+	ProxyUrl               string
 }
 
 type Config struct {

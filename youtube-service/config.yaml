@@ -16,3 +16,4 @@ youtube:
   TempDir: ""
   MaxConcurrentDownloads: 4
   JobTtlSeconds: 3600
+  ProxyUrl: ""
