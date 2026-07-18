@@ -29,6 +29,13 @@ type MemeCreateResult struct {
 	Tags            []string
 }
 
+type YouTubeJobStatus struct {
+	State    string // "pending", "running", "done", "failed"
+	S3Path   string
+	MimeType string
+	Error    string
+}
+
 const ResultTypeImage = "image"
 const ResultTypeVideo = "video"
 

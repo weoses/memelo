@@ -16,14 +16,13 @@ import (
 )
 
 type VideoJobService interface {
-	RunSync(ctx context.Context, req entity.DownloadRequest) (*entity.VideoCreateResult, error)
+	RunSync(ctx context.Context, req entity.DownloadRequest) (*entity.VideoDownloadResult, error)
 	CreateJob(ctx context.Context, req entity.DownloadRequest) (string, error)
 	GetJob(ctx context.Context, jobId string) (*entity.DownloadJob, error)
 }
 
 type videoJobServiceImpl struct {
 	downloader     YouTubeDownloader
-	connector      StorageConnector
 	tmpDataService commonservice.TmpDataService
 	semaphore      chan struct{}
 	jobs           sync.Map
@@ -31,7 +30,7 @@ type videoJobServiceImpl struct {
 	log            *slog.Logger
 }
 
-func (s *videoJobServiceImpl) RunSync(ctx context.Context, req entity.DownloadRequest) (*entity.VideoCreateResult, error) {
+func (s *videoJobServiceImpl) RunSync(ctx context.Context, req entity.DownloadRequest) (*entity.VideoDownloadResult, error) {
 	s.semaphore <- struct{}{}
 	defer func() { <-s.semaphore }()
 	return s.downloadAndStore(ctx, req)
@@ -79,7 +78,9 @@ func (s *videoJobServiceImpl) GetJob(_ context.Context, jobId string) (*entity.D
 	return val.(*entity.DownloadJob), nil
 }
 
-func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.DownloadRequest) (*entity.VideoCreateResult, error) {
+// downloadAndStore downloads the video, uploads to temp S3, and returns the result.
+// The caller owns the S3Data in the result and is responsible for closing it.
+func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.DownloadRequest) (*entity.VideoDownloadResult, error) {
 	filePath, mimeType, err := s.downloader.Download(ctx, req.YoutubeURL)
 	if err != nil {
 		return nil, fmt.Errorf("download failed: %w", err)
@@ -100,14 +101,18 @@ func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.D
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to temp storage: %w", err)
 	}
-	defer helper.QuietClose(s3data, s.log)
 
-	result, err := s.connector.CreateMeme(ctx, s3data, req.AccountId)
+	s3path, err := s3data.GetS3Path(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create meme: %w", err)
+		helper.QuietClose(s3data, s.log)
+		return nil, fmt.Errorf("failed to get s3 path: %w", err)
 	}
 
-	return result, nil
+	return &entity.VideoDownloadResult{
+		S3Path:   s3path,
+		MimeType: mimeType,
+		S3Data:   s3data,
+	}, nil
 }
 
 func (s *videoJobServiceImpl) startTTLCleaner() {
@@ -122,6 +127,12 @@ func (s *videoJobServiceImpl) startTTLCleaner() {
 				expired := now.Sub(job.CreatedAt) > s.jobTTL
 				job.Mu.RUnlock()
 				if expired {
+					job.Mu.Lock()
+					if job.Result != nil && job.Result.S3Data != nil {
+						helper.QuietClose(job.Result.S3Data, s.log)
+						job.Result.S3Data = nil
+					}
+					job.Mu.Unlock()
 					s.jobs.Delete(key)
 				}
 				return true
@@ -133,12 +144,10 @@ func (s *videoJobServiceImpl) startTTLCleaner() {
 func NewVideoJobService(
 	cfg *conf.Config,
 	downloader YouTubeDownloader,
-	connector StorageConnector,
 	tmpDataService commonservice.TmpDataService,
 ) (VideoJobService, error) {
 	svc := &videoJobServiceImpl{
 		downloader:     downloader,
-		connector:      connector,
 		tmpDataService: tmpDataService,
 		semaphore:      make(chan struct{}, cfg.YouTube.MaxConcurrentDownloads),
 		jobTTL:         time.Duration(cfg.YouTube.JobTtlSeconds) * time.Second,

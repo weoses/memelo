@@ -4,20 +4,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/weoses/memelo/common/temp"
 )
 
 type DownloadRequest struct {
 	YoutubeURL string
-	AccountId  uuid.UUID
 }
 
-type VideoCreateResult struct {
-	Id              uuid.UUID
-	DuplicateStatus string
-	Caption         string
-	Tags            []string
-	OcrResult       string
+type VideoDownloadResult struct {
+	S3Path   string
+	MimeType string
+	S3Data   temp.S3BackedData
 }
 
 type JobState int32
@@ -32,7 +29,7 @@ const (
 type DownloadJob struct {
 	JobId     string
 	State     JobState
-	Result    *VideoCreateResult
+	Result    *VideoDownloadResult
 	Error     error
 	CreatedAt time.Time
 	Mu        sync.RWMutex

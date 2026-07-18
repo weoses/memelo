@@ -21,55 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type VideoDownloadStatus int32
-
-const (
-	VideoDownloadStatus_VIDEO_STATUS_UNSPECIFIED VideoDownloadStatus = 0
-	VideoDownloadStatus_VIDEO_STATUS_NEW         VideoDownloadStatus = 1
-	VideoDownloadStatus_VIDEO_STATUS_DUPLICATE   VideoDownloadStatus = 2
-)
-
-// Enum value maps for VideoDownloadStatus.
-var (
-	VideoDownloadStatus_name = map[int32]string{
-		0: "VIDEO_STATUS_UNSPECIFIED",
-		1: "VIDEO_STATUS_NEW",
-		2: "VIDEO_STATUS_DUPLICATE",
-	}
-	VideoDownloadStatus_value = map[string]int32{
-		"VIDEO_STATUS_UNSPECIFIED": 0,
-		"VIDEO_STATUS_NEW":         1,
-		"VIDEO_STATUS_DUPLICATE":   2,
-	}
-)
-
-func (x VideoDownloadStatus) Enum() *VideoDownloadStatus {
-	p := new(VideoDownloadStatus)
-	*p = x
-	return p
-}
-
-func (x VideoDownloadStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (VideoDownloadStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_v1_youtube_service_proto_enumTypes[0].Descriptor()
-}
-
-func (VideoDownloadStatus) Type() protoreflect.EnumType {
-	return &file_proto_v1_youtube_service_proto_enumTypes[0]
-}
-
-func (x VideoDownloadStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use VideoDownloadStatus.Descriptor instead.
-func (VideoDownloadStatus) EnumDescriptor() ([]byte, []int) {
-	return file_proto_v1_youtube_service_proto_rawDescGZIP(), []int{0}
-}
-
 type DownloadJobState int32
 
 const (
@@ -109,11 +60,11 @@ func (x DownloadJobState) String() string {
 }
 
 func (DownloadJobState) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_v1_youtube_service_proto_enumTypes[1].Descriptor()
+	return file_proto_v1_youtube_service_proto_enumTypes[0].Descriptor()
 }
 
 func (DownloadJobState) Type() protoreflect.EnumType {
-	return &file_proto_v1_youtube_service_proto_enumTypes[1]
+	return &file_proto_v1_youtube_service_proto_enumTypes[0]
 }
 
 func (x DownloadJobState) Number() protoreflect.EnumNumber {
@@ -122,13 +73,12 @@ func (x DownloadJobState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DownloadJobState.Descriptor instead.
 func (DownloadJobState) EnumDescriptor() ([]byte, []int) {
-	return file_proto_v1_youtube_service_proto_rawDescGZIP(), []int{1}
+	return file_proto_v1_youtube_service_proto_rawDescGZIP(), []int{0}
 }
 
 type DownloadVideoRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	YoutubeUrl    string                 `protobuf:"bytes,1,opt,name=youtube_url,json=youtubeUrl,proto3" json:"youtube_url,omitempty"`
-	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -170,17 +120,10 @@ func (x *DownloadVideoRequest) GetYoutubeUrl() string {
 	return ""
 }
 
-func (x *DownloadVideoRequest) GetAccountId() string {
-	if x != nil {
-		return x.AccountId
-	}
-	return ""
-}
-
 type DownloadVideoSyncResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        *MemeDto               `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	Status        VideoDownloadStatus    `protobuf:"varint,2,opt,name=status,proto3,enum=proto.memelo.v1.VideoDownloadStatus" json:"status,omitempty"`
+	S3Path        string                 `protobuf:"bytes,1,opt,name=s3_path,json=s3Path,proto3" json:"s3_path,omitempty"`
+	MimeType      string                 `protobuf:"bytes,2,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -215,18 +158,18 @@ func (*DownloadVideoSyncResponse) Descriptor() ([]byte, []int) {
 	return file_proto_v1_youtube_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *DownloadVideoSyncResponse) GetResult() *MemeDto {
+func (x *DownloadVideoSyncResponse) GetS3Path() string {
 	if x != nil {
-		return x.Result
+		return x.S3Path
 	}
-	return nil
+	return ""
 }
 
-func (x *DownloadVideoSyncResponse) GetStatus() VideoDownloadStatus {
+func (x *DownloadVideoSyncResponse) GetMimeType() string {
 	if x != nil {
-		return x.Status
+		return x.MimeType
 	}
-	return VideoDownloadStatus_VIDEO_STATUS_UNSPECIFIED
+	return ""
 }
 
 type DownloadVideoAsyncResponse struct {
@@ -321,8 +264,8 @@ type GetDownloadJobStatusResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	State         DownloadJobState       `protobuf:"varint,2,opt,name=state,proto3,enum=proto.memelo.v1.DownloadJobState" json:"state,omitempty"`
-	Result        *MemeDto               `protobuf:"bytes,3,opt,name=result,proto3,oneof" json:"result,omitempty"`
-	CreateStatus  *VideoDownloadStatus   `protobuf:"varint,4,opt,name=create_status,json=createStatus,proto3,enum=proto.memelo.v1.VideoDownloadStatus,oneof" json:"create_status,omitempty"`
+	S3Path        *string                `protobuf:"bytes,3,opt,name=s3_path,json=s3Path,proto3,oneof" json:"s3_path,omitempty"`
+	MimeType      *string                `protobuf:"bytes,4,opt,name=mime_type,json=mimeType,proto3,oneof" json:"mime_type,omitempty"`
 	Error         *string                `protobuf:"bytes,5,opt,name=error,proto3,oneof" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -372,18 +315,18 @@ func (x *GetDownloadJobStatusResponse) GetState() DownloadJobState {
 	return DownloadJobState_JOB_STATE_UNSPECIFIED
 }
 
-func (x *GetDownloadJobStatusResponse) GetResult() *MemeDto {
-	if x != nil {
-		return x.Result
+func (x *GetDownloadJobStatusResponse) GetS3Path() string {
+	if x != nil && x.S3Path != nil {
+		return *x.S3Path
 	}
-	return nil
+	return ""
 }
 
-func (x *GetDownloadJobStatusResponse) GetCreateStatus() VideoDownloadStatus {
-	if x != nil && x.CreateStatus != nil {
-		return *x.CreateStatus
+func (x *GetDownloadJobStatusResponse) GetMimeType() string {
+	if x != nil && x.MimeType != nil {
+		return *x.MimeType
 	}
-	return VideoDownloadStatus_VIDEO_STATUS_UNSPECIFIED
+	return ""
 }
 
 func (x *GetDownloadJobStatusResponse) GetError() string {
@@ -397,32 +340,28 @@ var File_proto_v1_youtube_service_proto protoreflect.FileDescriptor
 
 const file_proto_v1_youtube_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eproto/v1/youtube_service.proto\x12\x0fproto.memelo.v1\x1a\x15proto/v1/common.proto\"V\n" +
+	"\x1eproto/v1/youtube_service.proto\x12\x0fproto.memelo.v1\"7\n" +
 	"\x14DownloadVideoRequest\x12\x1f\n" +
 	"\vyoutube_url\x18\x01 \x01(\tR\n" +
-	"youtubeUrl\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x02 \x01(\tR\taccountId\"\x8b\x01\n" +
-	"\x19DownloadVideoSyncResponse\x120\n" +
-	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\x12<\n" +
-	"\x06status\x18\x02 \x01(\x0e2$.proto.memelo.v1.VideoDownloadStatusR\x06status\"3\n" +
+	"youtubeUrl\"Q\n" +
+	"\x19DownloadVideoSyncResponse\x12\x17\n" +
+	"\as3_path\x18\x01 \x01(\tR\x06s3Path\x12\x1b\n" +
+	"\tmime_type\x18\x02 \x01(\tR\bmimeType\"3\n" +
 	"\x1aDownloadVideoAsyncResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"4\n" +
 	"\x1bGetDownloadJobStatusRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xb7\x02\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xed\x01\n" +
 	"\x1cGetDownloadJobStatusResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x127\n" +
-	"\x05state\x18\x02 \x01(\x0e2!.proto.memelo.v1.DownloadJobStateR\x05state\x125\n" +
-	"\x06result\x18\x03 \x01(\v2\x18.proto.memelo.v1.MemeDtoH\x00R\x06result\x88\x01\x01\x12N\n" +
-	"\rcreate_status\x18\x04 \x01(\x0e2$.proto.memelo.v1.VideoDownloadStatusH\x01R\fcreateStatus\x88\x01\x01\x12\x19\n" +
-	"\x05error\x18\x05 \x01(\tH\x02R\x05error\x88\x01\x01B\t\n" +
-	"\a_resultB\x10\n" +
-	"\x0e_create_statusB\b\n" +
-	"\x06_error*e\n" +
-	"\x13VideoDownloadStatus\x12\x1c\n" +
-	"\x18VIDEO_STATUS_UNSPECIFIED\x10\x00\x12\x14\n" +
-	"\x10VIDEO_STATUS_NEW\x10\x01\x12\x1a\n" +
-	"\x16VIDEO_STATUS_DUPLICATE\x10\x02*\x85\x01\n" +
+	"\x05state\x18\x02 \x01(\x0e2!.proto.memelo.v1.DownloadJobStateR\x05state\x12\x1c\n" +
+	"\as3_path\x18\x03 \x01(\tH\x00R\x06s3Path\x88\x01\x01\x12 \n" +
+	"\tmime_type\x18\x04 \x01(\tH\x01R\bmimeType\x88\x01\x01\x12\x19\n" +
+	"\x05error\x18\x05 \x01(\tH\x02R\x05error\x88\x01\x01B\n" +
+	"\n" +
+	"\b_s3_pathB\f\n" +
+	"\n" +
+	"_mime_typeB\b\n" +
+	"\x06_error*\x85\x01\n" +
 	"\x10DownloadJobState\x12\x19\n" +
 	"\x15JOB_STATE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11JOB_STATE_PENDING\x10\x01\x12\x15\n" +
@@ -447,35 +386,29 @@ func file_proto_v1_youtube_service_proto_rawDescGZIP() []byte {
 	return file_proto_v1_youtube_service_proto_rawDescData
 }
 
-var file_proto_v1_youtube_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_proto_v1_youtube_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_v1_youtube_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_v1_youtube_service_proto_goTypes = []any{
-	(VideoDownloadStatus)(0),             // 0: proto.memelo.v1.VideoDownloadStatus
-	(DownloadJobState)(0),                // 1: proto.memelo.v1.DownloadJobState
-	(*DownloadVideoRequest)(nil),         // 2: proto.memelo.v1.DownloadVideoRequest
-	(*DownloadVideoSyncResponse)(nil),    // 3: proto.memelo.v1.DownloadVideoSyncResponse
-	(*DownloadVideoAsyncResponse)(nil),   // 4: proto.memelo.v1.DownloadVideoAsyncResponse
-	(*GetDownloadJobStatusRequest)(nil),  // 5: proto.memelo.v1.GetDownloadJobStatusRequest
-	(*GetDownloadJobStatusResponse)(nil), // 6: proto.memelo.v1.GetDownloadJobStatusResponse
-	(*MemeDto)(nil),                      // 7: proto.memelo.v1.MemeDto
+	(DownloadJobState)(0),                // 0: proto.memelo.v1.DownloadJobState
+	(*DownloadVideoRequest)(nil),         // 1: proto.memelo.v1.DownloadVideoRequest
+	(*DownloadVideoSyncResponse)(nil),    // 2: proto.memelo.v1.DownloadVideoSyncResponse
+	(*DownloadVideoAsyncResponse)(nil),   // 3: proto.memelo.v1.DownloadVideoAsyncResponse
+	(*GetDownloadJobStatusRequest)(nil),  // 4: proto.memelo.v1.GetDownloadJobStatusRequest
+	(*GetDownloadJobStatusResponse)(nil), // 5: proto.memelo.v1.GetDownloadJobStatusResponse
 }
 var file_proto_v1_youtube_service_proto_depIdxs = []int32{
-	7, // 0: proto.memelo.v1.DownloadVideoSyncResponse.result:type_name -> proto.memelo.v1.MemeDto
-	0, // 1: proto.memelo.v1.DownloadVideoSyncResponse.status:type_name -> proto.memelo.v1.VideoDownloadStatus
-	1, // 2: proto.memelo.v1.GetDownloadJobStatusResponse.state:type_name -> proto.memelo.v1.DownloadJobState
-	7, // 3: proto.memelo.v1.GetDownloadJobStatusResponse.result:type_name -> proto.memelo.v1.MemeDto
-	0, // 4: proto.memelo.v1.GetDownloadJobStatusResponse.create_status:type_name -> proto.memelo.v1.VideoDownloadStatus
-	2, // 5: proto.memelo.v1.YouTubeService.DownloadVideoSync:input_type -> proto.memelo.v1.DownloadVideoRequest
-	2, // 6: proto.memelo.v1.YouTubeService.DownloadVideoAsync:input_type -> proto.memelo.v1.DownloadVideoRequest
-	5, // 7: proto.memelo.v1.YouTubeService.GetDownloadJobStatus:input_type -> proto.memelo.v1.GetDownloadJobStatusRequest
-	3, // 8: proto.memelo.v1.YouTubeService.DownloadVideoSync:output_type -> proto.memelo.v1.DownloadVideoSyncResponse
-	4, // 9: proto.memelo.v1.YouTubeService.DownloadVideoAsync:output_type -> proto.memelo.v1.DownloadVideoAsyncResponse
-	6, // 10: proto.memelo.v1.YouTubeService.GetDownloadJobStatus:output_type -> proto.memelo.v1.GetDownloadJobStatusResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0, // 0: proto.memelo.v1.GetDownloadJobStatusResponse.state:type_name -> proto.memelo.v1.DownloadJobState
+	1, // 1: proto.memelo.v1.YouTubeService.DownloadVideoSync:input_type -> proto.memelo.v1.DownloadVideoRequest
+	1, // 2: proto.memelo.v1.YouTubeService.DownloadVideoAsync:input_type -> proto.memelo.v1.DownloadVideoRequest
+	4, // 3: proto.memelo.v1.YouTubeService.GetDownloadJobStatus:input_type -> proto.memelo.v1.GetDownloadJobStatusRequest
+	2, // 4: proto.memelo.v1.YouTubeService.DownloadVideoSync:output_type -> proto.memelo.v1.DownloadVideoSyncResponse
+	3, // 5: proto.memelo.v1.YouTubeService.DownloadVideoAsync:output_type -> proto.memelo.v1.DownloadVideoAsyncResponse
+	5, // 6: proto.memelo.v1.YouTubeService.GetDownloadJobStatus:output_type -> proto.memelo.v1.GetDownloadJobStatusResponse
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_v1_youtube_service_proto_init() }
@@ -483,14 +416,13 @@ func file_proto_v1_youtube_service_proto_init() {
 	if File_proto_v1_youtube_service_proto != nil {
 		return
 	}
-	file_proto_v1_common_proto_init()
 	file_proto_v1_youtube_service_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_v1_youtube_service_proto_rawDesc), len(file_proto_v1_youtube_service_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      1,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,

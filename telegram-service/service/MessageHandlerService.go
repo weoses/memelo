@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -167,9 +168,41 @@ func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, me
 		return nil, errors.New("messageHandlerService: message has no sender")
 	}
 	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
-		result, err := m.youtubeConnector.DownloadVideoSync(ctx, message.Text, m.staticAccountId)
+		jobId, err := m.youtubeConnector.DownloadVideoAsync(ctx, message.Text)
 		if err != nil {
-			return nil, fmt.Errorf("messageHandlerService: YouTube download failed: %w", err)
+			return nil, fmt.Errorf("messageHandlerService: YouTube async job creation failed: %w", err)
+		}
+
+		var jobStatus *entity.YouTubeJobStatus
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+	poll:
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-ticker.C:
+				jobStatus, err = m.youtubeConnector.GetDownloadJobStatus(ctx, jobId)
+				if err != nil {
+					return nil, fmt.Errorf("messageHandlerService: GetDownloadJobStatus failed: %w", err)
+				}
+				switch jobStatus.State {
+				case "done":
+					break poll
+				case "failed":
+					return nil, fmt.Errorf("messageHandlerService: YouTube download failed: %s", jobStatus.Error)
+				}
+			}
+		}
+		s3Media, err := m.tmpDataService.WrapS3Path(ctx, jobStatus.S3Path)
+		if err != nil {
+			return nil, fmt.Errorf("messageHandlerService: WrapS3Path failed: %w", err)
+		}
+		defer helper.QuietClose(s3Media, m.slogger)
+
+		result, err := m.storage.CreateMeme(ctx, s3Media, jobStatus.MimeType, m.staticAccountId)
+		if err != nil {
+			return nil, fmt.Errorf("messageHandlerService: CreateMeme failed: %w", err)
 		}
 
 		m.slogger.InfoContext(ctx, "youtube meme created",

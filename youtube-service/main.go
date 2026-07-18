@@ -65,7 +65,6 @@ func main() {
 		fx.Supply(cfg),
 		fx.Provide(ytstorage.NewTmpDataServiceS3Adapter),
 		fx.Provide(ytstorage.NewTmpDataService),
-		fx.Provide(service.NewStorageConnector),
 		fx.Provide(service.NewYouTubeDownloader),
 		fx.Provide(service.NewVideoJobService),
 		fx.Provide(api.NewYouTubeServiceApi),

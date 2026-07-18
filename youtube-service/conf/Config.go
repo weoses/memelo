@@ -7,10 +7,6 @@ import (
 	commonconfig "github.com/weoses/memelo/common/config"
 )
 
-type StorageServiceConfig struct {
-	Uri string
-}
-
 type YouTubeConfig struct {
 	MaxVideoSizeBytes      int64
 	TempDir                string
@@ -19,11 +15,10 @@ type YouTubeConfig struct {
 }
 
 type Config struct {
-	Server         *commonconfig.ServerConfig       `mapstructure:"server"`
-	Log            *commonconfig.LoggingConfig      `mapstructure:"log"`
-	StorageService *StorageServiceConfig            `mapstructure:"storage-service"`
-	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
-	YouTube        *YouTubeConfig                   `mapstructure:"youtube"`
+	Server      *commonconfig.ServerConfig       `mapstructure:"server"`
+	Log         *commonconfig.LoggingConfig      `mapstructure:"log"`
+	TempStorage *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
+	YouTube     *YouTubeConfig                   `mapstructure:"youtube"`
 }
 
 func NewConfig() (*Config, error) {

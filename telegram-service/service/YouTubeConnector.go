@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/google/uuid"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -14,7 +13,8 @@ import (
 )
 
 type YouTubeConnector interface {
-	DownloadVideoSync(ctx context.Context, url string, accountId uuid.UUID) (*entity.MemeCreateResult, error)
+	DownloadVideoAsync(ctx context.Context, url string) (string, error)
+	GetDownloadJobStatus(ctx context.Context, jobId string) (*entity.YouTubeJobStatus, error)
 }
 
 type YouTubeConnectorImpl struct {
@@ -22,26 +22,48 @@ type YouTubeConnectorImpl struct {
 	log *slog.Logger
 }
 
-func (y *YouTubeConnectorImpl) DownloadVideoSync(ctx context.Context, url string, accountId uuid.UUID) (*entity.MemeCreateResult, error) {
-	response, err := y.cl.DownloadVideoSync(ctx, &v1.DownloadVideoRequest{
+func (y *YouTubeConnectorImpl) DownloadVideoAsync(ctx context.Context, url string) (string, error) {
+	response, err := y.cl.DownloadVideoAsync(ctx, &v1.DownloadVideoRequest{
 		YoutubeUrl: url,
-		AccountId:  accountId.String(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("YouTubeConnector: DownloadVideoSync failed: %w", err)
+		return "", fmt.Errorf("YouTubeConnector: DownloadVideoAsync failed: %w", err)
+	}
+	return response.GetJobId(), nil
+}
+
+func (y *YouTubeConnectorImpl) GetDownloadJobStatus(ctx context.Context, jobId string) (*entity.YouTubeJobStatus, error) {
+	response, err := y.cl.GetDownloadJobStatus(ctx, &v1.GetDownloadJobStatusRequest{
+		JobId: jobId,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("YouTubeConnector: GetDownloadJobStatus failed: %w", err)
 	}
 
-	memeId, err := uuid.Parse(response.GetResult().GetId())
-	if err != nil {
-		return nil, fmt.Errorf("YouTubeConnector: failed to parse meme id: %s: %w", response.GetResult().GetId(), err)
+	status := &entity.YouTubeJobStatus{
+		State:    toJobStateString(response.GetState()),
+		S3Path:   response.GetS3Path(),
+		MimeType: response.GetMimeType(),
 	}
-	return &entity.MemeCreateResult{
-		Id:              memeId,
-		Text:            response.GetResult().GetOcrResult(),
-		Tags:            response.GetResult().GetTags(),
-		Caption:         response.GetResult().GetCaption(),
-		DuplicateStatus: response.GetStatus().String(),
-	}, nil
+	if response.Error != nil {
+		status.Error = *response.Error
+	}
+	return status, nil
+}
+
+func toJobStateString(state v1.DownloadJobState) string {
+	switch state {
+	case v1.DownloadJobState_JOB_STATE_PENDING:
+		return "pending"
+	case v1.DownloadJobState_JOB_STATE_RUNNING:
+		return "running"
+	case v1.DownloadJobState_JOB_STATE_DONE:
+		return "done"
+	case v1.DownloadJobState_JOB_STATE_FAILED:
+		return "failed"
+	default:
+		return "unknown"
+	}
 }
 
 func NewYouTubeConnector(cfg *conf.Config) (YouTubeConnector, error) {

@@ -2,10 +2,7 @@ log:
   Level: info
 
 server:
-  ListenAddress: :7004
-
-storage-service:
-  Uri: "http://localhost:7001"
+  ListenAddress: localhost:7004
 
 temp-storage:
   Endpoint:

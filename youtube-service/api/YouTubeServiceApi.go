@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	"github.com/google/uuid"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/youtube-service/entity"
 	"github.com/weoses/memelo/youtube-service/service"
@@ -30,8 +29,8 @@ func (api *YouTubeServiceApi) DownloadVideoSync(ctx context.Context, req *v1.Dow
 	}
 
 	return &v1.DownloadVideoSyncResponse{
-		Result: toMemeDto(result),
-		Status: toProtoStatus(result.DuplicateStatus),
+		S3Path:   result.S3Path,
+		MimeType: result.MimeType,
 	}, nil
 }
 
@@ -69,10 +68,8 @@ func (api *YouTubeServiceApi) GetDownloadJobStatus(ctx context.Context, req *v1.
 	}
 
 	if job.Result != nil {
-		memeDto := toMemeDto(job.Result)
-		resp.Result = memeDto
-		status := toProtoStatus(job.Result.DuplicateStatus)
-		resp.CreateStatus = &status
+		resp.S3Path = &job.Result.S3Path
+		resp.MimeType = &job.Result.MimeType
 	}
 
 	if job.Error != nil {
@@ -87,36 +84,7 @@ func (api *YouTubeServiceApi) parseRequest(req *v1.DownloadVideoRequest) (entity
 	if req.YoutubeUrl == "" {
 		return entity.DownloadRequest{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("youtube_url is required"))
 	}
-
-	accountId, err := uuid.Parse(req.AccountId)
-	if err != nil {
-		return entity.DownloadRequest{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid account_id: %w", err))
-	}
-
-	return entity.DownloadRequest{
-		YoutubeURL: req.YoutubeUrl,
-		AccountId:  accountId,
-	}, nil
-}
-
-func toMemeDto(r *entity.VideoCreateResult) *v1.MemeDto {
-	return &v1.MemeDto{
-		Id:        r.Id.String(),
-		Caption:   r.Caption,
-		Tags:      r.Tags,
-		OcrResult: r.OcrResult,
-	}
-}
-
-func toProtoStatus(duplicateStatus string) v1.VideoDownloadStatus {
-	switch duplicateStatus {
-	case "STATUS_DUPLICATE":
-		return v1.VideoDownloadStatus_VIDEO_STATUS_DUPLICATE
-	case "STATUS_NEW":
-		return v1.VideoDownloadStatus_VIDEO_STATUS_NEW
-	default:
-		return v1.VideoDownloadStatus_VIDEO_STATUS_UNSPECIFIED
-	}
+	return entity.DownloadRequest{YoutubeURL: req.YoutubeUrl}, nil
 }
 
 func toProtoJobState(state entity.JobState) v1.DownloadJobState {
