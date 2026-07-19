@@ -14,6 +14,7 @@ type YouTubeConfig struct {
 	ApiKey                 string
 	ApiHost                string
 	VideoFormat            string
+	MaxDuration            int
 }
 
 type Config struct {

@@ -104,11 +104,16 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
-				"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+				" Text: ```\n%s\n```\n"+
+					" Tags: ```%s```\n"+
+					" Caption: `%s`\n"+
+					" ID: `%s` \n"+
+					" Status: `%s`",
 				result.Text,
+				strings.Join(result.Tags, ", "),
+				result.Caption,
 				result.Id,
-				result.DuplicateStatus,
-				strings.Join(result.Tags, ", ")),
+				result.DuplicateStatus),
 			ParseMode: parseMode,
 		}, nil
 	})
@@ -165,12 +170,12 @@ func (m MessageHandlerServiceImpl) ProcessDocumentMessage(ctx context.Context, m
 
 func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
 	if message.From == nil {
-		return nil, errors.New("messageHandlerService: message has no sender")
+		return nil, errors.New("ProcessYouTubeMessage: message has no sender")
 	}
 	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
 		jobId, err := m.youtubeConnector.DownloadVideoAsync(ctx, message.Text)
 		if err != nil {
-			return nil, fmt.Errorf("messageHandlerService: YouTube async job creation failed: %w", err)
+			return nil, fmt.Errorf("ProcessYouTubeMessage: YouTube async job creation failed: %w", err)
 		}
 
 		var jobStatus *entity.YouTubeJobStatus
@@ -184,7 +189,7 @@ func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, me
 			case <-ticker.C:
 				jobStatus, err = m.youtubeConnector.GetDownloadJobStatus(ctx, jobId)
 				if err != nil {
-					return nil, fmt.Errorf("messageHandlerService: GetDownloadJobStatus failed: %w", err)
+					return nil, fmt.Errorf("messageHandlerService: youtube GetDownloadJobStatus failed: %w", err)
 				}
 				switch jobStatus.State {
 				case "done":
@@ -199,10 +204,13 @@ func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, me
 		}
 
 		s3Media, err := m.tmpDataService.WrapS3Path(ctx, jobStatus.S3Path)
+		if err != nil {
+			return nil, fmt.Errorf("messageHandlerService: youtube WrapS3Path failed: %w", err)
+		}
 
 		result, err := m.storage.CreateMeme(ctx, s3Media, "video", m.staticAccountId)
 		if err != nil {
-			return nil, fmt.Errorf("messageHandlerService: CreateMeme failed: %w", err)
+			return nil, fmt.Errorf("messageHandlerService: youtube CreateMeme failed: %w", err)
 		}
 
 		m.slogger.InfoContext(ctx, "youtube meme created",
@@ -211,11 +219,16 @@ func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, me
 
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
-				"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+				" Text: ```\n%s\n```\n"+
+					" Tags: ```%s```\n"+
+					" Caption: `%s`\n"+
+					" ID: `%s` \n"+
+					" Status: `%s`",
 				result.Text,
+				strings.Join(result.Tags, ", "),
+				result.Caption,
 				result.Id,
-				result.DuplicateStatus,
-				strings.Join(result.Tags, ", ")),
+				result.DuplicateStatus),
 			ParseMode: parseMode,
 		}, nil
 	})

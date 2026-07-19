@@ -18,3 +18,4 @@ youtube:
   ApiKey: ""
   ApiHost: p.savenow.to
   VideoFormat: "720"
+  MaxDuration: 10
