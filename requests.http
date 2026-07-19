@@ -86,3 +86,11 @@ GRPC localhost:7001/proto.memelo.v1.SearchService/DeleteAll
 {
 "account_id": "00000000-0000-0000-0000-000000000000"
 }
+
+
+###
+GRPC localhost:7004/proto.memelo.v1.YouTubeService/DownloadVideoSync
+
+{
+  "youtube_url": "https://www.youtube.com/watch?v=3W40tBACFbI"
+}

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+service YouTubeService {
+  rpc DownloadVideoSync(DownloadVideoRequest) returns (DownloadVideoSyncResponse);
+  rpc DownloadVideoAsync(DownloadVideoRequest) returns (DownloadVideoAsyncResponse);
+  rpc GetDownloadJobStatus(GetDownloadJobStatusRequest) returns (GetDownloadJobStatusResponse);
+}
+
+message DownloadVideoRequest {
+  string youtube_url = 1;
+  // retention_seconds controls how long the job and its S3 object are kept.
+  // < 0: never expire; > 0: expire after N seconds; = 0: use service default.
+  int32 retention_seconds = 2;
+}
+
+message DownloadVideoSyncResponse {
+  string s3_path = 1;
+  string mime_type = 2;
+}
+
+message DownloadVideoAsyncResponse {
+  string job_id = 1;
+}
+
+message GetDownloadJobStatusRequest {
+  string job_id = 1;
+}
+
+enum DownloadJobState {
+  JOB_STATE_UNSPECIFIED = 0;
+  JOB_STATE_PENDING = 1;
+  JOB_STATE_RUNNING = 2;
+  JOB_STATE_DONE = 3;
+  JOB_STATE_FAILED = 4;
+}
+
+message GetDownloadJobStatusResponse {
+  string job_id = 1;
+  DownloadJobState state = 2;
+  optional string s3_path = 3;
+  optional string mime_type = 4;
+  optional string error = 5;
+}

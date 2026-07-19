@@ -1,0 +1,23 @@
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /app
+RUN apk add --update --no-cache bash curl gcc g++ pkgconf musl-dev
+
+COPY ./gen gen/
+COPY ./common common/
+COPY ./youtube-service ./youtube-service
+
+WORKDIR /app/youtube-service
+RUN go build -a -installsuffix cgo -o output.bin
+
+FROM alpine:latest
+
+WORKDIR /app
+RUN apk add curl
+COPY --from=builder /app/youtube-service/output.bin youtube-service
+
+WORKDIR /app/config
+ENV APPLICATION_CONFIGPATH "/app/config"
+
+WORKDIR /app
+ENTRYPOINT ["/app/youtube-service"]

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ type MessageHandlerService interface {
 	ProcessImageMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 	ProcessVideoMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 	ProcessDocumentMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
+	ProcessYouTubeMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error)
 }
 
 const (
@@ -38,6 +40,7 @@ type MessageHandlerServiceImpl struct {
 	fileResolver      TelegramFileResolverService
 	permissionService PermissionService
 	tmpDataService    commonservice.TmpDataService
+	youtubeConnector  YouTubeConnector
 	slogger           *slog.Logger
 	staticAccountId   uuid.UUID
 }
@@ -101,11 +104,16 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
-				"\n```Text\n%s\n```\n ID: `%s` \n Status: `%s`\n Tags: ```%s```",
+				" Text: ```\n%s\n```\n"+
+					" Tags: ```%s```\n"+
+					" Caption: `%s`\n"+
+					" ID: `%s` \n"+
+					" Status: `%s`",
 				result.Text,
+				strings.Join(result.Tags, ", "),
+				result.Caption,
 				result.Id,
-				result.DuplicateStatus,
-				strings.Join(result.Tags, ", ")),
+				result.DuplicateStatus),
 			ParseMode: parseMode,
 		}, nil
 	})
@@ -140,6 +148,72 @@ func (m MessageHandlerServiceImpl) ProcessDocumentMessage(ctx context.Context, m
 		}
 
 		m.slogger.InfoContext(ctx, "document meme created",
+			"memeId", result.Id,
+			"duplicate", result.DuplicateStatus)
+
+		return &MessageHandlerResponse{
+			Message: fmt.Sprintf(
+				" Text: ```\n%s\n```\n"+
+					" Tags: ```%s```\n"+
+					" Caption: `%s`\n"+
+					" ID: `%s` \n"+
+					" Status: `%s`",
+				result.Text,
+				strings.Join(result.Tags, ", "),
+				result.Caption,
+				result.Id,
+				result.DuplicateStatus),
+			ParseMode: parseMode,
+		}, nil
+	})
+}
+
+func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, message *tgbotapi.Message) (*MessageHandlerResponse, error) {
+	if message.From == nil {
+		return nil, errors.New("ProcessYouTubeMessage: message has no sender")
+	}
+	return InvokeWithPermission(ctx, m.permissionService, message.From.ID, PermissionCreate, func() (*MessageHandlerResponse, error) {
+		jobId, err := m.youtubeConnector.DownloadVideoAsync(ctx, message.Text)
+		if err != nil {
+			return nil, fmt.Errorf("ProcessYouTubeMessage: YouTube async job creation failed: %w", err)
+		}
+
+		var jobStatus *entity.YouTubeJobStatus
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+	poll:
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-ticker.C:
+				jobStatus, err = m.youtubeConnector.GetDownloadJobStatus(ctx, jobId)
+				if err != nil {
+					return nil, fmt.Errorf("messageHandlerService: youtube GetDownloadJobStatus failed: %w", err)
+				}
+				switch jobStatus.State {
+				case "done":
+					break poll
+				case "failed":
+					return nil, fmt.Errorf("messageHandlerService: YouTube download failed: %s", jobStatus.Error)
+				}
+			}
+		}
+		if jobStatus.MimeType != "video/mp4" {
+			return nil, fmt.Errorf("messageHandlerService: YouTube download failed: unexpected mime type: %s", jobStatus.MimeType)
+		}
+
+		s3Media, err := m.tmpDataService.WrapS3Path(ctx, jobStatus.S3Path)
+		if err != nil {
+			return nil, fmt.Errorf("messageHandlerService: youtube WrapS3Path failed: %w", err)
+		}
+
+		result, err := m.storage.CreateMeme(ctx, s3Media, "video", m.staticAccountId)
+		if err != nil {
+			return nil, fmt.Errorf("messageHandlerService: youtube CreateMeme failed: %w", err)
+		}
+
+		m.slogger.InfoContext(ctx, "youtube meme created",
 			"memeId", result.Id,
 			"duplicate", result.DuplicateStatus)
 
@@ -215,6 +289,7 @@ func NewMessageHandlerService(
 	fileResolver TelegramFileResolverService,
 	permissionService PermissionService,
 	tmpDataService commonservice.TmpDataService,
+	youtubeConnector YouTubeConnector,
 	cfg *conf.Config,
 ) MessageHandlerService {
 	staticAccountId := uuid.MustParse(cfg.UserAccount.StaticUuid)
@@ -223,6 +298,7 @@ func NewMessageHandlerService(
 		fileResolver:      fileResolver,
 		permissionService: permissionService,
 		tmpDataService:    tmpDataService,
+		youtubeConnector:  youtubeConnector,
 		slogger:           slog.With("service", "MessageHandlerService"),
 		staticAccountId:   staticAccountId,
 	}

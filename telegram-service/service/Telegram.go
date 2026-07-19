@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/telegram-service/conf"
 )
 
@@ -135,6 +136,8 @@ func (s *TelegramBotServiceImpl) handleMessage(ctx context.Context, requestMessa
 		answer, err = s.message.ProcessImageMessage(ctx, requestMessage)
 	} else if requestMessage.Document != nil {
 		answer, err = s.message.ProcessDocumentMessage(ctx, requestMessage)
+	} else if requestMessage.Text != "" && helper.IsYouTubeURL(requestMessage.Text) {
+		answer, err = s.message.ProcessYouTubeMessage(ctx, requestMessage)
 	} else {
 		err = errors.New("message dont contain any media temp")
 	}
