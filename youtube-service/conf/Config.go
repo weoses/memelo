@@ -8,11 +8,12 @@ import (
 )
 
 type YouTubeConfig struct {
-	MaxVideoSizeBytes      int64
 	TempDir                string
 	MaxConcurrentDownloads int
 	JobTtlSeconds          int
-	ProxyUrl               string
+	ApiKey                 string
+	ApiHost                string
+	VideoFormat            string
 }
 
 type Config struct {

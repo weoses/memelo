@@ -2,67 +2,158 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
-	"syscall"
+	"time"
 
-	"github.com/kkdai/youtube/v2"
 	"github.com/weoses/memelo/youtube-service/conf"
 )
 
 type YouTubeDownloader interface {
-	// Download fetches the best progressive format fitting MaxVideoSizeBytes to a temp file.
+	// Download fetches the video via the external download API to a temp file.
 	// The caller is responsible for removing the returned file after use.
 	Download(ctx context.Context, url string) (filePath string, mimeType string, err error)
 }
 
 type youTubeDownloaderImpl struct {
 	cfg    *conf.YouTubeConfig
-	client youtube.Client
+	client *http.Client
 	log    *slog.Logger
 }
 
-func (d *youTubeDownloaderImpl) Download(ctx context.Context, url string) (string, string, error) {
-	client := d.client
-
-	video, err := client.GetVideoContext(ctx, url)
-	if err != nil {
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to fetch video info: %w", err)
-	}
-
-	format, err := d.selectFormat(video.Formats)
+func (d *youTubeDownloaderImpl) Download(ctx context.Context, videoURL string) (string, string, error) {
+	jobID, err := d.createJob(ctx, videoURL)
 	if err != nil {
 		return "", "", err
 	}
 
-	if err := d.checkDiskSpace(format.ContentLength); err != nil {
+	downloadURL, err := d.pollProgress(ctx, jobID)
+	if err != nil {
 		return "", "", err
 	}
 
-	tmpFile, err := os.CreateTemp(d.cfg.TempDir, "memelo-yt-*.mp4")
+	return d.downloadFile(ctx, downloadURL)
+}
+
+func (d *youTubeDownloaderImpl) createJob(ctx context.Context, videoURL string) (string, error) {
+	params := url.Values{}
+	params.Set("format", d.cfg.VideoFormat)
+	params.Set("url", videoURL)
+	params.Set("apikey", d.cfg.ApiKey)
+
+	reqURL := "https://" + d.cfg.ApiHost + "/ajax/download.php?" + params.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("YouTubeDownloader: failed to build job request: %w", err)
+	}
+
+	resp, err := d.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("YouTubeDownloader: job request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Success bool   `json:"success"`
+		ID      string `json:"id"`
+		Error   string `json:"error,omitempty"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("YouTubeDownloader: failed to decode job response: %w", err)
+	}
+	if !result.Success {
+		return "", fmt.Errorf("YouTubeDownloader: API rejected job: %s", result.Error)
+	}
+
+	d.log.InfoContext(ctx, "download job created", "job_id", result.ID)
+	return result.ID, nil
+}
+
+func (d *youTubeDownloaderImpl) pollProgress(ctx context.Context, jobID string) (string, error) {
+	params := url.Values{}
+	params.Set("id", jobID)
+	pollURL := "https://" + d.cfg.ApiHost + "/ajax/progress?" + params.Encode()
+	iteration := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, pollURL, nil)
+		if err != nil {
+			return "", fmt.Errorf("YouTubeDownloader: failed to build progress request: %w", err)
+		}
+
+		resp, err := d.client.Do(req)
+		if err != nil {
+			return "", fmt.Errorf("YouTubeDownloader: progress request failed: %w", err)
+		}
+
+		var result struct {
+			Success     int    `json:"success"`
+			Progress    int    `json:"progress"`
+			DownloadURL string `json:"download_url,omitempty"`
+			Text        string `json:"text,omitempty"`
+		}
+		decodeErr := json.NewDecoder(resp.Body).Decode(&result)
+		resp.Body.Close()
+		if decodeErr != nil {
+			return "", fmt.Errorf("YouTubeDownloader: failed to decode progress response: %w", decodeErr)
+		}
+
+		if result.Success == 0 && result.Progress == 0 {
+			return "", fmt.Errorf("YouTubeDownloader: job failed: %s", result.Text)
+		}
+
+		if iteration >= 100 {
+			return "", fmt.Errorf("YouTubeDownloader: progress request timed out")
+		}
+
+		d.log.InfoContext(ctx, "download progress", "job_id", jobID, "progress", result.Progress)
+
+		if result.Progress == 1000 {
+			return result.DownloadURL, nil
+		}
+		iteration++
+		time.Sleep(2 * time.Second)
+	}
+}
+
+func (d *youTubeDownloaderImpl) downloadFile(ctx context.Context, downloadURL string) (string, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return "", "", fmt.Errorf("YouTubeDownloader: failed to build file request: %w", err)
+	}
+
+	resp, err := d.client.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("YouTubeDownloader: file download failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	mimeType := resp.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "video/mp4"
+	}
+
+	tmpFile, err := os.CreateTemp(d.cfg.TempDir, "memelo-yt-*")
 	if err != nil {
 		return "", "", fmt.Errorf("YouTubeDownloader: failed to create temp file: %w", err)
 	}
-
 	filePath := tmpFile.Name()
 
-	stream, _, err := client.GetStreamContext(ctx, video, format)
-	if err != nil {
+	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
 		_ = tmpFile.Close()
 		_ = os.Remove(filePath)
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to get stream: %w", err)
-	}
-	defer stream.Close()
-
-	if _, err := io.Copy(tmpFile, stream); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(filePath)
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to download video: %w", err)
+		return "", "", fmt.Errorf("YouTubeDownloader: failed to write video to temp file: %w", err)
 	}
 
 	if err := tmpFile.Close(); err != nil {
@@ -70,67 +161,14 @@ func (d *youTubeDownloaderImpl) Download(ctx context.Context, url string) (strin
 		return "", "", fmt.Errorf("YouTubeDownloader: failed to close temp file: %w", err)
 	}
 
-	d.log.InfoContext(ctx, "video downloaded", "path", filePath, "size", format.ContentLength, "quality", format.QualityLabel)
-	return filePath, format.MimeType, nil
-}
-
-func (d *youTubeDownloaderImpl) selectFormat(formats youtube.FormatList) (*youtube.Format, error) {
-	var candidates []youtube.Format
-	for _, f := range formats {
-		if f.AudioChannels > 0 && f.ContentLength > 0 && f.ContentLength <= d.cfg.MaxVideoSizeBytes {
-			candidates = append(candidates, f)
-		}
-	}
-
-	if len(candidates) == 0 {
-		return nil, fmt.Errorf(
-			"YouTubeDownloader: no progressive format fits within %d bytes (max size)",
-			d.cfg.MaxVideoSizeBytes,
-		)
-	}
-
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].Bitrate > candidates[j].Bitrate
-	})
-
-	return &candidates[0], nil
-}
-
-func (d *youTubeDownloaderImpl) checkDiskSpace(required int64) error {
-	dir := d.cfg.TempDir
-	if dir == "" {
-		dir = os.TempDir()
-	}
-
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(dir, &stat); err != nil {
-		return fmt.Errorf("YouTubeDownloader: failed to check disk space: %w", err)
-	}
-
-	available := int64(stat.Bavail) * int64(stat.Bsize)
-	if available < required {
-		return fmt.Errorf(
-			"YouTubeDownloader: insufficient disk space — need %d bytes, have %d bytes available",
-			required, available,
-		)
-	}
-	return nil
+	d.log.InfoContext(ctx, "video downloaded", "path", filePath, "mime_type", mimeType)
+	return filePath, mimeType, nil
 }
 
 func NewYouTubeDownloader(cfg *conf.Config) (YouTubeDownloader, error) {
-	ytClient := youtube.Client{}
-	if cfg.YouTube.ProxyUrl != "" {
-		proxyURL, err := url.Parse(cfg.YouTube.ProxyUrl)
-		if err != nil {
-			return nil, fmt.Errorf("YouTubeDownloader: invalid proxy URL %q: %w", cfg.YouTube.ProxyUrl, err)
-		}
-		ytClient.HTTPClient = &http.Client{
-			Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
-		}
-	}
 	return &youTubeDownloaderImpl{
 		cfg:    cfg.YouTube,
-		client: ytClient,
+		client: &http.Client{},
 		log:    slog.With("service", "YouTubeDownloader"),
 	}, nil
 }
