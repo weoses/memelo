@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/weoses/memelo/youtube-service/conf"
@@ -45,7 +46,7 @@ func (d *youTubeDownloaderImpl) createJob(ctx context.Context, videoURL string) 
 	params.Set("format", d.cfg.VideoFormat)
 	params.Set("url", videoURL)
 	params.Set("apikey", d.cfg.ApiKey)
-	params.Set("max_duration", d.cfg.MaxDuration)
+	params.Set("max_duration", strconv.Itoa(d.cfg.MaxDuration))
 
 	reqURL := "https://" + d.cfg.ApiHost + "/ajax/download.php?" + params.Encode()
 
