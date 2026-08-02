@@ -103,7 +103,7 @@ func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.D
 		req.YoutubeURL,
 		func(ctx context.Context, reader io.Reader, mt string) (temp.S3BackedData, error) {
 			mimeType = mt
-			return s.tmpDataService.ByReader(ctx, mt, reader)
+			return s.tmpDataService.ByReaderUpload(ctx, mt, reader)
 		})
 	if err != nil {
 		return nil, fmt.Errorf("download failed: %w", err)
