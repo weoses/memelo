@@ -66,7 +66,6 @@ func Module() fx.Option {
 		fx.Provide(ffmpeg.NewVideo2Mp4Converter),
 		fx.Provide(ffmpeg.NewVideo2FrameExtractor),
 		fx.Provide(ffmpeg.NewVideoSlicer),
-		fx.Provide(ffmpeg.NewVideo2AudioConverter),
 
 		fx.Provide(storage2.NewElasticTagStorage),
 		fx.Provide(

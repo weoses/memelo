@@ -1,7 +1,6 @@
 package functional_test
 
 import (
-	"bytes"
 	"context"
 	"sync"
 	"sync/atomic"
@@ -164,16 +163,6 @@ func (m *MockEmbeddingExtractor) GetTextEmbedding(_ context.Context, _ string) (
 		Model: "mock-model",
 		Type:  entity.EmbeddingTypeText,
 	}, nil
-}
-
-type MockVideo2AudioConverter struct{}
-
-func (m *MockVideo2AudioConverter) ExtractAudio(_ context.Context, _ temp.Data) (temp.Data, error) {
-	return temp.DataTemp(bytes.NewReader([]byte{}))
-}
-
-func (m *MockVideo2AudioConverter) CutAudio(_ context.Context, _ temp.Data) (temp.Data, error) {
-	return temp.DataTemp(bytes.NewReader([]byte{}))
 }
 
 func (m *MockEmbeddingExtractor) GetVideoEmbedding(_ context.Context, _ temp.Data) ([]entity.EmbeddingItem, error) {
