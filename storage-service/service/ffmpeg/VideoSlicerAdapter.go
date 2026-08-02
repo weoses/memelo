@@ -59,7 +59,7 @@ func (a *videoSlicerAdapter) SliceVideoWithOverlap(
 
 	slices := make([]ocr.VideoSlice, 0, len(status.GetSlices()))
 	for i, s := range status.GetSlices() {
-		data, err := a.tmpDataService.WrapS3Path(ctx, s.GetS3Path())
+		data, err := a.tmpDataService.WrapInternalS3Path(ctx, s.GetS3Path())
 		if err != nil {
 			for _, wrapped := range slices[:i] {
 				helper.QuietClose(wrapped.Data, a.log)

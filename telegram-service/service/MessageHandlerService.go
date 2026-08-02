@@ -203,9 +203,9 @@ func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, me
 			return nil, fmt.Errorf("messageHandlerService: YouTube download failed: unexpected mime type: %s", jobStatus.MimeType)
 		}
 
-		s3Media, err := m.tmpDataService.WrapS3Path(ctx, jobStatus.S3Path)
+		s3Media, err := m.tmpDataService.WrapInternalS3Path(ctx, jobStatus.S3Path)
 		if err != nil {
-			return nil, fmt.Errorf("messageHandlerService: youtube WrapS3Path failed: %w", err)
+			return nil, fmt.Errorf("messageHandlerService: youtube WrapInternalS3Path failed: %w", err)
 		}
 
 		result, err := m.storage.CreateMeme(ctx, s3Media, "video", m.staticAccountId)

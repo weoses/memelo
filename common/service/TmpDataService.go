@@ -26,7 +26,11 @@ type TmpDataService interface {
 	ByReaderUpload(ctx context.Context, mime string, reader io.Reader) (temp.S3BackedData, error)
 
 	WrapData(context.Context, string, temp.Data) (temp.S3BackedData, error)
-	WrapS3Path(context.Context, string) (temp.S3BackedData, error)
+	WrapInternalS3Path(context.Context, string) (temp.S3BackedData, error)
+	// WrapExternalS3Path wraps an existing S3 path this service does not own:
+	// Close() releases any locally-downloaded copy but never deletes the
+	// remote object. Use for inputs whose lifecycle belongs to the caller.
+	WrapExternalS3Path(context.Context, string) (temp.S3BackedData, error)
 
 	GetUploadUrl(ctx context.Context, mime string, size int64) (UploadUrlResult, error)
 }
@@ -52,7 +56,7 @@ func (s *TmpDataServiceImpl) ByReaderUpload(ctx context.Context, mime string, re
 	if err := s.ops.Save(ctx, path, temp.DataStream(reader), storage.WithContentType(mime)); err != nil {
 		return nil, fmt.Errorf("upload failed: %w", err)
 	}
-	return s.WrapS3Path(ctx, path)
+	return s.WrapInternalS3Path(ctx, path)
 }
 
 func (s *TmpDataServiceImpl) WrapData(ctx context.Context, mime string, data temp.Data) (temp.S3BackedData, error) {
@@ -76,7 +80,7 @@ func newTmpS3Path(mime string) string {
 	return uuid.NewString() + "." + strings.Split(mime, "/")[1]
 }
 
-func (s *TmpDataServiceImpl) WrapS3Path(ctx context.Context, path string) (temp.S3BackedData, error) {
+func (s *TmpDataServiceImpl) WrapInternalS3Path(ctx context.Context, path string) (temp.S3BackedData, error) {
 	return temp.NewS3BackedDataFromPath(
 		path,
 		s.ops.IsGs(),
@@ -84,6 +88,17 @@ func (s *TmpDataServiceImpl) WrapS3Path(ctx context.Context, path string) (temp.
 		s.ops.GetUrl,
 		s.ops.GetPresignedUrl,
 		s.ops.Delete,
+	), nil
+}
+
+func (s *TmpDataServiceImpl) WrapExternalS3Path(ctx context.Context, path string) (temp.S3BackedData, error) {
+	return temp.NewS3BackedDataFromPath(
+		path,
+		s.ops.IsGs(),
+		s.ops.Read,
+		s.ops.GetUrl,
+		s.ops.GetPresignedUrl,
+		func(context.Context, string) error { return nil }, // not owned: never delete
 	), nil
 }
 

@@ -14,7 +14,6 @@ import (
 	"github.com/weoses/memelo/ffmpeg-service/conf"
 	"github.com/weoses/memelo/ffmpeg-service/entity"
 	"github.com/weoses/memelo/ffmpeg-service/ffmpeg"
-	ffmpegstorage "github.com/weoses/memelo/ffmpeg-service/storage"
 )
 
 type FfmpegJobService interface {
@@ -24,7 +23,6 @@ type FfmpegJobService interface {
 
 type ffmpegJobServiceImpl struct {
 	tmpDataService commonservice.TmpDataService
-	s3ops          ffmpegstorage.TmpDataServiceS3OperationsAdapter
 	ffmpegCfg      *conf.FfmpegConfig
 	cache          gcache.Cache
 	semaphore      chan struct{}
@@ -85,11 +83,11 @@ func (s *ffmpegJobServiceImpl) GetJob(_ context.Context, jobId string) (*entity.
 // goroutine) owns the returned JobResult's S3Data and is responsible for
 // eventually closing it.
 func (s *ffmpegJobServiceImpl) runAction(ctx context.Context, req entity.JobRequest) (*entity.JobResult, error) {
-	// Read the input via the raw S3 adapter (not tmpDataService.WrapS3Path):
-	// this job didn't create the input object, so it must not delete it on
-	// close — only download and read it. Cleanup of the input is the
-	// responsibility of whoever created it.
-	input, err := s.s3ops.Read(ctx, req.InputS3Path)
+	// Read the input via WrapExternalS3Path (not WrapInternalS3Path): this job didn't
+	// create the input object, so Close() must not delete it — only release
+	// the locally-downloaded copy. Cleanup of the input is the responsibility
+	// of whoever created it.
+	input, err := s.tmpDataService.WrapExternalS3Path(ctx, req.InputS3Path)
 	if err != nil {
 		return nil, fmt.Errorf("resolve input: %w", err)
 	}
@@ -207,12 +205,10 @@ func resolveEffectiveTTL(retentionSeconds int32, defaultTTL time.Duration) time.
 func NewFfmpegJobService(
 	cfg *conf.Config,
 	tmpDataService commonservice.TmpDataService,
-	s3ops ffmpegstorage.TmpDataServiceS3OperationsAdapter,
 ) (FfmpegJobService, error) {
 	jobTTL := time.Duration(cfg.Job.JobTtlSeconds) * time.Second
 	return &ffmpegJobServiceImpl{
 		tmpDataService: tmpDataService,
-		s3ops:          s3ops,
 		ffmpegCfg:      cfg.Ffmpeg,
 		cache:          gcache.New(256).LFU().Expiration(jobTTL).Build(),
 		semaphore:      make(chan struct{}, cfg.Job.MaxConcurrentJobs),

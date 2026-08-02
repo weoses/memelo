@@ -47,7 +47,7 @@ func (a *video2FrameExtractorAdapter) ExtractOneFrame(ctx context.Context, video
 		return nil, fmt.Errorf("Video2FrameExtractorAdapter: %w", err)
 	}
 
-	result, err := a.tmpDataService.WrapS3Path(ctx, status.GetOutputS3Path())
+	result, err := a.tmpDataService.WrapInternalS3Path(ctx, status.GetOutputS3Path())
 	if err != nil {
 		return nil, fmt.Errorf("Video2FrameExtractorAdapter: wrap result: %w", err)
 	}

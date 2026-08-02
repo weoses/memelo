@@ -40,26 +40,20 @@ func (api *SearchServiceApi) UpdateMeme(ctx context.Context, req *v1.UpdateMemeR
 
 	var originalData temp.S3BackedData
 	if req.Original != nil {
-		var closeable bool
-		originalData, closeable, err = api.toData(ctx, req.Original)
+		originalData, err = api.toData(ctx, req.Original)
 		if err != nil {
 			return nil, fmt.Errorf("error reading original media: %w", err)
 		}
-		if closeable {
-			defer helper.QuietClose(originalData, api.slogger)
-		}
+		defer helper.QuietClose(originalData, api.slogger)
 	}
 
 	var thumbnailData temp.S3BackedData
 	if req.Thumbnail != nil {
-		var closeable bool
-		thumbnailData, closeable, err = api.toData(ctx, req.Thumbnail)
+		thumbnailData, err = api.toData(ctx, req.Thumbnail)
 		if err != nil {
 			return nil, fmt.Errorf("error reading thumbnail: %w", err)
 		}
-		if closeable {
-			defer helper.QuietClose(thumbnailData, api.slogger)
-		}
+		defer helper.QuietClose(thumbnailData, api.slogger)
 	}
 
 	result, err := api.crud.UpdateMeme(ctx, service.UpdateMemeInput{
@@ -229,25 +223,21 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 
 	var meme *service.CreateResult
 	var data temp.S3BackedData
-	var closeable bool
 	var metadataType entity.MetadataType
 	if req.GetImage() != nil {
 		metadataType = entity.ImageMetadataType
-		data, closeable, err = api.toData(ctx, req.GetImage())
+		data, err = api.toData(ctx, req.GetImage())
 		if err != nil {
 			return nil, fmt.Errorf("error reading image: %w", err)
 		}
 	} else if req.GetVideo() != nil {
 		metadataType = entity.VideoMetadataType
-		data, closeable, err = api.toData(ctx, req.GetVideo())
+		data, err = api.toData(ctx, req.GetVideo())
 		if err != nil {
 			return nil, fmt.Errorf("error reading video: %w", err)
 		}
 	}
-
-	if closeable {
-		defer helper.QuietClose(data, api.slogger)
-	}
+	defer helper.QuietClose(data, api.slogger)
 
 	meme, err = api.crud.CreateMeme(ctx, accountIdUuid, metadataType, data)
 
@@ -316,24 +306,24 @@ func (api *SearchServiceApi) GetRandomMeme(ctx context.Context, req *v1.GetRando
 	return &v1.GetRandomMemeResponse{Result: api.metadataToMemeDto(result)}, nil
 }
 
-func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto) (temp.S3BackedData, bool, error) {
+func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto) (temp.S3BackedData, error) {
 	if media.GetS3Path() != "" {
-		result, err := api.dataService.WrapS3Path(ctx, media.GetS3Path())
+		result, err := api.dataService.WrapInternalS3Path(ctx, media.GetS3Path())
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to create backed temp by s3 path: %w", err)
+			return nil, fmt.Errorf("failed to create backed temp by s3 path: %w", err)
 		}
-		return result, false, nil
+		return result, nil
 	}
 
 	if media.GetData() != nil {
 		data, err := api.dataService.ByBytes(ctx, "application/octet-stream", media.GetData())
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to get data from bytes: %w", err)
+			return nil, fmt.Errorf("failed to get data from bytes: %w", err)
 		}
-		return data, true, nil
+		return data, nil
 	}
 
-	return nil, false, errors.New("media temp is empty")
+	return nil, errors.New("media temp is empty")
 }
 
 func NewSearchServiceApi(crud service.MemeCrudService, dataService commonservice.TmpDataService) v1connect.SearchServiceHandler {

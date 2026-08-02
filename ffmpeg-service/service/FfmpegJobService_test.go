@@ -64,7 +64,7 @@ func newTestJobService(t *testing.T, maxConcurrent int) service.FfmpegJobService
 		Ffmpeg: &conf.FfmpegConfig{FfmpegBinary: "ffmpeg", FfprobeBinary: "ffprobe"},
 		Job:    &conf.JobConfig{MaxConcurrentJobs: maxConcurrent, JobTtlSeconds: 3600},
 	}
-	svc, err := service.NewFfmpegJobService(cfg, testTmpDataService, testS3Ops)
+	svc, err := service.NewFfmpegJobService(cfg, testTmpDataService)
 	if err != nil {
 		t.Fatalf("NewFfmpegJobService: %v", err)
 	}
@@ -278,7 +278,7 @@ func TestCreateJob_ConcurrencyLimit(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		// each job consumes its own input object: temp-storage objects are
 		// single-use and get deleted after a job reads them (matching
-		// storage-service's WrapS3Path+Close convention), so reusing one
+		// storage-service's WrapInternalS3Path+Close convention), so reusing one
 		// path across concurrent jobs would race the delete.
 		jobId, err := svc.CreateJob(context.Background(), entity.JobRequest{
 			InputS3Path: minimalVideoS3Path(t),

@@ -47,7 +47,7 @@ func (a *video2Mp4ConverterAdapter) ConvertToMp4(ctx context.Context, video temp
 		return nil, fmt.Errorf("Video2Mp4ConverterAdapter: %w", err)
 	}
 
-	result, err := a.tmpDataService.WrapS3Path(ctx, status.GetOutputS3Path())
+	result, err := a.tmpDataService.WrapInternalS3Path(ctx, status.GetOutputS3Path())
 	if err != nil {
 		return nil, fmt.Errorf("Video2Mp4ConverterAdapter: wrap result: %w", err)
 	}
