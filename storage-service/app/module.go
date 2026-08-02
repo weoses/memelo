@@ -14,10 +14,10 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/middleware"
 	"github.com/weoses/memelo/storage-service/ocr"
-	"github.com/weoses/memelo/storage-service/ocr/ffmpeg"
 	"github.com/weoses/memelo/storage-service/ocr/gapi"
 	openrouterpkg "github.com/weoses/memelo/storage-service/ocr/openrouter"
 	"github.com/weoses/memelo/storage-service/service"
+	ffmpegclient "github.com/weoses/memelo/storage-service/service/ffmpeg"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 	"go.uber.org/fx"
 	"golang.org/x/net/http2"
@@ -34,7 +34,7 @@ import (
 func Module() fx.Option {
 	return fx.Options(
 		fx.Provide(func() *validator.Validate { return validator.New(validator.WithRequiredStructEnabled()) }),
-		fx.Provide(func(c *conf.Config) *conf.FfmpegConfig { return c.Ffmpeg }),
+		fx.Provide(func(c *conf.Config) *conf.FfmpegServiceConfig { return c.FfmpegService }),
 		fx.Provide(func(c *conf.Config) *conf.CommonExtractingConfig { return c.Extracting }),
 
 		fx.Provide(ocr.NewImageConverter),
@@ -63,9 +63,9 @@ func Module() fx.Option {
 				fx.ParamTags(`name:"raw_embedder"`),
 			),
 		),
-		fx.Provide(ffmpeg.NewVideo2Mp4Converter),
-		fx.Provide(ffmpeg.NewVideo2FrameExtractor),
-		fx.Provide(ffmpeg.NewVideoSlicer),
+		fx.Provide(ffmpegclient.NewVideo2Mp4ConverterAdapter),
+		fx.Provide(ffmpegclient.NewVideo2FrameExtractorAdapter),
+		fx.Provide(ffmpegclient.NewVideoSlicerAdapter),
 
 		fx.Provide(storage2.NewElasticTagStorage),
 		fx.Provide(

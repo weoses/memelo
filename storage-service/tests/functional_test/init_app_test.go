@@ -31,6 +31,11 @@ func startTestServer(cfg *conf.Config, extractor ocr.LlmMediaExtractor, embedder
 				fx.ResultTags(`name:"raw_embedder"`),
 			),
 		),
+		// ffmpeg-service is a separate Go module and can't be reached from these
+		// in-process tests, so swap the RPC-backed adapters for local-exec doubles.
+		fx.Decorate(func() ocr.Video2Mp4Converter { return localFfmpegVideo2Mp4{} }),
+		fx.Decorate(func() ocr.Video2FrameExtractor { return localFfmpegFrameExtractor{} }),
+		fx.Decorate(func() ocr.VideoSlicer { return localFfmpegVideoSlicer{} }),
 	)
 
 	if err := fxapp.Start(context.Background()); err != nil {

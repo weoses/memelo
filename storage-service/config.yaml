@@ -51,11 +51,10 @@ tag-db:
 image-converter:
   ThumbSize: 360
 
-ffmpeg:
-  FfmpegBinary: ffmpeg
-  FfprobeBinary: ffprobe
-  CpuLimit: 0
-  ThreadsLimit: 0
+ffmpeg-service:
+  Uri: "http://localhost:7005"
+  PollIntervalMs: 500
+  PollMaxWaitSec: 300
 
 gemini-extractor:
   apikey:

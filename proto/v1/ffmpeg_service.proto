@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+service FfmpegService {
+  rpc SubmitJob(SubmitFfmpegJobRequest) returns (SubmitFfmpegJobResponse);
+  rpc GetJobStatus(GetFfmpegJobStatusRequest) returns (GetFfmpegJobStatusResponse);
+}
+
+message SubmitFfmpegJobRequest {
+  string input_s3_path = 1;
+  // retention_seconds controls how long the job and its output S3 objects are kept.
+  // < 0: never expire; > 0: expire after N seconds; = 0: use service default.
+  int32 retention_seconds = 2;
+
+  oneof action {
+    ExtractThumbnailAction extract_thumbnail = 3;
+    ConvertToMp4Action convert_to_mp4 = 4;
+    SliceVideoAction slice_video = 5;
+  }
+}
+
+message ExtractThumbnailAction {}
+
+message ConvertToMp4Action {}
+
+message SliceVideoAction {
+  int32 interval_seconds = 1;
+  int32 overlap_seconds = 2;
+}
+
+message SubmitFfmpegJobResponse {
+  string job_id = 1;
+}
+
+enum FfmpegJobState {
+  FFMPEG_JOB_STATE_UNSPECIFIED = 0;
+  FFMPEG_JOB_STATE_PENDING = 1;
+  FFMPEG_JOB_STATE_RUNNING = 2;
+  FFMPEG_JOB_STATE_DONE = 3;
+  FFMPEG_JOB_STATE_FAILED = 4;
+}
+
+message GetFfmpegJobStatusRequest {
+  string job_id = 1;
+}
+
+message VideoSliceResult {
+  string s3_path = 1;
+  int32 start_time_seconds = 2;
+  int32 end_time_seconds = 3;
+}
+
+message GetFfmpegJobStatusResponse {
+  string job_id = 1;
+  FfmpegJobState state = 2;
+
+  // populated only for extract_thumbnail / convert_to_mp4 once DONE
+  optional string output_s3_path = 3;
+  // populated only for slice_video once DONE
+  repeated VideoSliceResult slices = 4;
+
+  optional string error = 5;
+}

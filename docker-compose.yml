@@ -38,9 +38,7 @@ services:
 
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
 
-      FFMPEG_BINARY: ${FFMPEG_BINARY}
-      FFMPEG_CPULIMIT: ${FFMPEG_CPULIMIT}
-      FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT}
+      FFMPEG_SERVICE_URI: http://ffmpeg-service:7005
 
     restart: unless-stopped
     ports:
@@ -56,6 +54,9 @@ services:
       timeout: 10s
       retries: 6
       start_period: 20s
+    depends_on:
+      ffmpeg-service:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -128,6 +129,33 @@ services:
     depends_on:
       storage-service:
         condition: service_healthy
+
+  ffmpeg-service:
+    build:
+      dockerfile: Dockerfile-ffmpeg-service
+    image: ghcr.io/weoses/ffmpeg-service:${RELEASE_VERSION:-latest}
+    environment:
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
+      TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
+      TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
+      TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
+      FFMPEG_BINARY: ${FFMPEG_BINARY}
+      FFMPEG_CPULIMIT: ${FFMPEG_CPULIMIT}
+      FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7005:7005"
+    volumes:
+      - "./ffmpeg-service/config.yaml:/app/config/config.yaml"
+    networks:
+      - env
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7005/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
 
 networks:
   env:

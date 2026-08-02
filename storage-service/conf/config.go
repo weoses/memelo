@@ -56,11 +56,10 @@ type AudioSttConfig struct {
 	LanguageCodes []string
 }
 
-type FfmpegConfig struct {
-	FfmpegBinary  string
-	FfprobeBinary string
-	CpuLimit      int
-	ThreadsLimit  int
+type FfmpegServiceConfig struct {
+	Uri            string
+	PollIntervalMs int
+	PollMaxWaitSec int
 }
 
 type GeminiExtractorConfig struct {
@@ -119,7 +118,7 @@ type Config struct {
 	MetadataDb          *MetadataDbConfig                `mapstructure:"metadata-db"`
 	TagDb               *TagDbConfig                     `mapstructure:"tag-db"`
 	ImageConverter      *ImageConverterConfig            `mapstructure:"image-converter"`
-	Ffmpeg              *FfmpegConfig                    `mapstructure:"ffmpeg"`
+	FfmpegService       *FfmpegServiceConfig             `mapstructure:"ffmpeg-service"`
 	GeminiExtractor     *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`
 	GeminiEmbedding     *GeminiEmbeddingConfig           `mapstructure:"gemini-embedding"`
 	ExtractorProvider   string                           `mapstructure:"extractor-provider"`

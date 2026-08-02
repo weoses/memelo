@@ -124,15 +124,9 @@ func buildTestConfig(esAddr, minioEndpoint, minioUser, minioPass string) *conf.C
 			Elastic: &elasticsearch8.Config{Addresses: []string{esAddr}},
 			Index:   testEsTagIndex,
 		},
-		MediaStorage:   storageConfig(testMediaBucket),
-		TempStorage:    storageConfig(testTempBucket),
-		ImageConverter: &conf.ImageConverterConfig{ThumbSize: 360, OriginalMaxSize: 4096},
-		Ffmpeg: &conf.FfmpegConfig{
-			FfmpegBinary:  "ffmpeg",
-			FfprobeBinary: "ffprobe",
-			CpuLimit:      2,
-			ThreadsLimit:  2,
-		},
+		MediaStorage:    storageConfig(testMediaBucket),
+		TempStorage:     storageConfig(testTempBucket),
+		ImageConverter:  &conf.ImageConverterConfig{ThumbSize: 360, OriginalMaxSize: 4096},
 		GeminiExtractor: &conf.GeminiExtractorConfig{},
 		GeminiEmbedding: &conf.GeminiEmbeddingConfig{},
 	}

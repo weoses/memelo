@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module: [common, storage-service, telegram-service]
+        module: [common, storage-service, telegram-service, ffmpeg-service]
     steps:
       - uses: actions/checkout@v5
 

@@ -15,7 +15,7 @@ RUN go build -a -installsuffix cgo -o output.bin
 FROM alpine:latest 
 
 WORKDIR /app
-RUN apk add curl vips vips-poppler ffmpeg cpulimit
+RUN apk add curl vips vips-poppler
 COPY --from=builder /app/storage-service/output.bin storage-service
 
 WORKDIR /app/config

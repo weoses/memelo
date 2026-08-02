@@ -1,0 +1,22 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: localhost:7005
+
+temp-storage:
+  Endpoint:
+  AccessKey:
+  SecretKey:
+  Bucket: melo-temp
+  Secure: false
+
+ffmpeg:
+  FfmpegBinary: ffmpeg
+  FfprobeBinary: ffprobe
+  CpuLimit: 0
+  ThreadsLimit: 0
+
+job:
+  MaxConcurrentJobs: 4
+  JobTtlSeconds: 3600

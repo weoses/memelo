@@ -14,24 +14,25 @@ import (
 
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
-	"github.com/weoses/memelo/storage-service/conf"
-	"github.com/weoses/memelo/storage-service/ocr"
+	"github.com/weoses/memelo/ffmpeg-service/conf"
 )
 
-type VideoSlicerImpl struct {
-	slogger *slog.Logger
-	cfg     *conf.FfmpegConfig
+type VideoSlice struct {
+	Data      temp.Data
+	StartTime int // seconds
+	EndTime   int // seconds
 }
 
-var _ ocr.VideoSlicer = (*VideoSlicerImpl)(nil)
-
-func (f *VideoSlicerImpl) SliceVideoWithOverlap(
+func SliceVideoWithOverlap(
 	ctx context.Context,
+	cfg *conf.FfmpegConfig,
 	video temp.Data,
 	interval time.Duration,
-	overlap time.Duration) ([]ocr.VideoSlice, error) {
+	overlap time.Duration,
+	slogger *slog.Logger,
+) ([]VideoSlice, error) {
 
-	f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: start", "interval", interval, "overlap", overlap)
+	slogger.InfoContext(ctx, "SliceVideoWithOverlap: start", "interval", interval, "overlap", overlap)
 
 	if interval <= overlap {
 		return nil, fmt.Errorf("SliceVideoWithOverlap: interval (%s) must be greater than overlap (%s)", interval, overlap)
@@ -43,7 +44,7 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 	}
 	defer func() {
 		if errRemoveAll := os.RemoveAll(dir); errRemoveAll != nil {
-			f.slogger.WarnContext(ctx, "SliceVideoWithOverlap: remove temp dir failed", "error", errRemoveAll)
+			slogger.WarnContext(ctx, "SliceVideoWithOverlap: remove temp dir failed", "error", errRemoveAll)
 		}
 	}()
 
@@ -55,25 +56,25 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 
 	videoReader, err := video.Reader()
 	if err != nil {
-		helper.QuietClose(inputFile, f.slogger)
+		helper.QuietClose(inputFile, slogger)
 		return nil, fmt.Errorf("SliceVideoWithOverlap: get reader: %w", err)
 	}
 
 	_, err = io.Copy(inputFile, videoReader)
-	helper.QuietClose(inputFile, f.slogger)
-	helper.QuietClose(videoReader, f.slogger)
+	helper.QuietClose(inputFile, slogger)
+	helper.QuietClose(videoReader, slogger)
 	if err != nil {
 		return nil, fmt.Errorf("SliceVideoWithOverlap: write input: %w", err)
 	}
 
-	totalDuration, err := f.getVideoDuration(ctx, inputPath)
+	totalDuration, err := getVideoDuration(ctx, cfg, inputPath)
 	if err != nil {
 		return nil, fmt.Errorf("SliceVideoWithOverlap: get duration: %w", err)
 	}
-	f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: video duration", "duration", totalDuration)
+	slogger.InfoContext(ctx, "SliceVideoWithOverlap: video duration", "duration", totalDuration)
 
 	step := interval - overlap
-	slices := make([]ocr.VideoSlice, 0)
+	slices := make([]VideoSlice, 0)
 	for start := time.Duration(0); start < totalDuration; start += step {
 		end := start + interval
 		if end > totalDuration {
@@ -88,16 +89,16 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 		startSec := strconv.FormatFloat(start.Seconds(), 'f', -1, 64)
 		durationSec := strconv.FormatFloat(interval.Seconds(), 'f', -1, 64)
 
-		cmd := buildCmd(ctx, f.cfg,
+		cmd := buildCmd(ctx, cfg,
 			"-ss", startSec,
 			"-i", inputPath,
 			"-t", durationSec,
 			"-c", "copy",
 			segmentPath,
 		)
-		f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: running ffmpeg", "cmd", cmd.String(), "start", startSec, "sliceStart", start, "duration", durationSec)
+		slogger.InfoContext(ctx, "SliceVideoWithOverlap: running ffmpeg", "cmd", cmd.String(), "start", startSec, "sliceStart", start, "duration", durationSec)
 		out, errCmd := cmd.CombinedOutput()
-		f.slogger.DebugContext(ctx, "SliceVideoWithOverlap: ffmpeg output", "output", string(out))
+		slogger.DebugContext(ctx, "SliceVideoWithOverlap: ffmpeg output", "output", string(out))
 		if errCmd != nil {
 			closeAll(slices)
 			return nil, fmt.Errorf("SliceVideoWithOverlap: ffmpeg failed: %w\n%s", errCmd, out)
@@ -109,24 +110,24 @@ func (f *VideoSlicerImpl) SliceVideoWithOverlap(
 			return nil, fmt.Errorf("SliceVideoWithOverlap: open segment: %w", errOpen)
 		}
 		data, errData := temp.DataTemp(segFile)
-		helper.QuietClose(segFile, f.slogger)
+		helper.QuietClose(segFile, slogger)
 		if errData != nil {
 			closeAll(slices)
 			return nil, fmt.Errorf("SliceVideoWithOverlap: read segment: %w", errData)
 		}
-		slices = append(slices, ocr.VideoSlice{
+		slices = append(slices, VideoSlice{
 			Data:      data,
 			StartTime: int(start.Seconds()),
 			EndTime:   int(end.Seconds()),
 		})
 	}
 
-	f.slogger.InfoContext(ctx, "SliceVideoWithOverlap: done", "segments", len(slices))
+	slogger.InfoContext(ctx, "SliceVideoWithOverlap: done", "segments", len(slices))
 	return slices, nil
 }
 
-func (f *VideoSlicerImpl) getVideoDuration(ctx context.Context, inputPath string) (time.Duration, error) {
-	cmd := exec.CommandContext(ctx, f.cfg.FfprobeBinary,
+func getVideoDuration(ctx context.Context, cfg *conf.FfmpegConfig, inputPath string) (time.Duration, error) {
+	cmd := exec.CommandContext(ctx, cfg.FfprobeBinary,
 		"-v", "error",
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
@@ -145,15 +146,8 @@ func (f *VideoSlicerImpl) getVideoDuration(ctx context.Context, inputPath string
 	return time.Duration(durSec * float64(time.Second)), nil
 }
 
-func closeAll(items []ocr.VideoSlice) {
+func closeAll(items []VideoSlice) {
 	for _, d := range items {
 		_ = d.Data.Close()
-	}
-}
-
-func NewVideoSlicer(cfg *conf.FfmpegConfig) ocr.VideoSlicer {
-	return &VideoSlicerImpl{
-		slogger: slog.With("service", "VideoSlicer"),
-		cfg:     cfg,
 	}
 }
