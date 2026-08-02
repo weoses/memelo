@@ -3,14 +3,15 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
 	commonservice "github.com/weoses/memelo/common/service"
+	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/youtube-service/conf"
 	"github.com/weoses/memelo/youtube-service/entity"
 )
@@ -22,7 +23,7 @@ type VideoJobService interface {
 }
 
 type videoJobServiceImpl struct {
-	downloader     YouTubeDownloader
+	downloader     YouTubeDownloader[temp.S3BackedData]
 	tmpDataService commonservice.TmpDataService
 	semaphore      chan struct{}
 	jobs           sync.Map
@@ -96,25 +97,16 @@ func (s *videoJobServiceImpl) GetJob(_ context.Context, jobId string) (*entity.D
 // downloadAndStore downloads the video, uploads to temp S3, and returns the result.
 // The caller owns the S3Data in the result and is responsible for closing it.
 func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.DownloadRequest) (*entity.VideoDownloadResult, error) {
-	filePath, mimeType, err := s.downloader.Download(ctx, req.YoutubeURL)
+	var mimeType string
+	s3data, err := s.downloader.Download(
+		ctx,
+		req.YoutubeURL,
+		func(ctx context.Context, reader io.Reader, mt string) (temp.S3BackedData, error) {
+			mimeType = mt
+			return s.tmpDataService.ByReader(ctx, mt, reader)
+		})
 	if err != nil {
 		return nil, fmt.Errorf("download failed: %w", err)
-	}
-	defer func() {
-		if removeErr := os.Remove(filePath); removeErr != nil {
-			s.log.Warn("failed to remove temp file", "path", filePath, "error", removeErr)
-		}
-	}()
-
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open temp file: %w", err)
-	}
-	defer helper.QuietClose(f, s.log)
-
-	s3data, err := s.tmpDataService.ByReader(ctx, mimeType, f)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload to temp storage: %w", err)
 	}
 
 	s3path, err := s3data.GetS3Path(ctx)
@@ -178,7 +170,7 @@ func resolveEffectiveTTL(retentionSeconds int32, defaultTTL time.Duration) time.
 
 func NewVideoJobService(
 	cfg *conf.Config,
-	downloader YouTubeDownloader,
+	downloader YouTubeDownloader[temp.S3BackedData],
 	tmpDataService commonservice.TmpDataService,
 ) (VideoJobService, error) {
 	svc := &videoJobServiceImpl{

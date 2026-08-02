@@ -8,40 +8,46 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"time"
 
+	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/youtube-service/conf"
 )
 
-type YouTubeDownloader interface {
-	// Download fetches the video via the external download API to a temp file.
-	// The caller is responsible for removing the returned file after use.
-	Download(ctx context.Context, url string) (filePath string, mimeType string, err error)
+// DownloadCallback receives the raw video stream and its mime type and must
+// fully consume reader before returning. It returns whatever object the
+// caller built from the stream (e.g. an uploaded S3BackedData handle).
+type DownloadCallback[T any] func(ctx context.Context, reader io.Reader, mimeType string) (T, error)
+
+type YouTubeDownloader[T any] interface {
+	// Download fetches the video via the external download API and streams
+	// the response body into callback. No temp file is created on disk.
+	Download(ctx context.Context, url string, callback DownloadCallback[T]) (T, error)
 }
 
-type youTubeDownloaderImpl struct {
+type youTubeDownloaderImpl[T any] struct {
 	cfg    *conf.YouTubeConfig
 	client *http.Client
 	log    *slog.Logger
 }
 
-func (d *youTubeDownloaderImpl) Download(ctx context.Context, videoURL string) (string, string, error) {
+func (d *youTubeDownloaderImpl[T]) Download(ctx context.Context, videoURL string, callback DownloadCallback[T]) (T, error) {
+	var zero T
 	jobID, err := d.createJob(ctx, videoURL)
 	if err != nil {
-		return "", "", err
+		return zero, err
 	}
 
 	downloadURL, err := d.pollProgress(ctx, jobID)
 	if err != nil {
-		return "", "", err
+		return zero, err
 	}
 
-	return d.downloadFile(ctx, downloadURL)
+	return d.downloadFile(ctx, downloadURL, callback)
 }
 
-func (d *youTubeDownloaderImpl) createJob(ctx context.Context, videoURL string) (string, error) {
+func (d *youTubeDownloaderImpl[T]) createJob(ctx context.Context, videoURL string) (string, error) {
 	params := url.Values{}
 	params.Set("format", d.cfg.VideoFormat)
 	params.Set("url", videoURL)
@@ -77,7 +83,7 @@ func (d *youTubeDownloaderImpl) createJob(ctx context.Context, videoURL string) 
 	return result.ID, nil
 }
 
-func (d *youTubeDownloaderImpl) pollProgress(ctx context.Context, jobID string) (string, error) {
+func (d *youTubeDownloaderImpl[T]) pollProgress(ctx context.Context, jobID string) (string, error) {
 	params := url.Values{}
 	params.Set("id", jobID)
 	pollURL := "https://" + d.cfg.ApiHost + "/ajax/progress?" + params.Encode()
@@ -129,15 +135,16 @@ func (d *youTubeDownloaderImpl) pollProgress(ctx context.Context, jobID string) 
 	}
 }
 
-func (d *youTubeDownloaderImpl) downloadFile(ctx context.Context, downloadURL string) (string, string, error) {
+func (d *youTubeDownloaderImpl[T]) downloadFile(ctx context.Context, downloadURL string, callback DownloadCallback[T]) (T, error) {
+	var zero T
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to build file request: %w", err)
+		return zero, fmt.Errorf("YouTubeDownloader: failed to build file request: %w", err)
 	}
 
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("YouTubeDownloader: file download failed: %w", err)
+		return zero, fmt.Errorf("YouTubeDownloader: file download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -146,29 +153,17 @@ func (d *youTubeDownloaderImpl) downloadFile(ctx context.Context, downloadURL st
 		mimeType = "video/mp4"
 	}
 
-	tmpFile, err := os.CreateTemp(d.cfg.TempDir, "memelo-yt-*")
+	result, err := callback(ctx, resp.Body, mimeType)
 	if err != nil {
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to create temp file: %w", err)
-	}
-	filePath := tmpFile.Name()
-
-	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(filePath)
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to write video to temp file: %w", err)
+		return zero, fmt.Errorf("YouTubeDownloader: callback failed: %w", err)
 	}
 
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(filePath)
-		return "", "", fmt.Errorf("YouTubeDownloader: failed to close temp file: %w", err)
-	}
-
-	d.log.InfoContext(ctx, "video downloaded", "path", filePath, "mime_type", mimeType)
-	return filePath, mimeType, nil
+	d.log.InfoContext(ctx, "video downloaded", "mime_type", mimeType)
+	return result, nil
 }
 
-func NewYouTubeDownloader(cfg *conf.Config) (YouTubeDownloader, error) {
-	return &youTubeDownloaderImpl{
+func NewYouTubeDownloader(cfg *conf.Config) (YouTubeDownloader[temp.S3BackedData], error) {
+	return &youTubeDownloaderImpl[temp.S3BackedData]{
 		cfg:    cfg.YouTube,
 		client: &http.Client{},
 		log:    slog.With("service", "YouTubeDownloader"),
