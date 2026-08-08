@@ -1,0 +1,28 @@
+# Copy to terraform.tfvars and fill in real values.
+# terraform.tfvars is gitignored — never commit real secrets.
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+image = "ghcr.io/weoses/ffmpeg-service:latest"
+
+temp_storage_endpoint = "s3.example.com"
+temp_storage_bucket   = "melo-temp"
+temp_storage_secure   = true
+
+# These secrets must already exist in Secret Manager (created outside
+# Terraform, e.g. `gcloud secrets create temp-storage-secrets --data-file=-`
+# with KEY=VALUE lines piped in). Terraform only grants access and mounts them
+# — it never creates or reads their content. Apply fails if a name here
+# doesn't already exist as a secret.
+secret_names = ["temp-storage-secrets"]
+
+# Grant invoke access once storage-service's runtime identity is known, e.g.:
+# invoker_members = ["serviceAccount:storage-service@your-gcp-project-id.iam.gserviceaccount.com"]
+invoker_members = []
+
+# log_level = "info"
+
+# Optional: run the service as a dedicated service account instead of the
+# project's default compute service account.
+# service_account_email = "ffmpeg-service-run@your-gcp-project-id.iam.gserviceaccount.com"

@@ -15,9 +15,11 @@ FROM alpine:latest
 WORKDIR /app
 RUN apk add --update --no-cache curl ffmpeg cpulimit
 COPY --from=builder /app/ffmpeg-service/output.bin ffmpeg-service
+COPY ./ffmpeg-service/entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 WORKDIR /app/config
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
-ENTRYPOINT ["/app/ffmpeg-service"]
+ENTRYPOINT ["/app/entrypoint.sh"]
