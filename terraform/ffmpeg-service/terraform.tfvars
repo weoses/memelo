@@ -1,7 +1,7 @@
 # Copy to terraform.tfvars and fill in real values.
 # terraform.tfvars is gitignored — never commit real secrets.
 
-project_id = "your-gcp-project-id"
+project_id = "positive-shell-448806-f7"
 region     = "us-central1"
-image_tag = "v"
+image_tag = "v00.000.00-20-dev"
 environment = "test"

@@ -34,7 +34,7 @@ resource "google_storage_bucket" "media_bucket" {
   name                        = "melo-${var.environment}-media"
   location                    = var.region
   storage_class               = "STANDARD"
-  uniform_bucket_level_access = false
+  uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
 
   cors {

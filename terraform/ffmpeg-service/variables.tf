@@ -70,8 +70,3 @@ variable "invoker_members" {
   default     = []
 }
 
-variable "service_account_email" {
-  description = "Runtime service account email for the Cloud Run service. If null, Cloud Run uses the project's default compute service account, which is also what gets granted access to the mounted secrets and data buckets."
-  type        = string
-  default     = null
-}

@@ -8,6 +8,11 @@ locals {
     TEMP_STORAGE_BUCKET   = google_storage_bucket.temp_bucket.name
     TEMP_STORAGE_SECURE   = "true"
   }
+
+  container_secret_env = {
+    TEMP_STORAGE_ACCESSKEY = google_secret_manager_secret.service_account_hmac_akey.id
+    TEMP_STORAGE_SECRETKEY = google_secret_manager_secret.service_account_hmac_skey.id
+  }
 }
 
 resource "google_cloud_run_v2_service" "ffmpeg_service" {
@@ -25,7 +30,7 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
   ]
 
   template {
-    service_account = var.service_account_email
+    service_account = google_service_account.service_account.email
 
     scaling {
       min_instance_count = var.min_instances
@@ -61,6 +66,18 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
         }
       }
 
+      dynamic "env" {
+        for_each = local.container_secret_env
+        content {
+          name  = env.key
+          value_source {
+            secret_key_ref {
+              secret = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
       # entrypoint.sh sources every file matching /etc/secrets/*/*, so this
       # must land the secret at least two path segments below /etc/secrets.
       volume_mounts {
