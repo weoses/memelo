@@ -1,7 +1,9 @@
 #!/bin/sh
 set -e
 
-for f in /etc/secrets/*/*; do
+for f in /etc/secrets/*; do
+  echo "Found secret file: $f"
+
   [ -f "$f" ] && . "$f"
 done
 

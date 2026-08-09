@@ -3,5 +3,5 @@
 
 project_id  = "positive-shell-448806-f7"
 region      = "us-central1"
-image_tag   = "v00.000.00-22-dev"
+image_tag   = "v00.000.00-23-dev"
 environment = "test"
