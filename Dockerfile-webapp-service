@@ -27,9 +27,12 @@ FROM alpine:latest
 WORKDIR /app
 RUN apk add curl
 COPY --from=builder /app/webapp/output.bin webapp
+COPY ./scripts/entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 WORKDIR /app/config
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
-ENTRYPOINT [ "/app/webapp" ]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/webapp"]

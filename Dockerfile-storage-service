@@ -17,9 +17,12 @@ FROM alpine:latest
 WORKDIR /app
 RUN apk add curl vips vips-poppler
 COPY --from=builder /app/storage-service/output.bin storage-service
+COPY ./scripts/entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 COPY ./storage-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
-ENTRYPOINT [ "/app/storage-service" ]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/storage-service"]

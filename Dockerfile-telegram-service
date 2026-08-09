@@ -18,9 +18,12 @@ FROM alpine:latest
 WORKDIR /app
 RUN apk add curl
 COPY --from=builder /app/telegram-service/output.bin telegram-service
+COPY ./scripts/entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 WORKDIR /app/config
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
-ENTRYPOINT [ "/app/telegram-service" ]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/telegram-service"]

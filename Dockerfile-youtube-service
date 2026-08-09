@@ -15,9 +15,12 @@ FROM alpine:latest
 WORKDIR /app
 RUN apk add curl
 COPY --from=builder /app/youtube-service/output.bin youtube-service
+COPY ./scripts/entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 COPY ./youtube-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
-ENTRYPOINT ["/app/youtube-service"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/youtube-service"]

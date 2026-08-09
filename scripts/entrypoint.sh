@@ -5,4 +5,4 @@ for f in /etc/secrets/*/*; do
   [ -f "$f" ] && . "$f"
 done
 
-exec /app/ffmpeg-service
+exec "$@"
