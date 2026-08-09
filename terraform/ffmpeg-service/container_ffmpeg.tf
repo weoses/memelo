@@ -58,6 +58,25 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
         }
       }
 
+      startup_probe {
+        http_get {
+          path = "/health"
+        }
+        initial_delay_seconds = 0
+        period_seconds        = 5
+        timeout_seconds       = 3
+        failure_threshold     = 6
+      }
+
+      liveness_probe {
+        http_get {
+          path = "/health"
+        }
+        period_seconds    = 30
+        timeout_seconds   = 5
+        failure_threshold = 3
+      }
+
       dynamic "env" {
         for_each = local.container_env
         content {
@@ -69,10 +88,10 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
       dynamic "env" {
         for_each = local.container_secret_env
         content {
-          name  = env.key
+          name = env.key
           value_source {
             secret_key_ref {
-              secret = env.value
+              secret  = env.value
               version = "latest"
             }
           }
