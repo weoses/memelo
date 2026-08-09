@@ -6,9 +6,7 @@ region     = "us-central1"
 
 image = "ghcr.io/weoses/ffmpeg-service:latest"
 
-temp_storage_endpoint = "s3.example.com"
-temp_storage_bucket   = "melo-temp"
-temp_storage_secure   = true
+# google_storage_host = "storage.googleapis.com"
 
 # These secrets must already exist in Secret Manager (created outside
 # Terraform, e.g. `gcloud secrets create temp-storage-secrets --data-file=-`
@@ -26,3 +24,4 @@ invoker_members = []
 # Optional: run the service as a dedicated service account instead of the
 # project's default compute service account.
 # service_account_email = "ffmpeg-service-run@your-gcp-project-id.iam.gserviceaccount.com"
+# environment = test

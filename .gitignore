@@ -9,3 +9,7 @@ frontend/dist/
 
 /webapp-service/frontend/dist
 /webapp-service/frontend/.vite
+
+.terraform
+
+terraform.tfvars

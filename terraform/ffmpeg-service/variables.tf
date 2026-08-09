@@ -3,27 +3,28 @@ variable "project_id" {
   type        = string
 }
 
+variable "environment" {
+  description = "environment (test/prod/etc)"
+  type        = string
+}
+
+
+variable "google_storage_host" {
+  description = "host of google s3 storage"
+  type        = string
+  default     = "storage.googleapis.com"
+}
+
 variable "region" {
   description = "GCP region for the Cloud Run service"
   type        = string
   default     = "us-central1"
 }
 
-variable "service_name" {
-  description = "Cloud Run service name"
+variable "image_tag" {
+  description = "image tag to deploy"
   type        = string
-  default     = "ffmpeg-service"
-}
-
-variable "image" {
-  description = "Container image to deploy, e.g. ghcr.io/weoses/ffmpeg-service:latest"
-  type        = string
-}
-
-variable "container_port" {
-  description = "Port the container listens on (also used to set SERVER_LISTENADDRESS)"
-  type        = number
-  default     = 8080
+  default     = "latest"
 }
 
 variable "cpu" {
@@ -50,23 +51,6 @@ variable "max_instances" {
   default     = 2
 }
 
-variable "temp_storage_endpoint" {
-  description = "S3/MinIO-compatible endpoint used for temp media storage"
-  type        = string
-}
-
-variable "temp_storage_bucket" {
-  description = "Bucket name used for temp media storage"
-  type        = string
-  default     = "melo-temp"
-}
-
-variable "temp_storage_secure" {
-  description = "Whether the temp storage endpoint uses TLS"
-  type        = bool
-  default     = false
-}
-
 variable "secret_names" {
   description = <<-EOT
     Names (Secret Manager secret IDs) of secrets to mount into the container,
@@ -86,14 +70,8 @@ variable "invoker_members" {
   default     = []
 }
 
-variable "log_level" {
-  description = "Log level written into the mounted config.yaml"
-  type        = string
-  default     = "info"
-}
-
 variable "service_account_email" {
-  description = "Runtime service account email for the Cloud Run service. If null, Cloud Run uses the project's default compute service account, which is also what gets granted access to the mounted config secret."
+  description = "Runtime service account email for the Cloud Run service. If null, Cloud Run uses the project's default compute service account, which is also what gets granted access to the mounted secrets and data buckets."
   type        = string
   default     = null
 }

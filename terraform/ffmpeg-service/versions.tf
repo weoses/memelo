@@ -6,6 +6,13 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 6.0"
     }
+    sops = {
+      source  = "carlpett/sops"
+      version = "~> 1.0"
+    }
+    terraform = {
+      source = "terraform.io/builtin/terraform"
+    }
   }
 
   # Bucket is intentionally left unset here (partial configuration) since it

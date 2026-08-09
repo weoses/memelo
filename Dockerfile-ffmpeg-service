@@ -18,7 +18,7 @@ COPY --from=builder /app/ffmpeg-service/output.bin ffmpeg-service
 COPY ./ffmpeg-service/entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
-WORKDIR /app/config
+COPY ./ffmpeg-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
