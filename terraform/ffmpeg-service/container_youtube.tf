@@ -2,21 +2,21 @@
 # (ffmpeg-service/config.yaml) via Viper's AutomaticEnv, same mechanism
 # used for the mounted secret files below.
 locals {
-  ffmpeg_container_env = {
-    SERVER_LISTENADDRESS  = ":7003"
+  youtube_container_env = {
+    SERVER_LISTENADDRESS  = ":7004"
     TEMP_STORAGE_ENDPOINT = var.google_storage_host
     TEMP_STORAGE_BUCKET   = google_storage_bucket.temp_bucket.name
     TEMP_STORAGE_SECURE   = "true"
   }
 
-  ffmpeg_container_secret_env = {
+  youtube_container_secret_env = {
     TEMP_STORAGE_ACCESSKEY = google_secret_manager_secret.service_account_hmac_akey.id
     TEMP_STORAGE_SECRETKEY = google_secret_manager_secret.service_account_hmac_skey.id
   }
 }
 
-resource "google_cloud_run_v2_service" "ffmpeg_service" {
-  name                = "${var.environment}-ffmpeg-service"
+resource "google_cloud_run_v2_service" "youtube_service" {
+  name                = "${var.environment}-youtube-service"
   project             = var.project_id
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
@@ -45,10 +45,10 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
     }
 
     containers {
-      image = "ghcr.io/weoses/ffmpeg-service:${var.image_tag}"
+      image = "ghcr.io/weoses/youtube-service:${var.image_tag}"
 
       ports {
-        container_port = 7003
+        container_port = 7004
       }
 
       resources {
@@ -78,7 +78,7 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
       }
 
       dynamic "env" {
-        for_each = local.ffmpeg_container_env
+        for_each = local.youtube_container_env
         content {
           name  = env.key
           value = env.value
@@ -86,7 +86,7 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
       }
 
       dynamic "env" {
-        for_each = local.ffmpeg_container_secret_env
+        for_each = local.youtube_container_secret_env
         content {
           name = env.key
           value_source {
@@ -107,10 +107,10 @@ resource "google_cloud_run_v2_service" "ffmpeg_service" {
   }
 }
 
-resource "google_cloud_run_v2_service_iam_member" "ffmpeg_service_invoker" {
+resource "google_cloud_run_v2_service_iam_member" "youtube_service_invoker" {
   project  = var.project_id
   location = var.region
-  name     = google_cloud_run_v2_service.ffmpeg_service.name
+  name     = google_cloud_run_v2_service.youtube_service.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.service_account.email}"
 }

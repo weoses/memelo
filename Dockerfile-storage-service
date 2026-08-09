@@ -18,7 +18,7 @@ WORKDIR /app
 RUN apk add curl vips vips-poppler
 COPY --from=builder /app/storage-service/output.bin storage-service
 
-WORKDIR /app/config
+COPY ./storage-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app

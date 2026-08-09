@@ -16,7 +16,7 @@ WORKDIR /app
 RUN apk add curl
 COPY --from=builder /app/youtube-service/output.bin youtube-service
 
-WORKDIR /app/config
+COPY ./youtube-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
