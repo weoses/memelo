@@ -14,9 +14,11 @@ inline:
 
 storage-service:
   Uri: "http://localhost:7001"
+  RequireGoogleIDToken: false
 
 youtube-service:
   Uri: "http://localhost:7004"
+  RequireGoogleIDToken: false
 
 user-account:
   StaticUuid: "00000000-0000-0000-0000-000000000000"

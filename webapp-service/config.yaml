@@ -6,6 +6,7 @@ server:
 
 storage-service:
   Uri: "http://localhost:7001"
+  RequireGoogleIDToken: false
 
 account:
   Id: "00000000-0000-0000-0000-000000000000"

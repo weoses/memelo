@@ -67,3 +67,81 @@ defer helper.QuietClose(raw, r.slogger)
 ```
 buf generate   # run from repo root
 ```
+
+## Terraform / Cloud Run deployment gotchas
+
+Layout: `terraform/modules/` (reusable) + one dir per service, own GCS state
+(`melo-terraform-state`, prefix `melo-<env>/<service>`), own dedicated SA.
+Apply order: `global` → ffmpeg/youtube → storage → telegram/webapp (see
+`terraform/README.md`). Secrets: sops+PGP per service
+(`env/<env>/secrets.enc.env`), edit with `sops <file>`.
+
+Non-obvious platform facts (cost real debugging time, not visible from code):
+
+- **Cloud Run's default `*.run.app` URL is not computable** from project
+  number/region/name — it's an opaque per-project+region hash, same for
+  every service in that project+region, but not derivable in HCL. Don't
+  hardcode it as a Terraform `local`; read a callee's real URI via
+  `terraform_remote_state` (`data.terraform_remote_state.X.outputs.uri`)
+  after that service's own state has been applied.
+- **A resource can't reference its own computed attribute in its own
+  config** (self-referencing URL problem: a service needing to know its own
+  Cloud Run URL at boot, e.g. to register a webhook). Fix: deploy with a
+  real-but-placeholder value first (must be an actually reachable HTTPS
+  host — Telegram's `setWebhook` validates DNS/connectivity synchronously
+  and rejects fake hosts like `foo.invalid` outright), then a
+  `terraform_data` + `local-exec` provisioner (`triggers_replace =
+  [timestamp()]`, runs every apply) patches the real value in via `gcloud
+  run services update --update-env-vars=...` right after.
+- **Never do cleanup-on-stop that assumes "stopping" means "service is
+  going away"** in a Cloud Run app (e.g. unregistering an external
+  webhook in an `OnStop`/shutdown hook). Every deploy retires the old
+  revision's instance *after* the new one is already live, so its
+  `OnStop` fires right after the new revision's `OnStart` already did the
+  registration — deterministically undoing it, not a race. If a service's
+  own external state (webhook, presence registration, etc.) depends on it
+  being "up", it also needs `min_instances >= 1` — scale-to-zero hits the
+  identical failure via idle shutdown, and nothing can wake it back up
+  once its own external trigger is gone.
+- **`scripts/entrypoint.sh` sources `/etc/secrets/*/*`** — a service with
+  no secrets volume mounted leaves that glob unmatched, and under `set -e`
+  the resulting `ls` failure aborts the script before the app ever starts.
+  Guard with `[ -e "$f" ] || continue`.
+- **GCP service account `account_id` has a 30-char cap.** Use short slugs
+  ("storage", "ffmpeg") when generating one from `<env>-<slug>-service-account`.
+- **docker-compose bind-mounts can mask a missing `COPY config.yaml` in a
+  Dockerfile** — works locally, crashes on Cloud Run with "Config File not
+  found". Check every service's `Dockerfile-*` actually copies its config
+  when adding Cloud Run deployment for a service that previously only ran
+  via docker-compose.
+- Secret Manager secret-version creation is eventually consistent — Cloud
+  Run can fail a deploy with "secret ... was not found" moments after
+  Terraform just created that exact version. Just retry the apply.
+- **A new Go config struct field is silently ignored by env-var overrides
+  unless it also has a line in `config.yaml`.** `common/config/InitConfig.go`
+  has a workaround loop (`for _, key := range viper.AllKeys() { ... }`)
+  that re-materializes env-overridden values before `Unmarshal` — but
+  `AllKeys()` only enumerates keys already known to Viper (i.e. present in
+  the loaded config file). A field that exists only in the Go struct (e.g.
+  `RequireGoogleIDToken` when it was first added) never appears in
+  `AllKeys()`, so its env var is silently never applied — the field just
+  keeps its Go zero value, no error, no log. This caused inter-service
+  Google-IAM auth to look "wired up" (env var set correctly in Terraform,
+  code compiled fine) while actually never sending an Authorization header
+  at all (Cloud Run's own 403 was the only symptom, and it looks identical
+  to an IAM misconfiguration). **Whenever adding a new config struct
+  field that should be env-overridable, add a matching line to every
+  affected `config.yaml`** (value doesn't matter, e.g. `false` — it just
+  needs to exist so `AllKeys()` sees it).
+
+Other operational notes: checking whether a CI build finished by polling
+`ghcr.io`'s anonymous registry API works without any `gh`/GitHub auth at
+all (`curl "https://ghcr.io/token?service=ghcr.io&scope=repository:weoses/<svc>:pull"`
+→ use the token against `/v2/weoses/<svc>/tags/list`) — useful even if
+`gh` is authenticated, since it's directly checking the actual deploy
+artifact rather than CI run status. `gpg-agent`'s cache can expire
+mid-session; `sops` decrypt then fails with "0 successful groups required,
+got 0" — needs the user to unlock interactively (pinentry), can't be
+relayed through non-interactive Bash. `scripts/create-tag.sh` requires a
+fully clean git tree (staged+unstaged) and only creates the tag locally —
+`git push origin <tag>` separately to actually trigger CI.
