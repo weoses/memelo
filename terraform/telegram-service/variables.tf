@@ -33,9 +33,15 @@ variable "memory" {
 }
 
 variable "min_instances" {
-  description = "Minimum number of Cloud Run instances"
+  description = <<-EOT
+    Minimum number of Cloud Run instances. Must stay >= 1 for this service:
+    telegram-service's OnStop hook unregisters the Telegram webhook
+    (RemoveWebhook), so scaling to zero silently kills the bot -- nothing
+    can wake the instance back up afterward since Telegram has no webhook
+    left to call.
+  EOT
   type        = number
-  default     = 0
+  default     = 1
 }
 
 variable "max_instances" {

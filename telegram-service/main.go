@@ -40,7 +40,13 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) 
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			_ = svc.RemoveWebhook()
+			// Do NOT call svc.RemoveWebhook() here: on Cloud Run, "this
+			// instance is stopping" does not mean "the service is going
+			// away" -- every deploy retires the old revision's instance
+			// while a new one takes over, and that retirement's OnStop
+			// would unregister the webhook the new revision just
+			// registered on its own boot, permanently breaking the bot
+			// until someone re-registers it by hand.
 			return srv.Shutdown(ctx)
 		},
 	})

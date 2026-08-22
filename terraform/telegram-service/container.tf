@@ -27,9 +27,16 @@ module "container" {
 
     # Real value patched in by webhook.tf right after this resource applies
     # (see that file for why). This placeholder only matters on the very
-    # first-ever creation, so the app has *a* syntactically valid HTTPS URL
-    # to register with Telegram and pass its own startup health check.
-    WEBHOOK_EXTERNALURL = "https://placeholder.invalid/webhook"
+    # first-ever creation, so the app has *some* URL to register with
+    # Telegram and pass its own startup health check -- Telegram's
+    # setWebhook actually resolves DNS and connects synchronously (a
+    # made-up host like "placeholder.invalid" gets rejected outright with
+    # "Failed to resolve host"), so this has to be a real, reachable HTTPS
+    # endpoint. storage-service's own already-live URL is a safe, hermetic
+    # choice (no external third-party dependency) -- Telegram will happily
+    # connect to it and get some 403/404, which is enough to accept the
+    # registration.
+    WEBHOOK_EXTERNALURL = "${data.terraform_remote_state.storage.outputs.uri}/webhook"
 
     STORAGE_SERVICE_URI                  = data.terraform_remote_state.storage.outputs.uri
     STORAGE_SERVICE_REQUIREGOOGLEIDTOKEN = "true"
