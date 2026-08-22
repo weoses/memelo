@@ -37,17 +37,17 @@ type TelegramBotServiceImpl struct {
 	projectId  string
 }
 
-// queuedUpdate carries an incoming update alongside the Cloud Trace header
-// from the webhook POST that delivered it. The dispatch loop below runs
-// against one long-lived context for the whole service lifetime (so
-// in-flight processing isn't cancelled the instant the webhook HTTP
-// handler returns, which it does immediately after queuing) -- so the
-// trace can't just be read off r.Context() there. It has to travel with
-// the update through the channel instead, and get layered onto the
-// long-lived context per-update in dispatchUpdates.
+// queuedUpdate carries an incoming update alongside a ready-to-use,
+// update-scoped context: the service's long-lived context (so in-flight
+// processing isn't cancelled the instant the webhook HTTP handler
+// returns, which it does immediately after queuing) with that request's
+// Cloud Trace attached. Built once at enqueue time, in Handler(), where
+// both pieces (the long-lived ctx and the request's trace header) are
+// available -- r.Context() itself is never used past that point, since it
+// gets cancelled right after the handler returns.
 type queuedUpdate struct {
-	update      tgbotapi.Update
-	traceHeader string
+	ctx    context.Context
+	update tgbotapi.Update
 }
 
 func (s *TelegramBotServiceImpl) Handler() http.Handler {
@@ -61,7 +61,8 @@ func (s *TelegramBotServiceImpl) Handler() http.Handler {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		updates <- queuedUpdate{update: update, traceHeader: r.Header.Get("X-Cloud-Trace-Context")}
+		updateCtx := tracing.WithTrace(ctx, s.projectId, r.Header.Get("X-Cloud-Trace-Context"))
+		updates <- queuedUpdate{ctx: updateCtx, update: update}
 	})
 }
 
@@ -89,21 +90,17 @@ func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-
 		case <-ctx.Done():
 			return
 		case q := <-updates:
-			// Layered on the service's long-lived ctx (for correct
-			// shutdown/cancellation semantics), not on the now-finished
-			// webhook request's own context -- see queuedUpdate.
-			updateCtx := tracing.WithTrace(ctx, s.projectId, q.traceHeader)
 			update := q.update
 			if update.InlineQuery != nil {
-				go s.handleInlineRequest(updateCtx, &update)
+				go s.handleInlineRequest(q.ctx, &update)
 			} else if update.Message != nil {
 				if update.Message.IsCommand() {
-					go s.handleCommand(updateCtx, update.Message)
+					go s.handleCommand(q.ctx, update.Message)
 				} else {
-					go s.handleMessage(updateCtx, update.Message)
+					go s.handleMessage(q.ctx, update.Message)
 				}
 			} else if update.ChosenInlineResult != nil {
-				go s.handleChosenResult(updateCtx, &update)
+				go s.handleChosenResult(q.ctx, &update)
 			}
 		}
 	}
