@@ -16,6 +16,7 @@ import (
 	commonconfig "github.com/weoses/memelo/common/config"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/storage"
+	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/webapp/api"
 	"github.com/weoses/memelo/webapp/conf"
 	"github.com/weoses/memelo/webapp/service"
@@ -59,6 +60,13 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS, c
 
 	e := echo.New()
 	e.HideBanner = true
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx := tracing.WithTrace(c.Request().Context(), cfg.Log.ProjectId, c.Request().Header.Get("X-Cloud-Trace-Context"))
+			c.SetRequest(c.Request().WithContext(ctx))
+			return next(c)
+		}
+	})
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 

@@ -34,6 +34,9 @@ module "container" {
 
     FFMPEG_SERVICE_URI                  = data.terraform_remote_state.ffmpeg.outputs.uri
     FFMPEG_SERVICE_REQUIREGOOGLEIDTOKEN = "true"
+
+    LOG_FORMAT    = "json"
+    LOG_PROJECTID = var.project_id
   }
 
   secret_env = {

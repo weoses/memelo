@@ -22,6 +22,9 @@ module "container" {
     TEMP_STORAGE_SECURE            = "true"
     YOUTUBE_MAXVIDEOSIZEBYTES      = tostring(var.max_video_size_bytes)
     YOUTUBE_MAXCONCURRENTDOWNLOADS = tostring(var.max_concurrent_downloads)
+
+    LOG_FORMAT    = "json"
+    LOG_PROJECTID = var.project_id
   }
 
   secret_env = {

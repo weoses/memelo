@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/weoses/memelo/common/config"
+	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/ffmpeg-service/api"
 	"github.com/weoses/memelo/ffmpeg-service/conf"
 	"github.com/weoses/memelo/ffmpeg-service/service"
@@ -24,7 +26,8 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, apiHandler *api.FfmpegServiceApi
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			mux := http.NewServeMux()
-			mux.Handle(v1connect.NewFfmpegServiceHandler(apiHandler))
+			mux.Handle(v1connect.NewFfmpegServiceHandler(apiHandler,
+				connect.WithInterceptors(tracing.NewInterceptor(cfg.Log.ProjectId))))
 			mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})

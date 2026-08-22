@@ -47,6 +47,9 @@ module "container" {
     TEMP_STORAGE_ENDPOINT = "storage.googleapis.com"
     TEMP_STORAGE_BUCKET   = "melo-${var.environment}-temp"
     TEMP_STORAGE_SECURE   = "true"
+
+    LOG_FORMAT    = "json"
+    LOG_PROJECTID = var.project_id
   }
 
   secret_env = {

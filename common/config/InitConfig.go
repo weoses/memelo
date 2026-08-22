@@ -38,6 +38,16 @@ type ServerConfig struct {
 
 type LoggingConfig struct {
 	Level string
+	// Format selects the slog handler: "text" (default, human-readable) or
+	// "json" (Cloud Logging structured-log conventions -- severity/message
+	// keys, so Log Explorer's summary line and severity filter work).
+	Format string
+	// ProjectId enables Cloud Trace correlation ("show entries for this
+	// trace" in Cloud Run's request log) by letting log lines carry a
+	// fully-qualified logging.googleapis.com/trace attribute. Leave empty
+	// (the local/docker-compose default) to skip trace correlation
+	// entirely -- Terraform sets this to the real project id in Cloud Run.
+	ProjectId string
 }
 
 type MediaStorageConfig struct {

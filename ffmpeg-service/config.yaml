@@ -1,5 +1,7 @@
 log:
   Level: info
+  Format: text
+  ProjectId: ""
 
 server:
   ListenAddress: localhost:7003

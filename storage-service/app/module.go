@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-playground/validator/v10"
+	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
@@ -137,12 +138,16 @@ func Module() fx.Option {
 func startup(
 	lc fx.Lifecycle,
 	ln net.Listener,
+	cfg *conf.Config,
 	searchApi v1connect.SearchServiceHandler,
 	exportApi v1connect.ExportServiceHandler,
 	tagsApi v1connect.TagsServiceHandler,
 	recomputeApi v1connect.RecomputeServiceHandler,
 ) {
-	interceptors := connect.WithInterceptors(middleware.NewLoggingInterceptor(slog.With("service", "router")))
+	interceptors := connect.WithInterceptors(
+		tracing.NewInterceptor(cfg.Log.ProjectId),
+		middleware.NewLoggingInterceptor(slog.With("service", "router")),
+	)
 
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewSearchServiceHandler(searchApi, interceptors))

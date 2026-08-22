@@ -9,6 +9,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/common/config"
+	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/telegram-service/conf"
 	"github.com/weoses/memelo/telegram-service/service"
 	tgstorage "github.com/weoses/memelo/telegram-service/storage"
@@ -30,7 +31,7 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) 
 			})
 			srv = &http.Server{
 				Addr:    cfg.Server.ListenAddress,
-				Handler: mux,
+				Handler: tracing.HTTPMiddleware(cfg.Log.ProjectId, mux),
 			}
 			ln, err := net.Listen("tcp", cfg.Server.ListenAddress)
 			if err != nil {

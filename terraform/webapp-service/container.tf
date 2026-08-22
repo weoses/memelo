@@ -31,6 +31,9 @@ module "container" {
     # startup-critical here (read per-request from already-served HTML,
     # not at boot), but still worth getting right automatically.
     FRONTEND_BASEURL = ""
+
+    LOG_FORMAT    = "json"
+    LOG_PROJECTID = var.project_id
   }
 
   secret_env = {
