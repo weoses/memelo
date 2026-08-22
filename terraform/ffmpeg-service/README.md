@@ -51,9 +51,9 @@ Switching between environments (e.g. test -> prod) requires re-running
   GCS HMAC key created for this service's own dedicated service account
   (`../modules/hmac-key`), mounted as native Cloud Run secret-backed env
   vars.
-- `secrets.tf` mounts a placeholder secret (`env/<environment>/secrets.enc.env`,
-  currently just `_PLACEHOLDER=1`) — ffmpeg-service has no real secrets of its
-  own, but the image's `entrypoint.sh` needs at least one file under
-  `/etc/secrets/*/*` to exist or it aborts (fixed in source, but requires a
-  rebuilt image to take effect — see `scripts/entrypoint.sh`). Drop this file
-  and `secrets.tf` once a rebuilt image is deployed.
+- This service currently has no service-specific secrets of its own (no
+  `secrets.tf`/`env/*/secrets.enc.env` here). An earlier revision briefly
+  mounted a placeholder secret to work around an `entrypoint.sh` bug (an
+  empty `/etc/secrets/*/*` glob aborted the script under `set -e`) — fixed
+  in `scripts/entrypoint.sh` and no longer needed once a rebuilt image
+  (`v00.000.00-27-dev`+) is deployed.

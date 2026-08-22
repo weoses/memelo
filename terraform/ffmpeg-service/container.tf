@@ -27,8 +27,6 @@ module "container" {
     TEMP_STORAGE_SECRETKEY = module.hmac_key.secret_key_secret_id
   }
 
-  secrets_volume_secret_id = module.secrets.secret_id
-
   # ffmpeg-service is purely internal: only storage-service calls it, and
   # that grant lives in storage-service's own directory (invoker.tf there),
   # not here. No allUsers binding.

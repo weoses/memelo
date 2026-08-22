@@ -30,7 +30,7 @@ COPY --from=builder /app/webapp/output.bin webapp
 COPY ./scripts/entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
-WORKDIR /app/config
+COPY ./webapp-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app

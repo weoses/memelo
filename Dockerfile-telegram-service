@@ -21,7 +21,7 @@ COPY --from=builder /app/telegram-service/output.bin telegram-service
 COPY ./scripts/entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
-WORKDIR /app/config
+COPY ./telegram-service/config.yaml config/config.yaml
 ENV APPLICATION_CONFIGPATH "/app/config"
 
 WORKDIR /app
