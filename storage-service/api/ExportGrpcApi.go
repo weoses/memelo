@@ -89,7 +89,7 @@ func (e ExportServiceApi) ExportImages(ctx context.Context, request *v1.ExportRe
 		return fmt.Errorf("export failed: %w", err)
 	}
 
-	e.slogger.Info("export finished", "sent", sent)
+	e.slogger.InfoContext(ctx, "export finished", "sent", sent)
 	return nil
 }
 

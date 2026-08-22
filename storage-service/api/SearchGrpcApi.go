@@ -200,7 +200,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		return nil, err
 	}
 
-	api.slogger.Info("SearchMeme response", "count", len(data.Result))
+	api.slogger.InfoContext(ctx, "SearchMeme response", "count", len(data.Result))
 
 	return &v1.SearchMemeResponse{
 		Results: helper.TransformSlice(
@@ -247,7 +247,7 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 		return nil, err
 	}
 
-	api.slogger.Info("CreateMeme response",
+	api.slogger.InfoContext(ctx, "CreateMeme response",
 		"id", meme.Metadata.Metadata.ImageId.String(),
 		"status", meme.Status)
 

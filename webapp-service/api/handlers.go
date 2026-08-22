@@ -62,7 +62,7 @@ func (h *Handlers) SearchMemes(c echo.Context) error {
 
 	result, err := h.proxy.Search(c.Request().Context(), h.accountId, query, metadataType, pagination, limit)
 	if err != nil {
-		h.log.Error("search failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "search failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream search failed")
 	}
 	return c.JSON(http.StatusOK, searchToResponse(result))
@@ -85,7 +85,7 @@ func (h *Handlers) GetUploadUrl(c echo.Context) error {
 
 	result, err := h.upload.GetUploadUrl(c.Request().Context(), body.Mime, body.Length)
 	if err != nil {
-		h.log.Error("get upload url failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "get upload url failed", "error", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate upload url")
 	}
 	return c.JSON(http.StatusOK, uploadUrlToResponse(result))
@@ -101,7 +101,7 @@ func (h *Handlers) ParseByToken(c echo.Context) error {
 
 	result, err := h.upload.ParseByToken(c.Request().Context(), h.accountId, body.Token)
 	if err != nil {
-		h.log.Error("parse by token failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "parse by token failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid or expired token")
 	}
 	return c.JSON(http.StatusCreated, memeToResponse(*result))
@@ -114,7 +114,7 @@ func (h *Handlers) GetMeme(c echo.Context) error {
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return echo.NewHTTPError(http.StatusNotFound, "meme not found")
 		}
-		h.log.Error("get meme failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "get meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream error")
 	}
 	return c.JSON(http.StatusOK, memeToResponse(*result))
@@ -144,7 +144,7 @@ func (h *Handlers) UpdateMeme(c echo.Context) error {
 	}
 	result, err := h.proxy.UpdateMeme(c.Request().Context(), h.accountId, id, params)
 	if err != nil {
-		h.log.Error("update meme failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "update meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream update failed")
 	}
 	return c.JSON(http.StatusOK, memeToResponse(*result))
@@ -156,7 +156,7 @@ func (h *Handlers) DeleteMeme(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing id")
 	}
 	if err := h.proxy.DeleteMeme(c.Request().Context(), h.accountId, id); err != nil {
-		h.log.Error("delete meme failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "delete meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream delete failed")
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -169,7 +169,7 @@ func (h *Handlers) RecomputeMeme(c echo.Context) error {
 	}
 	result, err := h.proxy.RecomputeById(c.Request().Context(), h.accountId, id)
 	if err != nil {
-		h.log.Error("recompute meme failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "recompute meme failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream recompute failed")
 	}
 	return c.JSON(http.StatusOK, memeToResponse(*result))
@@ -195,7 +195,7 @@ func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
 
 	s3path, _, err := h.upload.DecodeUploadToken(body.Token)
 	if err != nil {
-		h.log.Error("decode upload token failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "decode upload token failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid or expired token")
 	}
 
@@ -208,7 +208,7 @@ func (h *Handlers) UpdateMemeMedia(c echo.Context) error {
 
 	result, err := h.proxy.UpdateMeme(c.Request().Context(), h.accountId, id, params)
 	if err != nil {
-		h.log.Error("update meme media failed", "error", err)
+		h.log.ErrorContext(c.Request().Context(), "update meme media failed", "error", err)
 		return echo.NewHTTPError(http.StatusBadGateway, "upstream update failed")
 	}
 	return c.JSON(http.StatusOK, memeToResponse(*result))

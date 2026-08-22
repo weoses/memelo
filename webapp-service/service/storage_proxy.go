@@ -201,7 +201,7 @@ func (s *storageProxy) RecomputeById(ctx context.Context, accountId, id string) 
 
 		if status.State == v1.RecomputeJobStatus_STATE_DONE || status.State == v1.RecomputeJobStatus_STATE_FAILED {
 			for _, errRecompute := range status.GetErrors() {
-				s.log.Error("recompute failed for object", "imageId", errRecompute.ObjectId, "error", errRecompute.ErrorText)
+				s.log.ErrorContext(ctx, "recompute failed for object", "imageId", errRecompute.ObjectId, "error", errRecompute.ErrorText)
 			}
 		}
 
