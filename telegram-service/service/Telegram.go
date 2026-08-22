@@ -10,6 +10,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/common/helper"
+	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/telegram-service/conf"
 )
 
@@ -33,12 +34,26 @@ type TelegramBotServiceImpl struct {
 	webhookCfg *conf.WebhookConfig
 	log        *slog.Logger
 	cancel     context.CancelFunc
+	projectId  string
+}
+
+// queuedUpdate carries an incoming update alongside the Cloud Trace header
+// from the webhook POST that delivered it. The dispatch loop below runs
+// against one long-lived context for the whole service lifetime (so
+// in-flight processing isn't cancelled the instant the webhook HTTP
+// handler returns, which it does immediately after queuing) -- so the
+// trace can't just be read off r.Context() there. It has to travel with
+// the update through the channel instead, and get layered onto the
+// long-lived context per-update in dispatchUpdates.
+type queuedUpdate struct {
+	update      tgbotapi.Update
+	traceHeader string
 }
 
 func (s *TelegramBotServiceImpl) Handler() http.Handler {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	updates := make(chan tgbotapi.Update, 100)
+	updates := make(chan queuedUpdate, 100)
 	go s.dispatchUpdates(ctx, updates)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var update tgbotapi.Update
@@ -46,7 +61,7 @@ func (s *TelegramBotServiceImpl) Handler() http.Handler {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		updates <- update
+		updates <- queuedUpdate{update: update, traceHeader: r.Header.Get("X-Cloud-Trace-Context")}
 	})
 }
 
@@ -67,23 +82,28 @@ func (s *TelegramBotServiceImpl) RemoveWebhook() error {
 	return err
 }
 
-func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-chan tgbotapi.Update) {
+func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-chan queuedUpdate) {
 	s.log.InfoContext(ctx, "Authorized", "account", s.bot.Self.UserName)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case update := <-updates:
+		case q := <-updates:
+			// Layered on the service's long-lived ctx (for correct
+			// shutdown/cancellation semantics), not on the now-finished
+			// webhook request's own context -- see queuedUpdate.
+			updateCtx := tracing.WithTrace(ctx, s.projectId, q.traceHeader)
+			update := q.update
 			if update.InlineQuery != nil {
-				go s.handleInlineRequest(ctx, &update)
+				go s.handleInlineRequest(updateCtx, &update)
 			} else if update.Message != nil {
 				if update.Message.IsCommand() {
-					go s.handleCommand(ctx, update.Message)
+					go s.handleCommand(updateCtx, update.Message)
 				} else {
-					go s.handleMessage(ctx, update.Message)
+					go s.handleMessage(updateCtx, update.Message)
 				}
 			} else if update.ChosenInlineResult != nil {
-				go s.handleChosenResult(ctx, &update)
+				go s.handleChosenResult(updateCtx, &update)
 			}
 		}
 	}
@@ -252,5 +272,6 @@ func NewTelegramBotService(
 		message:    message,
 		webhookCfg: cfg.Webhook,
 		log:        slog.With("service", "TelegramBotService"),
+		projectId:  cfg.Log.ProjectId,
 	}
 }
