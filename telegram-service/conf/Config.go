@@ -17,11 +17,13 @@ type InlineConfig struct {
 }
 
 type StorageServiceConfig struct {
-	Uri string
+	Uri                  string
+	RequireGoogleIDToken bool
 }
 
 type YoutubeServiceConfig struct {
-	Uri string
+	Uri                  string
+	RequireGoogleIDToken bool
 }
 
 type UserAccountConfig struct {

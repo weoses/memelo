@@ -3,13 +3,13 @@ module github.com/weoses/memelo/youtube-service
 go 1.26
 
 require (
-	connectrpc.com/connect v1.19.1
+	connectrpc.com/connect v1.20.0
 	github.com/google/uuid v1.6.0
 	github.com/spf13/viper v1.21.0
 	github.com/weoses/memelo/common v0.0.0-00010101000000-000000000000
 	github.com/weoses/memelo/gen v0.0.0-00010101000000-000000000000
 	go.uber.org/fx v1.23.0
-	golang.org/x/net v0.52.0
+	golang.org/x/net v0.57.0
 )
 
 require (
@@ -37,9 +37,9 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 

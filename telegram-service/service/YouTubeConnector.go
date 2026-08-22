@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	commonauth "github.com/weoses/memelo/common/auth"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/telegram-service/conf"
@@ -67,7 +68,11 @@ func toJobStateString(state v1.DownloadJobState) string {
 }
 
 func NewYouTubeConnector(cfg *conf.Config) (YouTubeConnector, error) {
-	cl := v1connect.NewYouTubeServiceClient(http.DefaultClient, cfg.YoutubeService.Uri)
+	opts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.YoutubeService.Uri, cfg.YoutubeService.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("NewYouTubeConnector: %w", err)
+	}
+	cl := v1connect.NewYouTubeServiceClient(http.DefaultClient, cfg.YoutubeService.Uri, opts...)
 	return &YouTubeConnectorImpl{
 		cl:  cl,
 		log: slog.With("service", "YouTubeConnector"),

@@ -2,7 +2,7 @@ log:
   Level: info
 
 server:
-  ListenAddress: localhost:7005
+  ListenAddress: localhost:7003
 
 temp-storage:
   Endpoint:

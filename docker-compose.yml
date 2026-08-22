@@ -38,7 +38,7 @@ services:
 
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
 
-      FFMPEG_SERVICE_URI: http://ffmpeg-service:7005
+      FFMPEG_SERVICE_URI: http://ffmpeg-service:7003
 
     restart: unless-stopped
     ports:
@@ -58,24 +58,6 @@ services:
       ffmpeg-service:
         condition: service_healthy
 
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-memelo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memelo}
-      POSTGRES_DB: ${POSTGRES_DB:-telegram}
-    ports:
-      - "127.0.0.1:5432:5432"
-    networks:
-      - env
-    volumes:
-      - "postgres_data:/var/lib/postgresql/temp"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   telegram-service:
     build:
       dockerfile: Dockerfile-telegram-service
@@ -85,7 +67,6 @@ services:
       WEBHOOK_EXTERNALURL: ${TELEGRAM_WEBHOOK_EXTERNALURL}
       STORAGE_SERVICE_URI: http://storage-service:7001
       YOUTUBE_SERVICE_URI: http://youtube-service:7004
-      POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
       TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
       TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
@@ -99,8 +80,6 @@ services:
     networks:
       - env
     depends_on:
-      postgres:
-        condition: service_healthy
       storage-service:
         condition: service_healthy
       youtube-service:
@@ -121,7 +100,7 @@ services:
       YOUTUBE_MAXCONCURRENTDOWNLOADS: ${YOUTUBE_MAX_CONCURRENT_DOWNLOADS:-4}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7003:7003"
+      - "127.0.0.1:7004:7004"
     volumes:
       - "./youtube-service/config.yaml:/app/config/config.yaml"
     networks:
@@ -145,13 +124,13 @@ services:
       FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7005:7005"
+      - "127.0.0.1:7003:7003"
     volumes:
       - "./ffmpeg-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:7005/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:7003/health" ]
       interval: 30s
       timeout: 10s
       retries: 6
@@ -162,4 +141,3 @@ networks:
 
 volumes:
   minio_data:
-  postgres_data:

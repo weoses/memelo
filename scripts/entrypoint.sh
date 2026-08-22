@@ -2,6 +2,8 @@
 set -e
 
 for f in /etc/secrets/*/*; do
+  [ -e "$f" ] || continue
+
   echo "Found secret file: $f"
 
   ls -la "$f"

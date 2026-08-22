@@ -8,7 +8,8 @@ import (
 )
 
 type StorageServiceConfig struct {
-	Uri string
+	Uri                  string
+	RequireGoogleIDToken bool
 }
 
 type AccountConfig struct {

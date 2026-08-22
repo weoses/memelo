@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	commonauth "github.com/weoses/memelo/common/auth"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/webapp/conf"
@@ -67,9 +68,13 @@ type storageProxy struct {
 }
 
 func NewStorageProxy(cfg *conf.Config) (StorageProxy, error) {
+	opts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.StorageService.Uri, cfg.StorageService.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("NewStorageProxy: %w", err)
+	}
 	return &storageProxy{
-		searchCl:    v1connect.NewSearchServiceClient(http.DefaultClient, cfg.StorageService.Uri),
-		recomputeCl: v1connect.NewRecomputeServiceClient(http.DefaultClient, cfg.StorageService.Uri),
+		searchCl:    v1connect.NewSearchServiceClient(http.DefaultClient, cfg.StorageService.Uri, opts...),
+		recomputeCl: v1connect.NewRecomputeServiceClient(http.DefaultClient, cfg.StorageService.Uri, opts...),
 		log:         slog.With("service", "storage_proxy"),
 	}, nil
 }

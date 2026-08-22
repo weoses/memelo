@@ -57,9 +57,10 @@ type AudioSttConfig struct {
 }
 
 type FfmpegServiceConfig struct {
-	Uri            string
-	PollIntervalMs int
-	PollMaxWaitSec int
+	Uri                  string
+	PollIntervalMs       int
+	PollMaxWaitSec       int
+	RequireGoogleIDToken bool
 }
 
 type GeminiExtractorConfig struct {

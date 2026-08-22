@@ -75,12 +75,16 @@ func (a *videoSlicerAdapter) SliceVideoWithOverlap(
 	return slices, nil
 }
 
-func NewVideoSlicerAdapter(cfg *conf.FfmpegServiceConfig, tmpDataService commonservice.TmpDataService) ocr.VideoSlicer {
+func NewVideoSlicerAdapter(cfg *conf.FfmpegServiceConfig, tmpDataService commonservice.TmpDataService) (ocr.VideoSlicer, error) {
+	cl, err := newClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("NewVideoSlicerAdapter: %w", err)
+	}
 	return &videoSlicerAdapter{
-		cl:             newClient(cfg),
+		cl:             cl,
 		tmpDataService: tmpDataService,
 		pollInterval:   time.Duration(cfg.PollIntervalMs) * time.Millisecond,
 		pollMaxWait:    time.Duration(cfg.PollMaxWaitSec) * time.Second,
 		log:            slog.With("service", "VideoSlicerAdapter"),
-	}
+	}, nil
 }

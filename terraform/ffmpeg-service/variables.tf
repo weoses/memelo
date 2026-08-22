@@ -8,7 +8,6 @@ variable "environment" {
   type        = string
 }
 
-
 variable "google_storage_host" {
   description = "host of google s3 storage"
   type        = string
@@ -50,23 +49,3 @@ variable "max_instances" {
   type        = number
   default     = 2
 }
-
-variable "secret_names" {
-  description = <<-EOT
-    Names (Secret Manager secret IDs) of secrets to mount into the container,
-    e.g. ["temp-storage-secrets"]. These secrets must already exist in Secret
-    Manager, created and populated outside Terraform (e.g. `gcloud secrets
-    create <name> --data-file=...`), typically as KEY=VALUE lines -- Terraform
-    never creates, writes, or reads their content, only grants access and
-    mounts them. If a name here doesn't already exist as a secret, apply fails.
-  EOT
-  type        = list(string)
-  default     = []
-}
-
-variable "invoker_members" {
-  description = "IAM members granted roles/run.invoker on the service (e.g. [\"serviceAccount:storage-service@<project>.iam.gserviceaccount.com\"]). Empty by default; the service is not publicly invokable."
-  type        = list(string)
-  default     = []
-}
-

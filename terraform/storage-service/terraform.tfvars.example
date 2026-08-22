@@ -1,0 +1,12 @@
+project_id  = "positive-shell-448806-f7"
+region      = "us-central1"
+image_tag   = "latest"
+environment = "test"
+
+# GCP project name used for Vertex AI embedding/STT calls -- only relevant if
+# gemini-extractor/gemini-embedding's apikey is left empty (Vertex AI
+# backend). Leave blank when using Gemini Developer API / OpenRouter keys.
+embedding_project_name = ""
+
+extractor_provider = "gemini"    # gemini | openrouter
+embedder_provider  = "gemini"    # gemini | openrouter

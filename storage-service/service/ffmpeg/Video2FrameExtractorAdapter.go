@@ -54,12 +54,16 @@ func (a *video2FrameExtractorAdapter) ExtractOneFrame(ctx context.Context, video
 	return result, nil
 }
 
-func NewVideo2FrameExtractorAdapter(cfg *conf.FfmpegServiceConfig, tmpDataService commonservice.TmpDataService) ocr.Video2FrameExtractor {
+func NewVideo2FrameExtractorAdapter(cfg *conf.FfmpegServiceConfig, tmpDataService commonservice.TmpDataService) (ocr.Video2FrameExtractor, error) {
+	cl, err := newClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("NewVideo2FrameExtractorAdapter: %w", err)
+	}
 	return &video2FrameExtractorAdapter{
-		cl:             newClient(cfg),
+		cl:             cl,
 		tmpDataService: tmpDataService,
 		pollInterval:   time.Duration(cfg.PollIntervalMs) * time.Millisecond,
 		pollMaxWait:    time.Duration(cfg.PollMaxWaitSec) * time.Second,
 		log:            slog.With("service", "Video2FrameExtractorAdapter"),
-	}
+	}, nil
 }

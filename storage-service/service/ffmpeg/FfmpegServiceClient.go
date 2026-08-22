@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	commonauth "github.com/weoses/memelo/common/auth"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/temp"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
@@ -13,8 +14,12 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 )
 
-func newClient(cfg *conf.FfmpegServiceConfig) v1connect.FfmpegServiceClient {
-	return v1connect.NewFfmpegServiceClient(http.DefaultClient, cfg.Uri)
+func newClient(cfg *conf.FfmpegServiceConfig) (v1connect.FfmpegServiceClient, error) {
+	opts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.Uri, cfg.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("ffmpeg client: %w", err)
+	}
+	return v1connect.NewFfmpegServiceClient(http.DefaultClient, cfg.Uri, opts...), nil
 }
 
 // pollJob polls GetJobStatus until the job reaches a terminal state, ctx is
