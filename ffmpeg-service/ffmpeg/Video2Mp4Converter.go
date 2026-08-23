@@ -33,7 +33,7 @@ func ConvertToMp4(ctx context.Context, cfg *conf.FfmpegConfig, video temp.Data, 
 		return nil, fmt.Errorf("ConvertToMp4: create input file: %w", err)
 	}
 
-	videoInputReader, err := video.Reader()
+	videoInputReader, err := video.Reader(ctx)
 	if err != nil {
 		helper.QuietClose(ffmpegInputFile, slogger)
 		return nil, fmt.Errorf("ConvertToMp4: get videoInputReader: %w", err)

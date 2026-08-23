@@ -44,7 +44,7 @@ func (api *SearchServiceApi) UpdateMeme(ctx context.Context, req *v1.UpdateMemeR
 		if err != nil {
 			return nil, fmt.Errorf("error reading original media: %w", err)
 		}
-		defer helper.QuietClose(originalData, api.slogger)
+		defer helper.QuietCloseCtx(ctx, originalData, api.slogger)
 	}
 
 	var thumbnailData temp.S3BackedData
@@ -53,7 +53,7 @@ func (api *SearchServiceApi) UpdateMeme(ctx context.Context, req *v1.UpdateMemeR
 		if err != nil {
 			return nil, fmt.Errorf("error reading thumbnail: %w", err)
 		}
-		defer helper.QuietClose(thumbnailData, api.slogger)
+		defer helper.QuietCloseCtx(ctx, thumbnailData, api.slogger)
 	}
 
 	result, err := api.crud.UpdateMeme(ctx, service.UpdateMemeInput{
@@ -237,11 +237,11 @@ func (api *SearchServiceApi) CreateMeme(ctx context.Context, req *v1.CreateMemeR
 			return nil, fmt.Errorf("error reading video: %w", err)
 		}
 	}
-	defer helper.QuietClose(data, api.slogger)
+	defer helper.QuietCloseCtx(ctx, data, api.slogger)
 
 	meme, err = api.crud.CreateMeme(ctx, accountIdUuid, metadataType, data)
 
-	defer helper.QuietClose(data, api.slogger)
+	defer helper.QuietCloseCtx(ctx, data, api.slogger)
 	if err != nil || meme == nil {
 		api.slogger.ErrorContext(ctx, "CreateMeme error", "err", err)
 		return nil, err

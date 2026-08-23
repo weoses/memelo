@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"io"
@@ -25,6 +26,31 @@ func QuietCloseAll[T io.Closer](c []T, logger ErrLogger) {
 	}
 	for _, c := range c {
 		QuietClose(c, logger)
+	}
+}
+
+// CtxCloser is Close(ctx) error's counterpart to io.Closer, for closers that
+// need to propagate a real request/trace context (e.g. temp.Data, backed by
+// an S3 delete call) rather than fabricating their own.
+type CtxCloser interface {
+	Close(ctx context.Context) error
+}
+
+func QuietCloseCtx(ctx context.Context, c CtxCloser, logger ErrLogger) {
+	if c == nil {
+		return
+	}
+	if err := c.Close(ctx); err != nil {
+		logger.Error("failed to close", "error", err)
+	}
+}
+
+func QuietCloseAllCtx[T CtxCloser](ctx context.Context, c []T, logger ErrLogger) {
+	if c == nil {
+		return
+	}
+	for _, item := range c {
+		QuietCloseCtx(ctx, item, logger)
 	}
 }
 

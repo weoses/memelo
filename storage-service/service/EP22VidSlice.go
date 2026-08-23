@@ -39,7 +39,7 @@ func (s *VidSlicePipelineStep) Do(ctx context.Context, _ MetadataInputContext, p
 		wrapped, errWrap := s.tmpDataService.WrapData(ctx, "video/mp4", slice.Data)
 		if errWrap != nil {
 			for _, remaining := range slices[i:] {
-				_ = remaining.Data.Close()
+				_ = remaining.Data.Close(ctx)
 			}
 			return fmt.Errorf("VidSlicePipelineStep: cannot wrap slice %d: %w", i, errWrap)
 		}

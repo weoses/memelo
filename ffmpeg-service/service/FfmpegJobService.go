@@ -53,7 +53,14 @@ func (s *ffmpegJobServiceImpl) CreateJob(ctx context.Context, req entity.JobRequ
 	// WithoutCancel first, then Start, so the job span's context is
 	// itself uncancelable too. A child span outliving its already-ended
 	// parent is expected/valid for this fire-and-forget-a-job-id shape.
-	jobCtx, span := tracer.Start(context.WithoutCancel(ctx), "ffmpeg.job",
+	// cleanupCtx is the same detached context but *without* the span --
+	// scheduleCleanup's TTL cleanup fires well after this span has already
+	// ended (see scheduleCleanup), so nesting under it would just look like
+	// a child span appearing hours after its "ended" parent. Reusing this
+	// non-fabricated context (rather than a fresh context.Background()) at
+	// least keeps it a real continuation of the request's context lineage.
+	cleanupCtx := context.WithoutCancel(ctx)
+	jobCtx, span := tracer.Start(cleanupCtx, "ffmpeg.job",
 		trace.WithAttributes(attribute.String("job.id", jobId), attribute.Int("action", int(req.Action))))
 
 	go func() {
@@ -79,7 +86,7 @@ func (s *ffmpegJobServiceImpl) CreateJob(ctx context.Context, req entity.JobRequ
 		job.Mu.Unlock()
 
 		if result != nil {
-			s.scheduleCleanup(job)
+			s.scheduleCleanup(cleanupCtx, job)
 		}
 	}()
 
@@ -107,7 +114,7 @@ func (s *ffmpegJobServiceImpl) runAction(ctx context.Context, req entity.JobRequ
 	if err != nil {
 		return nil, fmt.Errorf("resolve input: %w", err)
 	}
-	defer helper.QuietClose(input, s.log)
+	defer helper.QuietCloseCtx(ctx, input, s.log)
 
 	switch req.Action {
 	case entity.ActionExtractThumbnail:
@@ -117,12 +124,12 @@ func (s *ffmpegJobServiceImpl) runAction(ctx context.Context, req entity.JobRequ
 		}
 		s3Frame, err := s.tmpDataService.WrapData(ctx, "image/jpeg", frame)
 		if err != nil {
-			helper.QuietClose(frame, s.log)
+			helper.QuietCloseCtx(ctx, frame, s.log)
 			return nil, fmt.Errorf("upload thumbnail: %w", err)
 		}
 		s3Path, err := s3Frame.GetS3Path(ctx)
 		if err != nil {
-			helper.QuietClose(s3Frame, s.log)
+			helper.QuietCloseCtx(ctx, s3Frame, s.log)
 			return nil, fmt.Errorf("get thumbnail s3 path: %w", err)
 		}
 		return &entity.JobResult{OutputS3Path: s3Path, S3Data: []temp.S3BackedData{s3Frame}}, nil
@@ -134,12 +141,12 @@ func (s *ffmpegJobServiceImpl) runAction(ctx context.Context, req entity.JobRequ
 		}
 		s3Mp4, err := s.tmpDataService.WrapData(ctx, "video/mp4", mp4)
 		if err != nil {
-			helper.QuietClose(mp4, s.log)
+			helper.QuietCloseCtx(ctx, mp4, s.log)
 			return nil, fmt.Errorf("upload mp4: %w", err)
 		}
 		s3Path, err := s3Mp4.GetS3Path(ctx)
 		if err != nil {
-			helper.QuietClose(s3Mp4, s.log)
+			helper.QuietCloseCtx(ctx, s3Mp4, s.log)
 			return nil, fmt.Errorf("get mp4 s3 path: %w", err)
 		}
 		return &entity.JobResult{OutputS3Path: s3Path, S3Data: []temp.S3BackedData{s3Mp4}}, nil
@@ -158,20 +165,20 @@ func (s *ffmpegJobServiceImpl) runAction(ctx context.Context, req entity.JobRequ
 		for i, slice := range slices {
 			s3Slice, err := s.tmpDataService.WrapData(ctx, "video/mp4", slice.Data)
 			if err != nil {
-				helper.QuietClose(slice.Data, s.log)
+				helper.QuietCloseCtx(ctx, slice.Data, s.log)
 				for _, remaining := range slices[i+1:] {
-					helper.QuietClose(remaining.Data, s.log)
+					helper.QuietCloseCtx(ctx, remaining.Data, s.log)
 				}
-				helper.QuietCloseAll(result.S3Data, s.log)
+				helper.QuietCloseAllCtx(ctx, result.S3Data, s.log)
 				return nil, fmt.Errorf("upload slice %d: %w", i, err)
 			}
 			s3Path, err := s3Slice.GetS3Path(ctx)
 			if err != nil {
-				helper.QuietClose(s3Slice, s.log)
+				helper.QuietCloseCtx(ctx, s3Slice, s.log)
 				for _, remaining := range slices[i+1:] {
-					helper.QuietClose(remaining.Data, s.log)
+					helper.QuietCloseCtx(ctx, remaining.Data, s.log)
 				}
-				helper.QuietCloseAll(result.S3Data, s.log)
+				helper.QuietCloseAllCtx(ctx, result.S3Data, s.log)
 				return nil, fmt.Errorf("get slice %d s3 path: %w", i, err)
 			}
 			result.Slices = append(result.Slices, entity.SliceResult{
@@ -188,7 +195,7 @@ func (s *ffmpegJobServiceImpl) runAction(ctx context.Context, req entity.JobRequ
 	}
 }
 
-func (s *ffmpegJobServiceImpl) scheduleCleanup(job *entity.Job) {
+func (s *ffmpegJobServiceImpl) scheduleCleanup(ctx context.Context, job *entity.Job) {
 	job.Mu.RLock()
 	ttl := job.EffectiveTTL
 	result := job.Result
@@ -201,7 +208,7 @@ func (s *ffmpegJobServiceImpl) scheduleCleanup(job *entity.Job) {
 	go func() {
 		time.Sleep(ttl)
 		s.log.Info("cleaning up expired ffmpeg job output", "jobId", job.JobId)
-		helper.QuietCloseAll(result.S3Data, s.log)
+		helper.QuietCloseAllCtx(ctx, result.S3Data, s.log)
 	}()
 }
 

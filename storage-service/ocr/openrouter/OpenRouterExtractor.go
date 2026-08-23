@@ -110,7 +110,7 @@ func (e *OpenRouterExtractor) buildVideoMessage(ctx context.Context, data temp.D
 }
 
 func (e *OpenRouterExtractor) buildAudioMessage(ctx context.Context, data temp.Data) (components.ChatMessages, error) {
-	r, err := data.Reader()
+	r, err := data.Reader(ctx)
 	if err != nil {
 		return components.ChatMessages{}, fmt.Errorf("build audio message: read data: %w", err)
 	}

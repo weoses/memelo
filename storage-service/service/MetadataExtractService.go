@@ -33,7 +33,7 @@ func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, inputCtx Metad
 		}
 
 		if err := step.Do(ctx, inputCtx, pipelineCtx); err != nil {
-			helper.QuietClose(pipelineCtx, c.slogger)
+			helper.QuietCloseCtx(ctx, pipelineCtx, c.slogger)
 			return nil, fmt.Errorf("create pipeline: step failed (pos=%d): %w", step.GetPos(), err)
 		}
 	}

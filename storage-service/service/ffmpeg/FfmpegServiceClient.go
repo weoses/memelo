@@ -88,7 +88,7 @@ func resolveInput(ctx context.Context, tmpDataService commonservice.TmpDataServi
 		return resolvedInput{S3Path: path}, nil
 	}
 
-	reader, err := video.Reader()
+	reader, err := video.Reader(ctx)
 	if err != nil {
 		return resolvedInput{}, fmt.Errorf("resolveInput: get reader: %w", err)
 	}

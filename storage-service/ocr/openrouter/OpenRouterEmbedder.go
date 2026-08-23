@@ -135,7 +135,7 @@ func (e *OpenRouterEmbedder) GetVideoEmbedding(ctx context.Context, video temp.D
 	if err != nil {
 		return nil, fmt.Errorf("GetVideoEmbedding: extract frame: %w", err)
 	}
-	defer helper.QuietClose(frame, e.slogger)
+	defer helper.QuietCloseCtx(ctx, frame, e.slogger)
 
 	item, err := e.GetImageEmbedding(ctx, frame)
 	if err != nil {

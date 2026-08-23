@@ -31,7 +31,7 @@ func (a *video2FrameExtractorAdapter) ExtractOneFrame(ctx context.Context, video
 		return nil, fmt.Errorf("Video2FrameExtractorAdapter: %w", err)
 	}
 	if input.Owned {
-		defer helper.QuietClose(input.Created, a.log)
+		defer helper.QuietCloseCtx(ctx, input.Created, a.log)
 	}
 
 	submitResp, err := a.cl.SubmitJob(ctx, &v1.SubmitFfmpegJobRequest{

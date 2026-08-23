@@ -53,15 +53,15 @@ func minimalVideo(t *testing.T, durationSec int) temp.Data {
 
 func TestConvertToMp4(t *testing.T) {
 	video := minimalVideo(t, 1)
-	defer video.Close()
+	defer video.Close(context.Background())
 
 	out, err := ConvertToMp4(context.Background(), testCfg(), video, testLogger())
 	if err != nil {
 		t.Fatalf("ConvertToMp4: %v", err)
 	}
-	defer out.Close()
+	defer out.Close(context.Background())
 
-	size, err := out.Size()
+	size, err := out.Size(context.Background())
 	if err != nil {
 		t.Fatalf("Size: %v", err)
 	}
@@ -72,15 +72,15 @@ func TestConvertToMp4(t *testing.T) {
 
 func TestExtractOneFrame(t *testing.T) {
 	video := minimalVideo(t, 1)
-	defer video.Close()
+	defer video.Close(context.Background())
 
 	frame, err := ExtractOneFrame(context.Background(), testCfg(), video, testLogger())
 	if err != nil {
 		t.Fatalf("ExtractOneFrame: %v", err)
 	}
-	defer frame.Close()
+	defer frame.Close(context.Background())
 
-	data, err := frame.ReadAll()
+	data, err := frame.ReadAll(context.Background())
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
 	}
@@ -95,13 +95,13 @@ func TestExtractOneFrame(t *testing.T) {
 
 func TestSliceVideoWithOverlap(t *testing.T) {
 	video := minimalVideo(t, 6)
-	defer video.Close()
+	defer video.Close(context.Background())
 
 	slices, err := SliceVideoWithOverlap(context.Background(), testCfg(), video, 3*time.Second, 1*time.Second, testLogger())
 	if err != nil {
 		t.Fatalf("SliceVideoWithOverlap: %v", err)
 	}
-	defer closeAll(slices)
+	defer closeAll(context.Background(), slices)
 
 	if len(slices) == 0 {
 		t.Fatal("SliceVideoWithOverlap produced no slices")
@@ -110,7 +110,7 @@ func TestSliceVideoWithOverlap(t *testing.T) {
 		if s.EndTime <= s.StartTime {
 			t.Errorf("slice %d: end (%d) <= start (%d)", i, s.EndTime, s.StartTime)
 		}
-		size, err := s.Data.Size()
+		size, err := s.Data.Size(context.Background())
 		if err != nil || size == 0 {
 			t.Errorf("slice %d: empty or unreadable (size=%d, err=%v)", i, size, err)
 		}
@@ -119,7 +119,7 @@ func TestSliceVideoWithOverlap(t *testing.T) {
 
 func TestSliceVideoWithOverlap_InvalidIntervalOverlap(t *testing.T) {
 	video := minimalVideo(t, 2)
-	defer video.Close()
+	defer video.Close(context.Background())
 
 	_, err := SliceVideoWithOverlap(context.Background(), testCfg(), video, 1*time.Second, 1*time.Second, testLogger())
 	if err == nil {

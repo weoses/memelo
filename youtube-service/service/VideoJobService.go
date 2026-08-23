@@ -48,10 +48,16 @@ func (s *videoJobServiceImpl) RunSync(ctx context.Context, req entity.DownloadRe
 
 	ttl := resolveEffectiveTTL(req.RetentionSeconds, s.jobTTL)
 	if ttl >= 0 {
+		// Detached copy of the request ctx, captured now while it's still
+		// live -- RunSync's own ctx is cancelled the instant it returns,
+		// long before this cleanup goroutine's sleep finishes. A real,
+		// non-fabricated continuation of the request's context lineage
+		// beats a fresh context.Background() with nothing to tie back to.
+		cleanupCtx := context.WithoutCancel(ctx)
 		go func() {
 			time.Sleep(ttl)
 			s.log.Info("Cleaning up sync s3 object", "s3Path", store.S3Path)
-			helper.QuietClose(store.S3Data, s.log)
+			helper.QuietCloseCtx(cleanupCtx, store.S3Data, s.log)
 		}()
 	}
 
@@ -60,11 +66,16 @@ func (s *videoJobServiceImpl) RunSync(ctx context.Context, req entity.DownloadRe
 
 func (s *videoJobServiceImpl) CreateJob(ctx context.Context, req entity.DownloadRequest) (string, error) {
 	jobId := uuid.NewString()
+	// Detached (context.WithoutCancel), values-only copy of ctx, stored on
+	// the job for startTTLCleaner's later background sweep to reuse -- see
+	// the Ctx field doc comment on entity.DownloadJob for why.
+	detachedCtx := context.WithoutCancel(ctx)
 	job := &entity.DownloadJob{
 		JobId:        jobId,
 		State:        entity.JobStatePending,
 		CreatedAt:    time.Now(),
 		EffectiveTTL: resolveEffectiveTTL(req.RetentionSeconds, s.jobTTL),
+		Ctx:          detachedCtx,
 	}
 	s.jobs.Store(jobId, job)
 
@@ -73,7 +84,7 @@ func (s *videoJobServiceImpl) CreateJob(ctx context.Context, req entity.Download
 	// WithoutCancel first, then Start, so the job span's context is
 	// itself uncancelable too. A child span outliving its already-ended
 	// parent is expected/valid for this fire-and-forget-a-job-id shape.
-	jobCtx, span := tracer.Start(context.WithoutCancel(ctx), "youtube.job",
+	jobCtx, span := tracer.Start(detachedCtx, "youtube.job",
 		trace.WithAttributes(attribute.String("job.id", jobId)))
 
 	go func() {
@@ -127,7 +138,7 @@ func (s *videoJobServiceImpl) downloadAndStore(ctx context.Context, req entity.D
 
 	s3path, err := s3data.GetS3Path(ctx)
 	if err != nil {
-		helper.QuietClose(s3data, s.log)
+		helper.QuietCloseCtx(ctx, s3data, s.log)
 		return nil, fmt.Errorf("failed to get s3 path: %w", err)
 	}
 
@@ -158,7 +169,7 @@ func (s *videoJobServiceImpl) startTTLCleaner() {
 				if job.Result != nil {
 					s3Path = job.Result.S3Path
 					if job.Result.S3Data != nil {
-						helper.QuietClose(job.Result.S3Data, s.log)
+						helper.QuietCloseCtx(job.Ctx, job.Result.S3Data, s.log)
 						job.Result.S3Data = nil
 					}
 				}

@@ -244,7 +244,7 @@ func (m MessageHandlerServiceImpl) createMediaMeme(ctx context.Context, reqType 
 	if err != nil {
 		return nil, fmt.Errorf("messageHandlerService: downloadToS3 failed: %w", err)
 	}
-	defer helper.QuietClose(s3data, m.slogger)
+	defer helper.QuietCloseCtx(ctx, s3data, m.slogger)
 
 	result, err := m.storage.CreateMeme(ctx, s3data, reqType, accountId)
 	if err != nil {

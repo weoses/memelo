@@ -34,7 +34,7 @@ func (localFfmpegVideo2Mp4) ConvertToMp4(ctx context.Context, video temp.Data) (
 	defer os.RemoveAll(dir)
 
 	inputPath := filepath.Join(dir, "input")
-	if err := writeToFile(video, inputPath); err != nil {
+	if err := writeToFile(ctx, video, inputPath); err != nil {
 		return nil, err
 	}
 
@@ -58,7 +58,7 @@ func (localFfmpegFrameExtractor) ExtractOneFrame(ctx context.Context, video temp
 	defer os.RemoveAll(dir)
 
 	inputPath := filepath.Join(dir, "input.mp4")
-	if err := writeToFile(video, inputPath); err != nil {
+	if err := writeToFile(ctx, video, inputPath); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +86,7 @@ func (localFfmpegVideoSlicer) SliceVideoWithOverlap(ctx context.Context, video t
 	defer os.RemoveAll(dir)
 
 	inputPath := filepath.Join(dir, "input.mp4")
-	if err := writeToFile(video, inputPath); err != nil {
+	if err := writeToFile(ctx, video, inputPath); err != nil {
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (localFfmpegVideoSlicer) SliceVideoWithOverlap(ctx context.Context, video t
 			"-c", "copy", segPath)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			for _, s := range slices {
-				helper.QuietClose(s.Data, slog.Default())
+				helper.QuietCloseCtx(ctx, s.Data, slog.Default())
 			}
 			return nil, fmt.Errorf("ffmpeg slice: %w\n%s", err, out)
 		}
@@ -132,14 +132,14 @@ func (localFfmpegVideoSlicer) SliceVideoWithOverlap(ctx context.Context, video t
 	return slices, nil
 }
 
-func writeToFile(video temp.Data, path string) error {
+func writeToFile(ctx context.Context, video temp.Data, path string) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	r, err := video.Reader()
+	r, err := video.Reader(ctx)
 	if err != nil {
 		return err
 	}

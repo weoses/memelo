@@ -1,6 +1,7 @@
 package temp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +13,7 @@ type tempBasedData struct {
 	closed bool
 }
 
-func (m *tempBasedData) Size() (int64, error) {
+func (m *tempBasedData) Size(ctx context.Context) (int64, error) {
 	info, err := os.Stat(m.path)
 	if err != nil {
 		return 0, err
@@ -20,15 +21,15 @@ func (m *tempBasedData) Size() (int64, error) {
 	return info.Size(), nil
 }
 
-func (m *tempBasedData) Reader() (io.ReadCloser, error) {
+func (m *tempBasedData) Reader(ctx context.Context) (io.ReadCloser, error) {
 	return os.Open(m.path)
 }
 
-func (m *tempBasedData) ReadAll() ([]byte, error) {
+func (m *tempBasedData) ReadAll(ctx context.Context) ([]byte, error) {
 	return os.ReadFile(m.path)
 }
 
-func (m *tempBasedData) Close() error {
+func (m *tempBasedData) Close(ctx context.Context) error {
 	if m.closed {
 		return nil
 	}

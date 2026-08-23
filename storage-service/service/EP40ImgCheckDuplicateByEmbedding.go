@@ -53,7 +53,7 @@ func (s *CheckDuplicateByEmbeddingImgPipelineStep) Do(ctx context.Context, input
 	if err != nil {
 		return fmt.Errorf("error wrapping duplicate candidate image: %w", err)
 	}
-	defer helper.QuietClose(dupImg, s.slogger)
+	defer helper.QuietCloseCtx(ctx, dupImg, s.slogger)
 
 	isDuplicate, err := s.extractor.CheckDuplicate(ctx, pCtx.ImageOriginalJpeg, dupImg)
 	if err != nil {

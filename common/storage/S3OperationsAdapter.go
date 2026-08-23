@@ -104,12 +104,12 @@ func (m *S3OperationsAdapterService) IsGs() bool {
 }
 
 func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data temp.Data, options ...SaveOptions) error {
-	size, err := data.Size()
+	size, err := data.Size(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get size of data: %w", err)
 	}
 
-	dataReader, err := data.Reader()
+	dataReader, err := data.Reader(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get temp reader: %w", err)
 	}

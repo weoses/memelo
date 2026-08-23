@@ -22,7 +22,7 @@ type ImageConveterImpl struct {
 }
 
 func (i *ImageConveterImpl) GetSize(ctx context.Context, rawImage temp.Data) (int, int, error) {
-	imgData, err := rawImage.ReadAll()
+	imgData, err := rawImage.ReadAll(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("error reading image bytes: %w", err)
 	}
@@ -36,7 +36,7 @@ func (i *ImageConveterImpl) GetSize(ctx context.Context, rawImage temp.Data) (in
 }
 
 func (i *ImageConveterImpl) Convert2Jpeg(ctx context.Context, rawImage temp.Data) (temp.Data, error) {
-	imgData, err := rawImage.ReadAll()
+	imgData, err := rawImage.ReadAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error reading image bytes: %w", err)
 	}
@@ -51,7 +51,7 @@ func (i *ImageConveterImpl) Convert2Jpeg(ctx context.Context, rawImage temp.Data
 }
 
 func (i *ImageConveterImpl) MakeThumbnail(ctx context.Context, rawImage temp.Data) (temp.Data, error) {
-	imgData, err := rawImage.ReadAll()
+	imgData, err := rawImage.ReadAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error reading image bytes: %w", err)
 	}

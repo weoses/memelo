@@ -226,7 +226,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 	}
 
 	rawImg, err := r.imageStorageService.Read(ctx, data.S3Id, storageMediaType(data.Type, SavedOriginal))
-	defer helper.QuietClose(rawImg, r.slogger)
+	defer helper.QuietCloseCtx(ctx, rawImg, r.slogger)
 	if err != nil {
 		return fmt.Errorf("get image bytes failed: %w", err)
 	}
@@ -237,7 +237,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 	}
 
 	rawImgS3Backed, err := r.tmpDataService.WrapData(ctx, mime, rawImg)
-	defer helper.QuietClose(rawImgS3Backed, r.slogger)
+	defer helper.QuietCloseCtx(ctx, rawImgS3Backed, r.slogger)
 	if err != nil {
 		return fmt.Errorf("wrap data failed: %w", err)
 	}
@@ -271,7 +271,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		return fmt.Errorf("extract pipeline failed: %w", err)
 	}
 
-	defer helper.QuietClose(pipelineResult, r.slogger)
+	defer helper.QuietCloseCtx(ctx, pipelineResult, r.slogger)
 
 	if params.CheckDuplicates && pipelineResult.Duplicate != nil {
 		r.slogger.InfoContext(ctx, "recompute: deleting duplicate entity",

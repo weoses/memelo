@@ -8,10 +8,10 @@ import (
 const MaxInmemSize = 1 * 1024 * 1024
 
 type Data interface {
-	io.Closer
-	Size() (int64, error)
-	Reader() (io.ReadCloser, error)
-	ReadAll() ([]byte, error)
+	Size(ctx context.Context) (int64, error)
+	Reader(ctx context.Context) (io.ReadCloser, error)
+	ReadAll(ctx context.Context) ([]byte, error)
+	Close(ctx context.Context) error
 }
 
 type S3BackedData interface {

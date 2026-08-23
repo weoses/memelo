@@ -82,7 +82,7 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	if err != nil {
 		return nil, fmt.Errorf("metadataService extract pipeline failed: %w", err)
 	}
-	defer helper.QuietClose(pipelineResult, m.slogger)
+	defer helper.QuietCloseCtx(ctx, pipelineResult, m.slogger)
 
 	if pipelineResult.Duplicate != nil {
 		results, err := m.constructMetadataWithUrls(ctx, []*entity.ElasticImageMetaData{pipelineResult.Duplicate})
@@ -176,7 +176,7 @@ func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeIn
 		if err != nil {
 			return nil, fmt.Errorf("encode original failed: %w", err)
 		}
-		defer helper.QuietClose(encoded, m.slogger)
+		defer helper.QuietCloseCtx(ctx, encoded, m.slogger)
 
 		err = m.imageStorageService.Save(ctx, existing.S3Id, storageMediaType(existing.Type, SavedOriginal), encoded)
 		if err != nil {
@@ -191,7 +191,7 @@ func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeIn
 		if err != nil {
 			return nil, fmt.Errorf("encode thumbnail failed: %w", err)
 		}
-		defer helper.QuietClose(thumb, m.slogger)
+		defer helper.QuietCloseCtx(ctx, thumb, m.slogger)
 
 		err = m.imageStorageService.Save(ctx, existing.S3Id, storageMediaType(existing.Type, SavedThumb), thumb)
 		if err != nil {

@@ -108,8 +108,8 @@ func (e *ExportServiceImpl) exportOne(ctx context.Context, meta *entity.ElasticI
 	if err != nil {
 		return nil, fmt.Errorf("export: fetch original image %s failed: %w", meta.ImageId, err)
 	}
-	defer helper.QuietClose(origData, e.slogger)
-	item.ImageOriginal, err = origData.ReadAll()
+	defer helper.QuietCloseCtx(ctx, origData, e.slogger)
+	item.ImageOriginal, err = origData.ReadAll(ctx)
 
 	if err != nil {
 		return nil, fmt.Errorf("export: read original image %s failed: %w", meta.ImageId, err)
@@ -120,9 +120,9 @@ func (e *ExportServiceImpl) exportOne(ctx context.Context, meta *entity.ElasticI
 	if err != nil {
 		return nil, fmt.Errorf("export: fetch thumbnail %s failed: %w", meta.ImageId, err)
 	}
-	defer helper.QuietClose(thumbData, e.slogger)
+	defer helper.QuietCloseCtx(ctx, thumbData, e.slogger)
 
-	item.ImageThumbnail, err = thumbData.ReadAll()
+	item.ImageThumbnail, err = thumbData.ReadAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("export: read thumbnail %s failed: %w", meta.ImageId, err)
 	}

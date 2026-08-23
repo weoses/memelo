@@ -49,10 +49,10 @@ type MetadataStorageArtifact struct {
 	Data temp.S3BackedData
 }
 
-func (m MetadataStorageArtifact) Close() error {
+func (m MetadataStorageArtifact) Close(ctx context.Context) error {
 	if m.Data != nil {
 		tmpLogger := slog.With("service", "MetadataStorageArtifact")
-		helper.QuietClose(m.Data, tmpLogger)
+		helper.QuietCloseCtx(ctx, m.Data, tmpLogger)
 	}
 	return nil
 }
@@ -64,8 +64,8 @@ type VideoSlice struct {
 	Slice          temp.S3BackedData
 }
 
-func (vs VideoSlice) Close() error {
-	return vs.Slice.Close()
+func (vs VideoSlice) Close(ctx context.Context) error {
+	return vs.Slice.Close(ctx)
 }
 
 type MetadataPipelineContext struct {
@@ -86,14 +86,14 @@ type MetadataPipelineContext struct {
 	ThumbnailSize entity.Sizes
 }
 
-func (m *MetadataPipelineContext) Close() error {
+func (m *MetadataPipelineContext) Close(ctx context.Context) error {
 	tmpLogger := slog.With("service", "MetadataPipelineContext")
 
-	helper.QuietClose(m.ImageOriginalJpeg, tmpLogger)
-	helper.QuietClose(m.ImageThumbnail, tmpLogger)
-	helper.QuietClose(m.VideoMp4, tmpLogger)
-	helper.QuietCloseAll(m.VideoSlices, tmpLogger)
-	helper.QuietCloseAll(m.StorageArtifacts, tmpLogger)
+	helper.QuietCloseCtx(ctx, m.ImageOriginalJpeg, tmpLogger)
+	helper.QuietCloseCtx(ctx, m.ImageThumbnail, tmpLogger)
+	helper.QuietCloseCtx(ctx, m.VideoMp4, tmpLogger)
+	helper.QuietCloseAllCtx(ctx, m.VideoSlices, tmpLogger)
+	helper.QuietCloseAllCtx(ctx, m.StorageArtifacts, tmpLogger)
 
 	return nil
 }

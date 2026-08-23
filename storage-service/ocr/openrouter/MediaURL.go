@@ -23,11 +23,11 @@ func resolveMediaURL(ctx context.Context, data temp.Data, mimeType string, logge
 			return url, nil
 		}
 	}
-	return toDataURL(data, mimeType, logger)
+	return toDataURL(ctx, data, mimeType, logger)
 }
 
-func toDataURL(data temp.Data, mimeType string, logger *slog.Logger) (string, error) {
-	r, err := data.Reader()
+func toDataURL(ctx context.Context, data temp.Data, mimeType string, logger *slog.Logger) (string, error) {
+	r, err := data.Reader(ctx)
 	if err != nil {
 		return "", fmt.Errorf("read data: %w", err)
 	}

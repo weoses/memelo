@@ -41,26 +41,26 @@ func (m *s3wrappedData) IsGsSupported() bool {
 	return m.gsSupported
 }
 
-func (m *s3wrappedData) Size() (int64, error) {
-	err := m.resolveDownload()
+func (m *s3wrappedData) Size(ctx context.Context) (int64, error) {
+	err := m.resolveDownload(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	return m.physical.Size()
+	return m.physical.Size(ctx)
 }
 
-func (m *s3wrappedData) Reader() (io.ReadCloser, error) {
-	err := m.resolveDownload()
+func (m *s3wrappedData) Reader(ctx context.Context) (io.ReadCloser, error) {
+	err := m.resolveDownload(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.physical.Reader()
+	return m.physical.Reader(ctx)
 }
 
-func (m *s3wrappedData) ReadAll() ([]byte, error) {
-	reader, err := m.Reader()
+func (m *s3wrappedData) ReadAll(ctx context.Context) ([]byte, error) {
+	reader, err := m.Reader(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +83,12 @@ func (m *s3wrappedData) GetS3Url(ctx context.Context) (string, error) {
 	return m.url(ctx, m.s3path)
 }
 
-func (m *s3wrappedData) Close() error {
+func (m *s3wrappedData) Close(ctx context.Context) error {
 	if m.closed {
 		return nil
 	}
 
-	closeCtx := context.Background()
-	ctx, cancel := context.WithTimeout(closeCtx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 
 	var errS3Delete error
 	var errDataClose error
@@ -99,21 +98,21 @@ func (m *s3wrappedData) Close() error {
 		errS3Delete = m.delete(ctx, m.s3path)
 	}
 	if m.physical != nil {
-		errDataClose = m.physical.Close()
+		errDataClose = m.physical.Close(ctx)
 	}
 	m.closed = true
 	return errors.Join(errDataClose, errS3Delete)
 }
 
-func (m *s3wrappedData) resolveDownload() error {
+func (m *s3wrappedData) resolveDownload(ctx context.Context) error {
 	if m.physical == nil {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
 		var err error
 		m.once.Do(func() {
-			m.slogger.Info("s3wrappedData: downloaded object from s3", "uri", m.s3path)
-			m.physical, err = m.download(context.Background(), m.s3path)
+			m.slogger.InfoContext(ctx, "s3wrappedData: downloaded object from s3", "uri", m.s3path)
+			m.physical, err = m.download(ctx, m.s3path)
 		})
 		if err != nil {
 			return err

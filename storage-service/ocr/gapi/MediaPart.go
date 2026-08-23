@@ -22,7 +22,7 @@ import (
 // caller uploads rather than branching between upload/presigned-URL/inline
 // depending on which method happened to be invoked.
 func buildPart(ctx context.Context, client *genai.Client, data temp.Data, mimeType string, logger *slog.Logger) (*genai.Part, error) {
-	reader, err := data.Reader()
+	reader, err := data.Reader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("read data: %w", err)
 	}

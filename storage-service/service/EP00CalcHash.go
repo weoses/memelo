@@ -19,11 +19,11 @@ type CalcHashPipelineStep struct {
 	BasePipelineStep
 }
 
-func (c *CalcHashPipelineStep) Do(_ context.Context, inputContext MetadataInputContext, pipelineContext *MetadataPipelineContext) error {
+func (c *CalcHashPipelineStep) Do(ctx context.Context, inputContext MetadataInputContext, pipelineContext *MetadataPipelineContext) error {
 	if pipelineContext.Hash != "" {
 		return nil
 	}
-	hash, err := calcRawHash(inputContext.RawInput)
+	hash, err := calcRawHash(ctx, inputContext.RawInput)
 	if err != nil {
 		return fmt.Errorf("create pipeline: error calculating hash: %w", err)
 	}
@@ -31,8 +31,8 @@ func (c *CalcHashPipelineStep) Do(_ context.Context, inputContext MetadataInputC
 	return nil
 }
 
-func calcRawHash(raw temp.Data) (string, error) {
-	reader, err := raw.Reader()
+func calcRawHash(ctx context.Context, raw temp.Data) (string, error) {
+	reader, err := raw.Reader(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to read incoming temp %w", err)
 	}

@@ -36,7 +36,7 @@ func (a *videoSlicerAdapter) SliceVideoWithOverlap(
 		return nil, fmt.Errorf("VideoSlicerAdapter: %w", err)
 	}
 	if input.Owned {
-		defer helper.QuietClose(input.Created, a.log)
+		defer helper.QuietCloseCtx(ctx, input.Created, a.log)
 	}
 
 	submitResp, err := a.cl.SubmitJob(ctx, &v1.SubmitFfmpegJobRequest{
@@ -62,7 +62,7 @@ func (a *videoSlicerAdapter) SliceVideoWithOverlap(
 		data, err := a.tmpDataService.WrapInternalS3Path(ctx, s.GetS3Path())
 		if err != nil {
 			for _, wrapped := range slices[:i] {
-				helper.QuietClose(wrapped.Data, a.log)
+				helper.QuietCloseCtx(ctx, wrapped.Data, a.log)
 			}
 			return nil, fmt.Errorf("VideoSlicerAdapter: wrap slice %d: %w", i, err)
 		}

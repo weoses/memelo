@@ -179,8 +179,8 @@ func TestCreateJob_DoesNotDeleteInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("input was deleted after job completion: %v", err)
 	}
-	defer again.Close()
-	size, err := again.Size()
+	defer again.Close(context.Background())
+	size, err := again.Size(context.Background())
 	if err != nil || size == 0 {
 		t.Fatalf("input unreadable or empty after job completion: size=%d, err=%v", size, err)
 	}

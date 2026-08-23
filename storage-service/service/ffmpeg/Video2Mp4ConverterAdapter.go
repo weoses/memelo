@@ -31,7 +31,7 @@ func (a *video2Mp4ConverterAdapter) ConvertToMp4(ctx context.Context, video temp
 		return nil, fmt.Errorf("Video2Mp4ConverterAdapter: %w", err)
 	}
 	if input.Owned {
-		defer helper.QuietClose(input.Created, a.log)
+		defer helper.QuietCloseCtx(ctx, input.Created, a.log)
 	}
 
 	submitResp, err := a.cl.SubmitJob(ctx, &v1.SubmitFfmpegJobRequest{

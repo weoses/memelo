@@ -54,7 +54,7 @@ func SliceVideoWithOverlap(
 		return nil, fmt.Errorf("SliceVideoWithOverlap: create input file: %w", err)
 	}
 
-	videoReader, err := video.Reader()
+	videoReader, err := video.Reader(ctx)
 	if err != nil {
 		helper.QuietClose(inputFile, slogger)
 		return nil, fmt.Errorf("SliceVideoWithOverlap: get reader: %w", err)
@@ -100,19 +100,19 @@ func SliceVideoWithOverlap(
 		out, errCmd := cmd.CombinedOutput()
 		slogger.DebugContext(ctx, "SliceVideoWithOverlap: ffmpeg output", "output", string(out))
 		if errCmd != nil {
-			closeAll(slices)
+			closeAll(ctx, slices)
 			return nil, fmt.Errorf("SliceVideoWithOverlap: ffmpeg failed: %w\n%s", errCmd, out)
 		}
 
 		segFile, errOpen := os.Open(segmentPath)
 		if errOpen != nil {
-			closeAll(slices)
+			closeAll(ctx, slices)
 			return nil, fmt.Errorf("SliceVideoWithOverlap: open segment: %w", errOpen)
 		}
 		data, errData := temp.DataTemp(segFile)
 		helper.QuietClose(segFile, slogger)
 		if errData != nil {
-			closeAll(slices)
+			closeAll(ctx, slices)
 			return nil, fmt.Errorf("SliceVideoWithOverlap: read segment: %w", errData)
 		}
 		slices = append(slices, VideoSlice{
@@ -146,8 +146,8 @@ func getVideoDuration(ctx context.Context, cfg *conf.FfmpegConfig, inputPath str
 	return time.Duration(durSec * float64(time.Second)), nil
 }
 
-func closeAll(items []VideoSlice) {
+func closeAll(ctx context.Context, items []VideoSlice) {
 	for _, d := range items {
-		_ = d.Data.Close()
+		_ = d.Data.Close(ctx)
 	}
 }
