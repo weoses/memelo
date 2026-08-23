@@ -43,3 +43,8 @@ variable "max_instances" {
   type        = number
   default     = 2
 }
+
+variable "domain_name" {
+  description = "Custom domain mapped to gateway-service, e.g. test.memelo.cloud -- used to build FRONTEND_BASEURL"
+  type        = string
+}

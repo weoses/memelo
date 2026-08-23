@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
+	retry "github.com/avast/retry-go/v4"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/tracing"
@@ -24,7 +26,7 @@ const (
 
 type TelegramBotService interface {
 	Handler() http.Handler
-	RegisterWebhook() error
+	RegisterWebhook(ctx context.Context) error
 	RemoveWebhook() error
 }
 
@@ -69,13 +71,30 @@ func (s *TelegramBotServiceImpl) Handler() http.Handler {
 	})
 }
 
-func (s *TelegramBotServiceImpl) RegisterWebhook() error {
-	wh, err := tgbotapi.NewWebhook(s.webhookCfg.ExternalUrl)
-	if err != nil {
-		return err
-	}
-	_, err = s.bot.Request(wh)
-	return err
+// RegisterWebhook calls Telegram's setWebhook, which validates HTTPS
+// connectivity synchronously. Retried with backoff: a redeploy can boot
+// this service before the gateway (or the domain/cert in front of it) is
+// actually ready to serve, which would otherwise fail startup outright.
+// ~20 attempts * 5s comfortably covers a normal Cloud Run rollout window
+// with margin -- it does not, and isn't meant to, cover a domain that
+// isn't live at all yet (DNS/cert provisioning, a one-time manual step).
+func (s *TelegramBotServiceImpl) RegisterWebhook(ctx context.Context) error {
+	return retry.Do(
+		func() error {
+			wh, err := tgbotapi.NewWebhook(s.webhookCfg.ExternalUrl)
+			if err != nil {
+				return retry.Unrecoverable(err)
+			}
+			_, err = s.bot.Request(wh)
+			if err != nil {
+				s.log.WarnContext(ctx, "RegisterWebhook: setWebhook failed, retrying", "error", err)
+			}
+			return err
+		},
+		retry.Attempts(20),
+		retry.Delay(5*time.Second),
+		retry.Context(ctx),
+	)
 }
 
 func (s *TelegramBotServiceImpl) RemoveWebhook() error {

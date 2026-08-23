@@ -1,0 +1,19 @@
+log:
+  Level: info
+  Format: text
+  ProjectId: ""
+
+server:
+  ListenAddress: :7008
+
+telegram-service:
+  Uri: "http://localhost:7002"
+  RequireGoogleIDToken: false
+
+webapp-service:
+  Uri: "http://localhost:7006"
+  RequireGoogleIDToken: false
+
+basic-auth:
+  Username: ""
+  Password: ""

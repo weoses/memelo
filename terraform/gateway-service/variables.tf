@@ -33,15 +33,9 @@ variable "memory" {
 }
 
 variable "min_instances" {
-  description = <<-EOT
-    Minimum number of Cloud Run instances. Must stay >= 1 for this service:
-    telegram-service's OnStop hook unregisters the Telegram webhook
-    (RemoveWebhook), so scaling to zero silently kills the bot -- nothing
-    can wake the instance back up afterward since Telegram has no webhook
-    left to call.
-  EOT
+  description = "Minimum number of Cloud Run instances"
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_instances" {
@@ -51,6 +45,6 @@ variable "max_instances" {
 }
 
 variable "domain_name" {
-  description = "Custom domain mapped to gateway-service, e.g. test.memelo.cloud -- used to build WEBHOOK_EXTERNALURL"
+  description = "Custom domain mapped to this service, e.g. test.memelo.cloud"
   type        = string
 }

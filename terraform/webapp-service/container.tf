@@ -25,12 +25,10 @@ module "container" {
     TEMP_STORAGE_BUCKET   = "melo-${var.environment}-temp"
     TEMP_STORAGE_SECURE   = "true"
 
-    # Real value patched in by frontend-url.tf right after this resource
-    # applies -- same self-referencing-URL problem as telegram-service's
-    # webhook, see that service's README for the full explanation. Not
-    # startup-critical here (read per-request from already-served HTML,
-    # not at boot), but still worth getting right automatically.
-    FRONTEND_BASEURL = ""
+    # test.memelo.cloud routes to gateway-service, which proxies everything
+    # except /webhook through to this service (see ../gateway-service/).
+    # Static and known upfront -- no self-referencing-URL bootstrap needed.
+    FRONTEND_BASEURL = "https://${var.domain_name}"
 
     LOG_FORMAT    = "json"
     LOG_PROJECTID = var.project_id
@@ -43,7 +41,8 @@ module "container" {
 
   secrets_volume_secret_id = module.secrets.secret_id
 
-  # webapp-service serves the public browser frontend -- unauthenticated
-  # invocation required.
-  allow_unauthenticated = true
+  # webapp-service is purely internal now: gateway-service is the one
+  # public entry point and proxies here (behind Basic Auth), attaching its
+  # own Google ID token (invoker grant lives in ../gateway-service/invoker.tf).
+  allow_unauthenticated = false
 }

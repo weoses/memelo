@@ -21,7 +21,7 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) 
 	var srv *http.Server
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			if err := svc.RegisterWebhook(); err != nil {
+			if err := svc.RegisterWebhook(ctx); err != nil {
 				return err
 			}
 			mux := http.NewServeMux()

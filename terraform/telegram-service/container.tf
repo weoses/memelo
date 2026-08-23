@@ -1,10 +1,3 @@
-# WEBHOOK_EXTERNALURL is deliberately NOT set here -- it needs this
-# service's own Cloud Run URL, which isn't known until after the service is
-# first created (Cloud Run's default *.run.app URL isn't a computable
-# function of project/region/name). See webhook.tf, which patches it in via
-# `gcloud run services update` once the URL is known, and re-patches it on
-# every apply since Terraform's own config here doesn't declare it (and
-# would otherwise strip it back out on the next apply).
 module "container" {
   source = "../modules/cloud-run-service"
 
@@ -25,18 +18,10 @@ module "container" {
   env = {
     SERVER_LISTENADDRESS = ":7002"
 
-    # Real value patched in by webhook.tf right after this resource applies
-    # (see that file for why). This placeholder only matters on the very
-    # first-ever creation, so the app has *some* URL to register with
-    # Telegram and pass its own startup health check -- Telegram's
-    # setWebhook actually resolves DNS and connects synchronously (a
-    # made-up host like "placeholder.invalid" gets rejected outright with
-    # "Failed to resolve host"), so this has to be a real, reachable HTTPS
-    # endpoint. storage-service's own already-live URL is a safe, hermetic
-    # choice (no external third-party dependency) -- Telegram will happily
-    # connect to it and get some 403/404, which is enough to accept the
-    # registration.
-    WEBHOOK_EXTERNALURL = "${data.terraform_remote_state.storage.outputs.uri}/webhook"
+    # test.memelo.cloud routes to gateway-service, which proxies /webhook
+    # through to this service (see ../gateway-service/). Static and known
+    # upfront -- no self-referencing-URL bootstrap needed here anymore.
+    WEBHOOK_EXTERNALURL = "https://${var.domain_name}/webhook"
 
     STORAGE_SERVICE_URI                  = data.terraform_remote_state.storage.outputs.uri
     STORAGE_SERVICE_REQUIREGOOGLEIDTOKEN = "true"
@@ -59,8 +44,8 @@ module "container" {
 
   secrets_volume_secret_id = module.secrets.secret_id
 
-  # telegram-service needs a public webhook endpoint reachable by Telegram's
-  # servers -- unlike storage/ffmpeg/youtube, it allows unauthenticated
-  # invocation.
-  allow_unauthenticated = true
+  # telegram-service is purely internal now: gateway-service is the one
+  # public entry point and proxies /webhook here, attaching its own Google
+  # ID token (invoker grant lives in ../gateway-service/invoker.tf).
+  allow_unauthenticated = false
 }
