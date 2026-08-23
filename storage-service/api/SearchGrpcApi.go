@@ -320,7 +320,7 @@ func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to create backed temp by s3 path: %w", err)
 		}
-		return result, true, nil
+		return result, false, nil
 	}
 
 	if media.GetData() != nil {
@@ -328,7 +328,7 @@ func (api *SearchServiceApi) toData(ctx context.Context, media *v1.MediaDataDto)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get data from bytes: %w", err)
 		}
-		return data, false, nil
+		return data, true, nil
 	}
 
 	return nil, false, errors.New("media temp is empty")
