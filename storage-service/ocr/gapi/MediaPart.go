@@ -13,15 +13,21 @@ import (
 	"google.golang.org/genai"
 )
 
-// buildPart uploads data to Gemini's Files API and returns a Part referencing
-// the uploaded file. This is the only mechanism confirmed to work reliably
-// with the Gemini Developer API (API-key auth, which this package uses):
-// Cloud Storage gs:// URIs require Vertex AI/OAuth, and Google does not
-// document reliable support for arbitrary public/presigned URLs (e.g. our S3
-// presigned URLs) on the generateContent endpoint this SDK calls. So every
-// caller uploads rather than branching between upload/presigned-URL/inline
-// depending on which method happened to be invoked.
+// buildPart prefers a presigned S3 URL over uploading through this process --
+// confirmed working (both generateContent and embedContent) against the
+// Gemini Developer API (API-key auth) via a live test against a real object
+// in the test bucket: Gemini fetches the presigned URL itself server-side,
+// so this avoids reading the whole object through this process and
+// re-uploading it. Falls back to the Files API when data isn't S3-backed or
+// presigning fails (e.g. local/non-S3 storage).
 func buildPart(ctx context.Context, client *genai.Client, data temp.Data, mimeType string, logger *slog.Logger) (*genai.Part, error) {
+	if s3data, ok := data.(temp.S3BackedData); ok {
+		if url, err := s3data.GetPresignedUrl(ctx); err == nil {
+			logger.InfoContext(ctx, "buildPart: using presigned url", "url", url)
+			return genai.NewPartFromURI(url, mimeType), nil
+		}
+	}
+
 	reader, err := data.Reader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("read data: %w", err)
