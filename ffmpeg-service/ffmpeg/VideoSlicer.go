@@ -15,6 +15,9 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/ffmpeg-service/conf"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type VideoSlice struct {
@@ -97,7 +100,13 @@ func SliceVideoWithOverlap(
 			segmentPath,
 		)
 		slogger.InfoContext(ctx, "SliceVideoWithOverlap: running ffmpeg", "cmd", cmd.String(), "start", startSec, "sliceStart", start, "duration", durationSec)
+		_, span := tracer.Start(ctx, "ffmpeg.slice_segment", trace.WithAttributes(attribute.String("ffmpeg.cmd", cmd.String())))
 		out, errCmd := cmd.CombinedOutput()
+		if errCmd != nil {
+			span.RecordError(errCmd)
+			span.SetStatus(codes.Error, errCmd.Error())
+		}
+		span.End()
 		slogger.DebugContext(ctx, "SliceVideoWithOverlap: ffmpeg output", "output", string(out))
 		if errCmd != nil {
 			closeAll(ctx, slices)
@@ -133,8 +142,14 @@ func getVideoDuration(ctx context.Context, cfg *conf.FfmpegConfig, inputPath str
 		"-of", "default=noprint_wrappers=1:nokey=1",
 		inputPath,
 	)
+
+	_, span := tracer.Start(ctx, "ffmpeg.probe_duration", trace.WithAttributes(attribute.String("ffmpeg.cmd", cmd.String())))
+	defer span.End()
+
 	out, err := cmd.Output()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return 0, fmt.Errorf("ffprobe failed: %w", err)
 	}
 

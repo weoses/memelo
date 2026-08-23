@@ -11,7 +11,17 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/ffmpeg-service/conf"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracer creates spans for the actual ffmpeg/ffprobe subprocess execution --
+// the dominant cost of every job, previously an unlabeled gap inside the
+// enclosing ffmpeg.job span (S3 read/write spans covered only a fraction of
+// the total job duration).
+var tracer = otel.Tracer("ffmpeg-service")
 
 func ExtractOneFrame(ctx context.Context, cfg *conf.FfmpegConfig, video temp.Data, slogger *slog.Logger) (temp.Data, error) {
 	slogger.InfoContext(ctx, "ExtractOneFrame: start")
@@ -53,7 +63,13 @@ func ExtractOneFrame(ctx context.Context, cfg *conf.FfmpegConfig, video temp.Dat
 		outputPath,
 	)
 	slogger.InfoContext(ctx, "ExtractOneFrame: running ffmpeg", "cmd", cmd.String())
+	_, span := tracer.Start(ctx, "ffmpeg.extract_frame", trace.WithAttributes(attribute.String("ffmpeg.cmd", cmd.String())))
 	out, err := cmd.CombinedOutput()
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	span.End()
 	if out != nil {
 		slogger.DebugContext(ctx, "ExtractOneFrame: ffmpeg output", "output", string(out))
 	}

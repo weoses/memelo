@@ -7,6 +7,9 @@ import (
 	"slices"
 
 	"github.com/weoses/memelo/common/helper"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type MetadataExtractService interface {
@@ -32,7 +35,17 @@ func (c *MetadataExtractServiceImpl) Extract(ctx context.Context, inputCtx Metad
 			continue
 		}
 
-		if err := step.Do(ctx, inputCtx, pipelineCtx); err != nil {
+		stepCtx, span := tracer.Start(ctx, "pipeline."+step.GetKey(), trace.WithAttributes(
+			attribute.Int("pipeline.step.pos", step.GetPos()),
+		))
+		err := step.Do(stepCtx, inputCtx, pipelineCtx)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+
+		if err != nil {
 			helper.QuietCloseCtx(ctx, pipelineCtx, c.slogger)
 			return nil, fmt.Errorf("create pipeline: step failed (pos=%d): %w", step.GetPos(), err)
 		}

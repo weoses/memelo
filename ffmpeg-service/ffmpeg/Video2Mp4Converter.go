@@ -11,6 +11,9 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/ffmpeg-service/conf"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func ConvertToMp4(ctx context.Context, cfg *conf.FfmpegConfig, video temp.Data, slogger *slog.Logger) (temp.Data, error) {
@@ -55,7 +58,13 @@ func ConvertToMp4(ctx context.Context, cfg *conf.FfmpegConfig, video temp.Data, 
 		outputPath,
 	)
 	slogger.InfoContext(ctx, "ConvertToMp4: running ffmpeg", "cmd", cmd.String())
+	_, span := tracer.Start(ctx, "ffmpeg.convert_to_mp4", trace.WithAttributes(attribute.String("ffmpeg.cmd", cmd.String())))
 	out, err := cmd.CombinedOutput()
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	span.End()
 	slogger.DebugContext(ctx, "ConvertToMp4: ffmpeg output", "output", string(out))
 	if err != nil {
 		return nil, fmt.Errorf("ConvertToMp4: ffmpeg failed: %w\n%s", err, out)
