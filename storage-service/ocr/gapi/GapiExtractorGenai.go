@@ -6,12 +6,17 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/genai"
 )
+
+var tracer = otel.Tracer("storage-service")
 
 const onScreenTextProp = "on_screen_text"
 const audioTranscriptProp = "audio_transcript"
@@ -73,26 +78,7 @@ func (g *GeminiExtractor) buildTool() *genai.Tool {
 }
 
 func (g *GeminiExtractor) buildMediaPart(ctx context.Context, data temp.Data, mimeType string) (*genai.Part, error) {
-	if s3data, ok := data.(temp.S3BackedData); ok {
-		if url, err := s3data.GetPresignedUrl(ctx); err == nil {
-			g.slogger.InfoContext(ctx, "buildMediaPart: using signedUri", "uri", url)
-			return genai.NewPartFromURI(url, mimeType), nil
-		}
-	}
-
-	g.slogger.InfoContext(ctx, "buildMediaPart: uploading via Files API")
-	reader, err := data.Reader()
-	if err != nil {
-		return nil, fmt.Errorf("read data: %w", err)
-	}
-	defer helper.QuietClose(reader, g.slogger)
-
-	file, err := g.client.Files.Upload(ctx, reader, &genai.UploadFileConfig{MIMEType: mimeType})
-	if err != nil {
-		return nil, fmt.Errorf("upload file: %w", err)
-	}
-
-	return genai.NewPartFromURI(file.URI, mimeType), nil
+	return buildPart(ctx, g.client, data, mimeType, g.slogger)
 }
 
 func (g *GeminiExtractor) ProcessImage(ctx context.Context, data temp.Data) (*ocr.MediaExtractResult, error) {
@@ -125,8 +111,12 @@ func (g *GeminiExtractor) processWithPrompt(ctx context.Context, data temp.Data,
 		}
 
 		const toolName = "extract_metadata"
+		genCtx, span := tracer.Start(ctx, "gemini.generate_content", trace.WithAttributes(
+			attribute.String("gemini.model", model),
+			attribute.String("gemini.operation", "extract"),
+		))
 		resp, err := g.client.Models.GenerateContent(
-			ctx,
+			genCtx,
 			model,
 			contents,
 			&genai.GenerateContentConfig{
@@ -140,8 +130,12 @@ func (g *GeminiExtractor) processWithPrompt(ctx context.Context, data temp.Data,
 			},
 		)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.End()
 			return fmt.Errorf("generate content: %w", err)
 		}
+		span.End()
 
 		for _, cand := range resp.Candidates {
 			for _, part := range cand.Content.Parts {
@@ -188,7 +182,11 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 		}
 
 		const toolName = "extract_metadata"
-		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.ModelImage, contents, &genai.GenerateContentConfig{
+		genCtx, span := tracer.Start(ctx, "gemini.generate_content", trace.WithAttributes(
+			attribute.String("gemini.model", g.cfg.ModelImage),
+			attribute.String("gemini.operation", "combine"),
+		))
+		resp, err := g.client.Models.GenerateContent(genCtx, g.cfg.ModelImage, contents, &genai.GenerateContentConfig{
 			Tools: []*genai.Tool{g.buildTool()},
 			ToolConfig: &genai.ToolConfig{
 				FunctionCallingConfig: &genai.FunctionCallingConfig{
@@ -198,8 +196,12 @@ func (g *GeminiExtractor) CombineResults(ctx context.Context, results []ocr.Medi
 			},
 		})
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.End()
 			return fmt.Errorf("combine results generate content: %w", err)
 		}
+		span.End()
 
 		for _, cand := range resp.Candidates {
 			for _, part := range cand.Content.Parts {
@@ -265,7 +267,11 @@ func (g *GeminiExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b tem
 		}
 
 		const toolName = "check_duplicate"
-		resp, err := g.client.Models.GenerateContent(ctx, g.cfg.ModelImage, contents, &genai.GenerateContentConfig{
+		genCtx, span := tracer.Start(ctx, "gemini.generate_content", trace.WithAttributes(
+			attribute.String("gemini.model", g.cfg.ModelImage),
+			attribute.String("gemini.operation", "check_duplicate"),
+		))
+		resp, err := g.client.Models.GenerateContent(genCtx, g.cfg.ModelImage, contents, &genai.GenerateContentConfig{
 			Tools: []*genai.Tool{g.buildDuplicateTool()},
 			ToolConfig: &genai.ToolConfig{
 				FunctionCallingConfig: &genai.FunctionCallingConfig{
@@ -275,8 +281,12 @@ func (g *GeminiExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b tem
 			},
 		})
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.End()
 			return fmt.Errorf("CheckDuplicate generate content: %w", err)
 		}
+		span.End()
 
 		for _, cand := range resp.Candidates {
 			for _, part := range cand.Content.Parts {

@@ -15,6 +15,9 @@ import (
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const orOnScreenTextProp = "on_screen_text"
@@ -69,7 +72,7 @@ func (e *OpenRouterExtractor) buildTool() components.ChatFunctionTool {
 }
 
 func (e *OpenRouterExtractor) buildImageMessage(ctx context.Context, data temp.Data) (components.ChatMessages, error) {
-	dataURL, err := toDataURL(data, "image/jpeg", e.slogger)
+	dataURL, err := resolveMediaURL(ctx, data, "image/jpeg", e.slogger)
 	if err != nil {
 		return components.ChatMessages{}, fmt.Errorf("build image message: %w", err)
 	}
@@ -88,7 +91,7 @@ func (e *OpenRouterExtractor) buildImageMessage(ctx context.Context, data temp.D
 }
 
 func (e *OpenRouterExtractor) buildVideoMessage(ctx context.Context, data temp.Data) (components.ChatMessages, error) {
-	dataURL, err := toDataURL(data, "video/mp4", e.slogger)
+	dataURL, err := resolveMediaURL(ctx, data, "video/mp4", e.slogger)
 	if err != nil {
 		return components.ChatMessages{}, fmt.Errorf("build video message: %w", err)
 	}
@@ -161,6 +164,9 @@ func (e *OpenRouterExtractor) sendChat(ctx context.Context, messages []component
 		Function: components.ChatNamedToolChoiceFunction{Name: orToolName},
 	})
 
+	ctx, span := tracer.Start(ctx, "openrouter.chat", trace.WithAttributes(attribute.String("openrouter.model", model)))
+	defer span.End()
+
 	resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
 		Model:      &model,
 		Messages:   messages,
@@ -168,6 +174,8 @@ func (e *OpenRouterExtractor) sendChat(ctx context.Context, messages []component
 		ToolChoice: &toolChoice,
 	})
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("chat send: %w", err)
 	}
 	if resp.ChatResult == nil || len(resp.ChatResult.Choices) == 0 {
@@ -274,11 +282,11 @@ func (e *OpenRouterExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b
 
 	var isDuplicate bool
 	if err := e.wrapper.Do(ctx, func() error {
-		dataURLa, err := toDataURL(a, "image/jpeg", e.slogger)
+		dataURLa, err := resolveMediaURL(ctx, a, "image/jpeg", e.slogger)
 		if err != nil {
 			return fmt.Errorf("CheckDuplicate: data url a: %w", err)
 		}
-		dataURLb, err := toDataURL(b, "image/jpeg", e.slogger)
+		dataURLb, err := resolveMediaURL(ctx, b, "image/jpeg", e.slogger)
 		if err != nil {
 			return fmt.Errorf("CheckDuplicate: data url b: %w", err)
 		}
@@ -321,13 +329,21 @@ func (e *OpenRouterExtractor) CheckDuplicate(ctx context.Context, a temp.Data, b
 			Function: components.ChatNamedToolChoiceFunction{Name: toolName},
 		})
 
-		resp, err := e.client.Chat.Send(ctx, components.ChatRequest{
+		genCtx, span := tracer.Start(ctx, "openrouter.chat", trace.WithAttributes(
+			attribute.String("openrouter.model", e.cfg.ModelImage),
+			attribute.String("openrouter.operation", "check_duplicate"),
+		))
+		defer span.End()
+
+		resp, err := e.client.Chat.Send(genCtx, components.ChatRequest{
 			Model:      &e.cfg.ModelImage,
 			Messages:   []components.ChatMessages{msg},
 			Tools:      []components.ChatFunctionTool{tool},
 			ToolChoice: &toolChoice,
 		})
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return fmt.Errorf("CheckDuplicate chat send: %w", err)
 		}
 		if resp.ChatResult == nil || len(resp.ChatResult.Choices) == 0 {

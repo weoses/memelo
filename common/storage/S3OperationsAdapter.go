@@ -11,10 +11,20 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/weoses/memelo/common/temp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/weoses/memelo/common/config"
 	"github.com/weoses/memelo/common/helper"
 )
+
+// tracer is deliberately named after the package, not a specific service --
+// this adapter is shared by every service (see grep for "common/storage"),
+// so each span picks up the caller's own service.name from that service's
+// own TracerProvider resource rather than a hardcoded one here.
+var tracer = otel.Tracer("common/storage")
 
 type SaveOptions func(options *SaveOptionsParameter)
 
@@ -120,6 +130,11 @@ func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data
 	}
 
 	m.slogger.InfoContext(ctx, "service PutObject", "object", path)
+	ctx, span := tracer.Start(ctx, "s3.put_object", trace.WithAttributes(
+		attribute.String("s3.bucket", m.BucketName), attribute.String("s3.key", path),
+	))
+	defer span.End()
+
 	_, err = m.client.PutObject(
 		ctx,
 		m.BucketName,
@@ -129,6 +144,8 @@ func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data
 		putOptions,
 	)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		m.slogger.ErrorContext(ctx, "service PutObject failed", "object", path, "error", err)
 		return fmt.Errorf("PutObject failed for %s: %w", path, err)
 	}
@@ -138,8 +155,15 @@ func (m *S3OperationsAdapterService) Save(ctx context.Context, path string, data
 
 func (m *S3OperationsAdapterService) Read(ctx context.Context, path string) (temp.Data, error) {
 	m.slogger.InfoContext(ctx, "service GetObject", "object", path)
+	ctx, span := tracer.Start(ctx, "s3.get_object", trace.WithAttributes(
+		attribute.String("s3.bucket", m.BucketName), attribute.String("s3.key", path),
+	))
+	defer span.End()
+
 	obj, err := m.client.GetObject(ctx, m.BucketName, path, minio.GetObjectOptions{})
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		m.slogger.ErrorContext(ctx, "service GetObject failed", "object", path, "error", err)
 		return nil, err
 	}
@@ -147,6 +171,8 @@ func (m *S3OperationsAdapterService) Read(ctx context.Context, path string) (tem
 
 	d, err := temp.DataTemp(obj)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		m.slogger.ErrorContext(ctx, "service GetObject DataTemp failed", "object", path, "error", err)
 		return nil, err
 	}
@@ -157,6 +183,11 @@ func (m *S3OperationsAdapterService) Read(ctx context.Context, path string) (tem
 
 func (m *S3OperationsAdapterService) GetPresignedUrl(ctx context.Context, path string) (string, error) {
 	m.slogger.InfoContext(ctx, "service PresignedGetObject", "object", path)
+	ctx, span := tracer.Start(ctx, "s3.presigned_get_url", trace.WithAttributes(
+		attribute.String("s3.bucket", m.BucketName), attribute.String("s3.key", path),
+	))
+	defer span.End()
+
 	u, err := m.client.PresignedGetObject(
 		ctx,
 		m.BucketName,
@@ -165,6 +196,8 @@ func (m *S3OperationsAdapterService) GetPresignedUrl(ctx context.Context, path s
 		url.Values{},
 	)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		m.slogger.ErrorContext(ctx, "service PresignedGetObject failed", "object", path, "error", err)
 		return "", err
 	}
@@ -190,8 +223,16 @@ func (m *S3OperationsAdapterService) GetPresignedPostUrl(ctx context.Context, pa
 	_ = policy.SetExpires(time.Now().Add(time.Hour * 5))
 	_ = policy.SetContentType(mime)
 	_ = policy.SetContentLengthRange(size, size)
+
+	ctx, span := tracer.Start(ctx, "s3.presigned_post_url", trace.WithAttributes(
+		attribute.String("s3.bucket", m.BucketName), attribute.String("s3.key", path),
+	))
+	defer span.End()
+
 	u, formData, err := m.client.PresignedPostPolicy(ctx, policy)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		m.slogger.ErrorContext(ctx, "service PresignedPostPolicy failed", "object", path, "error", err)
 		return PresignedPostData{}, err
 	}
@@ -201,8 +242,15 @@ func (m *S3OperationsAdapterService) GetPresignedPostUrl(ctx context.Context, pa
 
 func (m *S3OperationsAdapterService) Delete(ctx context.Context, path string) error {
 	m.slogger.InfoContext(ctx, "service RemoveObject", "object", path)
+	ctx, span := tracer.Start(ctx, "s3.delete_object", trace.WithAttributes(
+		attribute.String("s3.bucket", m.BucketName), attribute.String("s3.key", path),
+	))
+	defer span.End()
+
 	err := m.client.RemoveObject(ctx, m.BucketName, path, minio.RemoveObjectOptions{})
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		m.slogger.ErrorContext(ctx, "service RemoveObject failed", "object", path, "error", err)
 		return err
 	}

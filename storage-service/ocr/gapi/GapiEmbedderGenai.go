@@ -3,14 +3,15 @@ package gapi
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 
-	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/genai"
 )
 
@@ -27,25 +28,9 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetImageEmbedding(ctx context.C
 
 	var result *entity.EmbeddingItem
 	err := i.wrapper.Do(ctx, func() error {
-		var part *genai.Part
-		if s3data, ok := rawImage.(temp.S3BackedData); ok {
-			if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-				i.slogger.InfoContext(ctx, "GetImageEmbedding using signedUri", "uri", uri)
-				part = genai.NewPartFromURI(uri, "image/jpeg")
-			}
-		}
-		if part == nil {
-			i.slogger.InfoContext(ctx, "GetImageEmbedding using inline bytes")
-			reader, err := rawImage.Reader()
-			if err != nil {
-				return fmt.Errorf("GetImageEmbedding: read image: %w", err)
-			}
-			defer helper.QuietClose(reader, i.slogger)
-			data, err := io.ReadAll(reader)
-			if err != nil {
-				return fmt.Errorf("GetImageEmbedding: read all: %w", err)
-			}
-			part = genai.NewPartFromBytes(data, "image/jpeg")
+		part, err := buildPart(ctx, i.client, rawImage, "image/jpeg", i.slogger)
+		if err != nil {
+			return fmt.Errorf("GetImageEmbedding: %w", err)
 		}
 
 		resp, err := i.embedContent(ctx, part)
@@ -73,25 +58,9 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetVideoEmbedding(ctx context.C
 
 	var items []entity.EmbeddingItem
 	err := i.wrapper.Do(ctx, func() error {
-		var part *genai.Part
-		if s3data, ok := video.(temp.S3BackedData); ok {
-			if uri, pathErr := s3data.GetPresignedUrl(ctx); pathErr == nil {
-				i.slogger.InfoContext(ctx, "GetVideoEmbedding using signedUri", "uri", uri)
-				part = genai.NewPartFromURI(uri, "video/mp4")
-			}
-		}
-		if part == nil {
-			i.slogger.InfoContext(ctx, "GetVideoEmbedding using inline bytes")
-			reader, err := video.Reader()
-			if err != nil {
-				return fmt.Errorf("GetVideoEmbedding: read video: %w", err)
-			}
-			defer helper.QuietClose(reader, i.slogger)
-			data, err := io.ReadAll(reader)
-			if err != nil {
-				return fmt.Errorf("GetVideoEmbedding: read all: %w", err)
-			}
-			part = genai.NewPartFromBytes(data, "video/mp4")
+		part, err := buildPart(ctx, i.client, video, "video/mp4", i.slogger)
+		if err != nil {
+			return fmt.Errorf("GetVideoEmbedding: %w", err)
 		}
 
 		resp, err := i.embedContent(ctx, part)
@@ -142,12 +111,17 @@ func (i *GcloudImageEmbeddingExtractorGenaiImpl) GetTextEmbedding(ctx context.Co
 }
 
 func (i *GcloudImageEmbeddingExtractorGenaiImpl) embedContent(ctx context.Context, part *genai.Part) (*genai.EmbedContentResponse, error) {
+	ctx, span := tracer.Start(ctx, "gemini.embed_content", trace.WithAttributes(attribute.String("gemini.model", i.model)))
+	defer span.End()
+
 	content := genai.NewContentFromParts([]*genai.Part{part}, genai.RoleUser)
 	resp, err := i.client.Models.EmbedContent(ctx, i.model, []*genai.Content{content}, &genai.EmbedContentConfig{
 		OutputDimensionality: &i.dimension,
 		TaskType:             "SEMANTIC_SIMILARITY",
 	})
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("EmbedContent: %w", err)
 	}
 	if len(resp.Embeddings) == 0 {

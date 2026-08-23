@@ -2,9 +2,7 @@ package openrouter
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"log/slog"
 
 	orsdk "github.com/OpenRouterTeam/go-sdk"
@@ -14,7 +12,13 @@ import (
 	"github.com/weoses/memelo/storage-service/conf"
 	"github.com/weoses/memelo/storage-service/entity"
 	"github.com/weoses/memelo/storage-service/ocr"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.Tracer("storage-service")
 
 type OpenRouterEmbedder struct {
 	client       *orsdk.OpenRouter
@@ -45,14 +49,19 @@ func (e *OpenRouterEmbedder) GetTextEmbedding(ctx context.Context, text string) 
 	var result *entity.EmbeddingItem
 	if err := e.wrapper.Do(ctx, func() error {
 		input := operations.CreateInputUnionArrayOfStr([]string{text})
-		resp, err := e.client.Embeddings.Generate(ctx, operations.CreateEmbeddingsRequest{
+		genCtx, span := tracer.Start(ctx, "openrouter.embed", trace.WithAttributes(attribute.String("openrouter.model", e.model)))
+		resp, err := e.client.Embeddings.Generate(genCtx, operations.CreateEmbeddingsRequest{
 			Model:          e.model,
 			Input:          input,
 			EncodingFormat: operations.EncodingFormatFloat.ToPointer(),
 		})
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.End()
 			return fmt.Errorf("GetTextEmbedding: %w", err)
 		}
+		span.End()
 		vec, err := extractEmbedding(resp)
 		if err != nil {
 			return fmt.Errorf("GetTextEmbedding: %w", err)
@@ -76,7 +85,7 @@ func (e *OpenRouterEmbedder) GetImageEmbedding(ctx context.Context, rawImage tem
 
 	var result *entity.EmbeddingItem
 	if err := e.wrapper.Do(ctx, func() error {
-		dataURL, err := toDataURL(rawImage, "image/jpeg", e.slogger)
+		dataURL, err := resolveMediaURL(ctx, rawImage, "image/jpeg", e.slogger)
 		if err != nil {
 			return fmt.Errorf("GetImageEmbedding: %w", err)
 		}
@@ -88,14 +97,19 @@ func (e *OpenRouterEmbedder) GetImageEmbedding(ctx context.Context, rawImage tem
 				}),
 			},
 		}})
-		resp, err := e.client.Embeddings.Generate(ctx, operations.CreateEmbeddingsRequest{
+		genCtx, span := tracer.Start(ctx, "openrouter.embed", trace.WithAttributes(attribute.String("openrouter.model", e.model)))
+		resp, err := e.client.Embeddings.Generate(genCtx, operations.CreateEmbeddingsRequest{
 			Model:          e.model,
 			Input:          input,
 			EncodingFormat: operations.EncodingFormatFloat.ToPointer(),
 		})
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.End()
 			return fmt.Errorf("GetImageEmbedding: %w", err)
 		}
+		span.End()
 		vec, err := extractEmbedding(resp)
 		if err != nil {
 			return fmt.Errorf("GetImageEmbedding: %w", err)
@@ -150,17 +164,4 @@ func extractEmbedding(resp *operations.CreateEmbeddingsResponse) ([]float32, err
 		vec[i] = float32(v)
 	}
 	return vec, nil
-}
-
-func toDataURL(data temp.Data, mimeType string, logger *slog.Logger) (string, error) {
-	r, err := data.Reader()
-	if err != nil {
-		return "", fmt.Errorf("read data: %w", err)
-	}
-	defer helper.QuietClose(r, logger)
-	raw, err := io.ReadAll(r)
-	if err != nil {
-		return "", fmt.Errorf("read all: %w", err)
-	}
-	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(raw), nil
 }
