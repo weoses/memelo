@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -63,6 +62,20 @@ func newBackendProxy(ctx context.Context, name string, target *conf.ProxyTargetC
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+
+	// NewSingleHostReverseProxy's default Director rewrites req.URL.Host
+	// (where the TCP connection goes) but leaves req.Host (the actual HTTP
+	// Host header) as the original incoming value. Cloud Run's shared-IP
+	// frontend routes purely by Host header/SNI, so without this the
+	// outbound request would still say "Host: <gateway>" and Google's edge
+	// would loop it straight back to the gateway itself instead of
+	// forwarding to the real backend.
+	director := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		director(req)
+		req.Host = targetURL.Host
+	}
+
 	proxy.Transport = otelhttp.NewTransport(transport)
 	return proxy, nil
 }
@@ -82,7 +95,6 @@ func tracingMiddleware(next http.Handler) http.Handler {
 func basicAuthMiddleware(cfg *conf.BasicAuthConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, p, ok := r.BasicAuth()
-		slog.Info("DEBUG basicAuth", "ok", ok, "u", u, "p", p, "cfgU", cfg.Username, "cfgP", cfg.Password, "authHeader", r.Header.Get("Authorization"))
 		if !ok ||
 			subtle.ConstantTimeCompare([]byte(u), []byte(cfg.Username)) != 1 ||
 			subtle.ConstantTimeCompare([]byte(p), []byte(cfg.Password)) != 1 {
