@@ -32,7 +32,7 @@ import (
 // and must run before process exit.
 func InitTracer(ctx context.Context, serviceName, projectId string) (shutdown func(context.Context) error, err error) {
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
+		dualTraceContextPropagator{},
 		propagation.Baggage{},
 	))
 
