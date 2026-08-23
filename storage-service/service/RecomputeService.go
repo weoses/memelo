@@ -12,7 +12,16 @@ import (
 	"github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/storage-service/entity"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracer creates spans for recompute jobs -- background work that outlives
+// the synchronous StartRecompute*/RPC call that kicks it off (see
+// StartRecompute/StartRecomputeById below for why a span must be
+// explicitly anchored here rather than relying on otelconnect alone).
+var tracer = otel.Tracer("storage-service")
 
 const maxRecomputeWorkers = 4
 const recomputePageSize = 50
@@ -53,7 +62,17 @@ func (r *RecomputeServiceImpl) StartRecompute(ctx context.Context, query map[str
 	jobId := uuid.New().String()
 	job := r.jobStorage.Create(jobId)
 
-	go r.runJob(context.WithoutCancel(ctx), query, job, params)
+	// Detach from StartRecompute's own RPC lifecycle (ctx is cancelled the
+	// instant this call returns) but keep it as the parent span --
+	// WithoutCancel first, then Start, so the job span's context is
+	// itself uncancelable too. A child span outliving its already-ended
+	// parent is expected/valid for this fire-and-forget-a-job-id shape.
+	jobCtx, span := tracer.Start(context.WithoutCancel(ctx), "recompute.job",
+		trace.WithAttributes(attribute.String("job.id", jobId)))
+	go func() {
+		defer span.End()
+		r.runJob(jobCtx, query, job, params)
+	}()
 
 	return jobId, nil
 }
@@ -79,7 +98,12 @@ func (r *RecomputeServiceImpl) StartRecomputeById(ctx context.Context, accountId
 	jobId := uuid.New().String()
 	job := r.jobStorage.Create(jobId)
 
-	go r.runJob(context.WithoutCancel(ctx), query, job, params)
+	jobCtx, span := tracer.Start(context.WithoutCancel(ctx), "recompute.job",
+		trace.WithAttributes(attribute.String("job.id", jobId), attribute.String("account.id", accountId)))
+	go func() {
+		defer span.End()
+		r.runJob(jobCtx, query, job, params)
+	}()
 
 	return jobId, nil
 }
@@ -144,13 +168,18 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, query map[string]inte
 			go func() {
 				defer wg.Done()
 				defer func() { <-sem }()
-				r.slogger.InfoContext(ctx, "recompute: processing media object",
+
+				workerCtx, workerSpan := tracer.Start(ctx, "recompute.object",
+					trace.WithAttributes(attribute.String("object.id", m.ImageId.String())))
+				defer workerSpan.End()
+
+				r.slogger.InfoContext(workerCtx, "recompute: processing media object",
 					"jobId", job.JobId,
 					"imageId", m.ImageId)
 
-				err := r.recomputeOne(ctx, m, params)
+				err := r.recomputeOne(workerCtx, m, params)
 				if err != nil {
-					r.slogger.ErrorContext(ctx, "recompute: object failed",
+					r.slogger.ErrorContext(workerCtx, "recompute: object failed",
 						"jobId", job.JobId,
 						"imageId", m.ImageId,
 						"error", err)
@@ -162,7 +191,7 @@ func (r *RecomputeServiceImpl) runJob(ctx context.Context, query map[string]inte
 					})
 					job.Mu.Unlock()
 				}
-				r.slogger.InfoContext(ctx, "recompute: completed media object",
+				r.slogger.InfoContext(workerCtx, "recompute: completed media object",
 					"jobId", job.JobId,
 					"imageId", m.ImageId)
 

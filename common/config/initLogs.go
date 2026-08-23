@@ -15,7 +15,7 @@ func InitLogs(conf *LoggingConfig) {
 	} else {
 		base = slog.NewTextHandler(os.Stdout, nil)
 	}
-	logger := slog.New(tracing.NewHandler(base))
+	logger := slog.New(tracing.NewHandler(base, conf.ProjectId))
 
 	switch conf.Level {
 	case "debug":

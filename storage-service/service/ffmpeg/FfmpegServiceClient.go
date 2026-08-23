@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	commonauth "github.com/weoses/memelo/common/auth"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/temp"
@@ -15,10 +17,16 @@ import (
 )
 
 func newClient(cfg *conf.FfmpegServiceConfig) (v1connect.FfmpegServiceClient, error) {
-	opts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.Uri, cfg.RequireGoogleIDToken)
+	otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithoutMetrics())
 	if err != nil {
 		return nil, fmt.Errorf("ffmpeg client: %w", err)
 	}
+	opts := []connect.ClientOption{connect.WithInterceptors(otelInterceptor)}
+	authOpts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.Uri, cfg.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("ffmpeg client: %w", err)
+	}
+	opts = append(opts, authOpts...)
 	return v1connect.NewFfmpegServiceClient(http.DefaultClient, cfg.Uri, opts...), nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	"github.com/google/uuid"
 	commonauth "github.com/weoses/memelo/common/auth"
 	"github.com/weoses/memelo/common/helper"
@@ -212,10 +213,16 @@ func (s *StorageConnectorImpl) StartRecomputeById(ctx context.Context, accountId
 }
 
 func NewStorageConnector(config *conf.Config) (StorageConnector, error) {
-	opts, err := commonauth.ClientInterceptorOptions(context.Background(), config.StorageService.Uri, config.StorageService.RequireGoogleIDToken)
+	otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithoutMetrics())
 	if err != nil {
 		return nil, fmt.Errorf("NewStorageConnector: %w", err)
 	}
+	opts := []connect.ClientOption{connect.WithInterceptors(otelInterceptor)}
+	authOpts, err := commonauth.ClientInterceptorOptions(context.Background(), config.StorageService.Uri, config.StorageService.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("NewStorageConnector: %w", err)
+	}
+	opts = append(opts, authOpts...)
 	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.StorageService.Uri, opts...)
 	tagsCl := v1connect.NewTagsServiceClient(http.DefaultClient, config.StorageService.Uri, opts...)
 	recomputeCl := v1connect.NewRecomputeServiceClient(http.DefaultClient, config.StorageService.Uri, opts...)

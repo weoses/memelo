@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	"github.com/weoses/memelo/common/config"
 	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -25,9 +26,14 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, apiHandler *api.YouTubeServiceAp
 	var srv *http.Server
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithTrustRemote(), otelconnect.WithoutMetrics())
+			if err != nil {
+				return err
+			}
+
 			mux := http.NewServeMux()
 			mux.Handle(v1connect.NewYouTubeServiceHandler(apiHandler,
-				connect.WithInterceptors(tracing.NewInterceptor(cfg.Log.ProjectId))))
+				connect.WithInterceptors(otelInterceptor)))
 			mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
@@ -60,6 +66,12 @@ func main() {
 	}
 
 	config.InitLogs(cfg.Log)
+
+	shutdownTracer, err := tracing.InitTracer(context.Background(), "youtube-service", cfg.Log.ProjectId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = shutdownTracer(context.Background()) }()
 
 	fx.New(
 		fx.WithLogger(func() fxevent.Logger {

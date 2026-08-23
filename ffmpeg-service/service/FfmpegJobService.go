@@ -14,7 +14,14 @@ import (
 	"github.com/weoses/memelo/ffmpeg-service/conf"
 	"github.com/weoses/memelo/ffmpeg-service/entity"
 	"github.com/weoses/memelo/ffmpeg-service/ffmpeg"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracer creates spans for ffmpeg jobs -- background work that outlives
+// the synchronous SubmitJob RPC call that kicks it off.
+var tracer = otel.Tracer("ffmpeg-service")
 
 type FfmpegJobService interface {
 	CreateJob(ctx context.Context, req entity.JobRequest) (string, error)
@@ -30,7 +37,7 @@ type ffmpegJobServiceImpl struct {
 	log            *slog.Logger
 }
 
-func (s *ffmpegJobServiceImpl) CreateJob(_ context.Context, req entity.JobRequest) (string, error) {
+func (s *ffmpegJobServiceImpl) CreateJob(ctx context.Context, req entity.JobRequest) (string, error) {
 	jobId := uuid.NewString()
 	job := &entity.Job{
 		JobId:        jobId,
@@ -41,7 +48,16 @@ func (s *ffmpegJobServiceImpl) CreateJob(_ context.Context, req entity.JobReques
 	}
 	_ = s.cache.Set(jobId, job)
 
+	// Detach from SubmitJob's own RPC lifecycle (ctx is cancelled the
+	// instant this call returns) but keep it as the parent span --
+	// WithoutCancel first, then Start, so the job span's context is
+	// itself uncancelable too. A child span outliving its already-ended
+	// parent is expected/valid for this fire-and-forget-a-job-id shape.
+	jobCtx, span := tracer.Start(context.WithoutCancel(ctx), "ffmpeg.job",
+		trace.WithAttributes(attribute.String("job.id", jobId), attribute.Int("action", int(req.Action))))
+
 	go func() {
+		defer span.End()
 		s.semaphore <- struct{}{}
 		defer func() { <-s.semaphore }()
 
@@ -49,13 +65,13 @@ func (s *ffmpegJobServiceImpl) CreateJob(_ context.Context, req entity.JobReques
 		job.State = entity.JobStateRunning
 		job.Mu.Unlock()
 
-		result, err := s.runAction(context.Background(), req)
+		result, err := s.runAction(jobCtx, req)
 
 		job.Mu.Lock()
 		if err != nil {
 			job.State = entity.JobStateFailed
 			job.Error = err
-			s.log.Error("ffmpeg job failed", "jobId", jobId, "error", err)
+			s.log.ErrorContext(jobCtx, "ffmpeg job failed", "jobId", jobId, "error", err)
 		} else {
 			job.State = entity.JobStateDone
 			job.Result = result

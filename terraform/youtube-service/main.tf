@@ -5,6 +5,7 @@ module "enable_apis" {
   apis = [
     "run.googleapis.com",
     "secretmanager.googleapis.com",
+    "cloudtrace.googleapis.com",
   ]
 }
 

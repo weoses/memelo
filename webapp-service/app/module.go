@@ -62,7 +62,8 @@ func startup(lc fx.Lifecycle, ln net.Listener, h *api.Handlers, dist embed.FS, c
 	e.HideBanner = true
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			ctx := tracing.WithTrace(c.Request().Context(), cfg.Log.ProjectId, c.Request().Header.Get("X-Cloud-Trace-Context"))
+			ctx, span := tracing.StartHTTP(c.Request().Context(), "webapp-service", c.Request().Method+" "+c.Path(), c.Request().Header)
+			defer span.End()
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}

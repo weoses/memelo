@@ -12,6 +12,7 @@ import (
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/telegram-service/conf"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -34,17 +35,16 @@ type TelegramBotServiceImpl struct {
 	webhookCfg *conf.WebhookConfig
 	log        *slog.Logger
 	cancel     context.CancelFunc
-	projectId  string
 }
 
 // queuedUpdate carries an incoming update alongside a ready-to-use,
 // update-scoped context: the service's long-lived context (so in-flight
 // processing isn't cancelled the instant the webhook HTTP handler
-// returns, which it does immediately after queuing) with that request's
-// Cloud Trace attached. Built once at enqueue time, in Handler(), where
-// both pieces (the long-lived ctx and the request's trace header) are
-// available -- r.Context() itself is never used past that point, since it
-// gets cancelled right after the handler returns.
+// returns, which it does immediately after queuing) as the parent of a
+// real span started for that update. Built once at enqueue time, in
+// Handler(), where both pieces (the long-lived ctx and the request's
+// trace headers) are available -- r.Context() itself is never used past
+// that point, since it gets cancelled right after the handler returns.
 type queuedUpdate struct {
 	ctx    context.Context
 	update tgbotapi.Update
@@ -61,7 +61,10 @@ func (s *TelegramBotServiceImpl) Handler() http.Handler {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		updateCtx := tracing.WithTrace(ctx, s.projectId, r.Header.Get("X-Cloud-Trace-Context"))
+		// Span is retrieved back out via trace.SpanFromContext(q.ctx) in
+		// dispatchUpdates and ended there, once the dispatched handler
+		// actually finishes -- not here.
+		updateCtx, _ := tracing.StartHTTP(ctx, "telegram-service", "telegram.update", r.Header)
 		updates <- queuedUpdate{ctx: updateCtx, update: update}
 	})
 }
@@ -91,16 +94,19 @@ func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-
 			return
 		case q := <-updates:
 			update := q.update
+			span := trace.SpanFromContext(q.ctx)
 			if update.InlineQuery != nil {
-				go s.handleInlineRequest(q.ctx, &update)
+				go func() { defer span.End(); s.handleInlineRequest(q.ctx, &update) }()
 			} else if update.Message != nil {
 				if update.Message.IsCommand() {
-					go s.handleCommand(q.ctx, update.Message)
+					go func() { defer span.End(); s.handleCommand(q.ctx, update.Message) }()
 				} else {
-					go s.handleMessage(q.ctx, update.Message)
+					go func() { defer span.End(); s.handleMessage(q.ctx, update.Message) }()
 				}
 			} else if update.ChosenInlineResult != nil {
-				go s.handleChosenResult(q.ctx, &update)
+				go func() { defer span.End(); s.handleChosenResult(q.ctx, &update) }()
+			} else {
+				span.End()
 			}
 		}
 	}
@@ -269,6 +275,5 @@ func NewTelegramBotService(
 		message:    message,
 		webhookCfg: cfg.Webhook,
 		log:        slog.With("service", "TelegramBotService"),
-		projectId:  cfg.Log.ProjectId,
 	}
 }

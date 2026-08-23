@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	commonauth "github.com/weoses/memelo/common/auth"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -68,10 +70,16 @@ func toJobStateString(state v1.DownloadJobState) string {
 }
 
 func NewYouTubeConnector(cfg *conf.Config) (YouTubeConnector, error) {
-	opts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.YoutubeService.Uri, cfg.YoutubeService.RequireGoogleIDToken)
+	otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithoutMetrics())
 	if err != nil {
 		return nil, fmt.Errorf("NewYouTubeConnector: %w", err)
 	}
+	opts := []connect.ClientOption{connect.WithInterceptors(otelInterceptor)}
+	authOpts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.YoutubeService.Uri, cfg.YoutubeService.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("NewYouTubeConnector: %w", err)
+	}
+	opts = append(opts, authOpts...)
 	cl := v1connect.NewYouTubeServiceClient(http.DefaultClient, cfg.YoutubeService.Uri, opts...)
 	return &YouTubeConnectorImpl{
 		cl:  cl,

@@ -134,12 +134,21 @@ Non-obvious platform facts (cost real debugging time, not visible from code):
   affected `config.yaml`** (value doesn't matter, e.g. `false` — it just
   needs to exist so `AllKeys()` sees it).
 
-Other operational notes: checking whether a CI build finished by polling
-`ghcr.io`'s anonymous registry API works without any `gh`/GitHub auth at
-all (`curl "https://ghcr.io/token?service=ghcr.io&scope=repository:weoses/<svc>:pull"`
-→ use the token against `/v2/weoses/<svc>/tags/list`) — useful even if
-`gh` is authenticated, since it's directly checking the actual deploy
-artifact rather than CI run status. `gpg-agent`'s cache can expire
+Other operational notes: if `gh` is authenticated (`gh auth status`), use
+it to check CI directly — `gh run list --repo weoses/memelo --limit 5`
+shows the run for a just-pushed tag, `gh run view <id> --json
+status,conclusion`/`gh run watch <id> --exit-status` to wait on it. The
+CI workflow splits `build-services` (per-service image build+push, ~20s
+each) from `run-tests` (~1-1.5min, runs in parallel with/after builds) —
+for redeploying, only `build-services (<service>)` needs to be done, not
+the whole run; check per-job status (`gh run view <id> --json jobs`)
+rather than waiting for the full run to reach "completed" if the image is
+all that's needed. Polling `ghcr.io`'s anonymous registry API
+(`curl "https://ghcr.io/token?service=ghcr.io&scope=repository:weoses/<svc>:pull"`
+→ token against `/v2/weoses/<svc>/tags/list`) works with zero GitHub auth
+at all, but has enough propagation lag behind the actual build finishing
+that it's an unreliable "is it done yet" signal — prefer `gh` whenever
+it's authenticated. `gpg-agent`'s cache can expire
 mid-session; `sops` decrypt then fails with "0 successful groups required,
 got 0" — needs the user to unlock interactively (pinentry), can't be
 relayed through non-interactive Bash. `scripts/create-tag.sh` requires a

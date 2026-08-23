@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	commonauth "github.com/weoses/memelo/common/auth"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -68,10 +70,16 @@ type storageProxy struct {
 }
 
 func NewStorageProxy(cfg *conf.Config) (StorageProxy, error) {
-	opts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.StorageService.Uri, cfg.StorageService.RequireGoogleIDToken)
+	otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithoutMetrics())
 	if err != nil {
 		return nil, fmt.Errorf("NewStorageProxy: %w", err)
 	}
+	opts := []connect.ClientOption{connect.WithInterceptors(otelInterceptor)}
+	authOpts, err := commonauth.ClientInterceptorOptions(context.Background(), cfg.StorageService.Uri, cfg.StorageService.RequireGoogleIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("NewStorageProxy: %w", err)
+	}
+	opts = append(opts, authOpts...)
 	return &storageProxy{
 		searchCl:    v1connect.NewSearchServiceClient(http.DefaultClient, cfg.StorageService.Uri, opts...),
 		recomputeCl: v1connect.NewRecomputeServiceClient(http.DefaultClient, cfg.StorageService.Uri, opts...),

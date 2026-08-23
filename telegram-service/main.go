@@ -31,7 +31,7 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) 
 			})
 			srv = &http.Server{
 				Addr:    cfg.Server.ListenAddress,
-				Handler: tracing.HTTPMiddleware(cfg.Log.ProjectId, mux),
+				Handler: mux,
 			}
 			ln, err := net.Listen("tcp", cfg.Server.ListenAddress)
 			if err != nil {
@@ -61,6 +61,12 @@ func main() {
 	}
 
 	config.InitLogs(cfg.Log)
+
+	shutdownTracer, err := tracing.InitTracer(context.Background(), "telegram-service", cfg.Log.ProjectId)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = shutdownTracer(context.Background()) }()
 
 	fx.New(
 		fx.WithLogger(func() fxevent.Logger {

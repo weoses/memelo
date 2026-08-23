@@ -14,7 +14,14 @@ import (
 	"github.com/weoses/memelo/common/temp"
 	"github.com/weoses/memelo/youtube-service/conf"
 	"github.com/weoses/memelo/youtube-service/entity"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracer creates spans for youtube download jobs -- background work that
+// outlives the synchronous DownloadVideoAsync RPC call that kicks it off.
+var tracer = otel.Tracer("youtube-service")
 
 type VideoJobService interface {
 	RunSync(ctx context.Context, req entity.DownloadRequest) (*entity.VideoDownloadResult, error)
@@ -51,7 +58,7 @@ func (s *videoJobServiceImpl) RunSync(ctx context.Context, req entity.DownloadRe
 	return store, nil
 }
 
-func (s *videoJobServiceImpl) CreateJob(_ context.Context, req entity.DownloadRequest) (string, error) {
+func (s *videoJobServiceImpl) CreateJob(ctx context.Context, req entity.DownloadRequest) (string, error) {
 	jobId := uuid.NewString()
 	job := &entity.DownloadJob{
 		JobId:        jobId,
@@ -61,7 +68,16 @@ func (s *videoJobServiceImpl) CreateJob(_ context.Context, req entity.DownloadRe
 	}
 	s.jobs.Store(jobId, job)
 
+	// Detach from DownloadVideoAsync's own RPC lifecycle (ctx is cancelled
+	// the instant this call returns) but keep it as the parent span --
+	// WithoutCancel first, then Start, so the job span's context is
+	// itself uncancelable too. A child span outliving its already-ended
+	// parent is expected/valid for this fire-and-forget-a-job-id shape.
+	jobCtx, span := tracer.Start(context.WithoutCancel(ctx), "youtube.job",
+		trace.WithAttributes(attribute.String("job.id", jobId)))
+
 	go func() {
+		defer span.End()
 		s.semaphore <- struct{}{}
 		defer func() { <-s.semaphore }()
 
@@ -69,13 +85,13 @@ func (s *videoJobServiceImpl) CreateJob(_ context.Context, req entity.DownloadRe
 		job.State = entity.JobStateRunning
 		job.Mu.Unlock()
 
-		result, err := s.downloadAndStore(context.Background(), req)
+		result, err := s.downloadAndStore(jobCtx, req)
 
 		job.Mu.Lock()
 		if err != nil {
 			job.State = entity.JobStateFailed
 			job.Error = err
-			s.log.Error("async job failed", "jobId", jobId, "error", err)
+			s.log.ErrorContext(jobCtx, "async job failed", "jobId", jobId, "error", err)
 		} else {
 			job.State = entity.JobStateDone
 			job.Result = result

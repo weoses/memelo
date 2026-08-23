@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	"github.com/go-playground/validator/v10"
-	"github.com/weoses/memelo/common/tracing"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
 	"github.com/weoses/memelo/storage-service/api"
 	"github.com/weoses/memelo/storage-service/conf"
@@ -127,6 +127,9 @@ func Module() fx.Option {
 		fx.Provide(func(c *conf.Config) (net.Listener, error) {
 			return net.Listen("tcp", c.Server.ListenAddress)
 		}),
+		fx.Provide(func() (*otelconnect.Interceptor, error) {
+			return otelconnect.NewInterceptor(otelconnect.WithTrustRemote(), otelconnect.WithoutMetrics())
+		}),
 
 		fx.Invoke(fx.Annotate(storage2.RunMigrations, fx.ParamTags(`group:"migrators"`))),
 		fx.Invoke(startup),
@@ -138,14 +141,17 @@ func Module() fx.Option {
 func startup(
 	lc fx.Lifecycle,
 	ln net.Listener,
-	cfg *conf.Config,
+	otelInterceptor *otelconnect.Interceptor,
 	searchApi v1connect.SearchServiceHandler,
 	exportApi v1connect.ExportServiceHandler,
 	tagsApi v1connect.TagsServiceHandler,
 	recomputeApi v1connect.RecomputeServiceHandler,
 ) {
+	// otelconnect must run before the logging interceptor: the logging
+	// interceptor's InfoContext/ErrorContext calls need the span already
+	// in ctx to pick up trace correlation (see common/tracing.Handler).
 	interceptors := connect.WithInterceptors(
-		tracing.NewInterceptor(cfg.Log.ProjectId),
+		otelInterceptor,
 		middleware.NewLoggingInterceptor(slog.With("service", "router")),
 	)
 
