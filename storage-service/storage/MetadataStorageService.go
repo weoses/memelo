@@ -195,7 +195,7 @@ func (e *ElasticMetadataStorageServiceImpl) runQuery(ctx context.Context, q *typ
 		searchRequest = searchRequest.SearchAfter(vals...)
 	}
 
-	result, err := traceElastic(ctx, "search", e.indexName, searchRequest.Do)
+	result, err := traceElastic(ctx, "GetByAccountIdOrderByCreated", e.indexName, searchRequest.Do)
 	if err != nil {
 		return nil, fmt.Errorf("elastic: failed to search_pipeline: response=%s : %w", render.Render(result), err)
 	}
@@ -221,7 +221,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetAll(
 		searchRequest = searchRequest.SearchAfter(vals...)
 	}
 
-	result, err := traceElastic(ctx, "search", e.indexName, searchRequest.Do)
+	result, err := traceElastic(ctx, "GetAll", e.indexName, searchRequest.Do)
 	if err != nil {
 		return nil, nil, fmt.Errorf("GetAll query failed: response=%s : %w", render.Render(result), err)
 	}
@@ -272,7 +272,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 		searchReq = searchReq.SearchAfter(vals...)
 	}
 
-	resp, err := traceElastic(ctx, "search", e.indexName, searchReq.Do)
+	resp, err := traceElastic(ctx, "GetDuplicatesByEmbeddingOrderByImageId", e.indexName, searchReq.Do)
 	if err != nil {
 		return nil, nil, fmt.Errorf("GetDuplicatesByEmbeddingOrderByImageId query failed: %w", err)
 	}
@@ -302,7 +302,7 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteByAccountId(ctx context.Contex
 	deleteRequest := e.client.DeleteByQuery(e.indexName).
 		Refresh(true).
 		Query(e.accountIdQuery(accountId))
-	result, err := traceElastic(ctx, "delete_by_query", e.indexName, deleteRequest.Do)
+	result, err := traceElastic(ctx, "DeleteByAccountId", e.indexName, deleteRequest.Do)
 
 	if err != nil {
 		return fmt.Errorf("DeleteByAccountId query failed: %w", err)
@@ -326,7 +326,7 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 	deleteRequest := e.client.DeleteByQuery(e.indexName).
 		Refresh(true).
 		Query(query)
-	result, err := traceElastic(ctx, "delete_by_query", e.indexName, deleteRequest.Do)
+	result, err := traceElastic(ctx, "DeleteById", e.indexName, deleteRequest.Do)
 
 	if err != nil {
 		return fmt.Errorf("DeleteById query falied: %w", err)
@@ -352,7 +352,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, account
 	searchRequest := e.client.Search().
 		Index(e.indexName).
 		Query(query)
-	result, err := traceElastic(ctx, "search", e.indexName, searchRequest.Do)
+	result, err := traceElastic(ctx, "GetById", e.indexName, searchRequest.Do)
 
 	if err != nil {
 		return nil, err
@@ -408,7 +408,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByHash(
 		searchRequest = searchRequest.SearchAfter(vals...)
 	}
 
-	result, err := traceElastic(ctx, "search", e.indexName, searchRequest.Do)
+	result, err := traceElastic(ctx, "GetDuplicatesByHash", e.indexName, searchRequest.Do)
 	if err != nil {
 		return nil, nil, fmt.Errorf("elastic: failed to search_pipeline: response=%s : %w", render.Render(result), err)
 	}
@@ -465,7 +465,7 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 		searchReq = searchReq.SearchAfter(vals...)
 	}
 
-	resp, err := traceElastic(ctx, "search", e.indexName, searchReq.Do)
+	resp, err := traceElastic(ctx, "SearchHybridOrderByScore", e.indexName, searchReq.Do)
 	if err != nil {
 		return nil, nil, fmt.Errorf("SearchHybridOrderByScore query failed: %w", err)
 	}
@@ -502,7 +502,7 @@ func (e *ElasticMetadataStorageServiceImpl) Save(ctx context.Context, file *enti
 		Document(file).
 		Id(file.ImageId.String()).
 		Refresh(refresh.True)
-	response, err := traceElastic(ctx, "index", e.indexName, indexRequest.Do)
+	response, err := traceElastic(ctx, "Save", e.indexName, indexRequest.Do)
 
 	if err != nil {
 		return fmt.Errorf("save metadata document error: id=%s : %w", file.ImageId, err)
@@ -541,7 +541,7 @@ func (e *ElasticMetadataStorageServiceImpl) QueryByRaw(
 	}
 
 	searchRequest := e.client.Search().Index(e.indexName).Raw(bytes.NewReader(jsonBytes))
-	result, err := traceElastic(ctx, "search_raw", e.indexName, searchRequest.Do)
+	result, err := traceElastic(ctx, "QueryByRaw", e.indexName, searchRequest.Do)
 	if err != nil {
 		return nil, nil, fmt.Errorf("QueryByRaw: search failed: %w", err)
 	}
@@ -700,7 +700,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetRandom(
 		Index(e.indexName).
 		Query(query).
 		Size(0)
-	countResp, err := traceElastic(ctx, "search_count", e.indexName, countRequest.Do)
+	countResp, err := traceElastic(ctx, "GetRandom", e.indexName, countRequest.Do)
 	if err != nil {
 		return nil, fmt.Errorf("GetRandom: count failed: %w", err)
 	}
@@ -715,7 +715,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetRandom(
 		Query(query).
 		From(offset).
 		Size(1)
-	resp, err := traceElastic(ctx, "search", e.indexName, searchRequest.Do)
+	resp, err := traceElastic(ctx, "GetRandom", e.indexName, searchRequest.Do)
 	if err != nil {
 		return nil, fmt.Errorf("GetRandom: search failed: %w", err)
 	}
