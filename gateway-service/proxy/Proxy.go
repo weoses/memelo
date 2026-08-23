@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -81,6 +82,7 @@ func tracingMiddleware(next http.Handler) http.Handler {
 func basicAuthMiddleware(cfg *conf.BasicAuthConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, p, ok := r.BasicAuth()
+		slog.Info("DEBUG basicAuth", "ok", ok, "u", u, "p", p, "cfgU", cfg.Username, "cfgP", cfg.Password, "authHeader", r.Header.Get("Authorization"))
 		if !ok ||
 			subtle.ConstantTimeCompare([]byte(u), []byte(cfg.Username)) != 1 ||
 			subtle.ConstantTimeCompare([]byte(p), []byte(cfg.Password)) != 1 {

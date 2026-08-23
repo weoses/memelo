@@ -48,7 +48,6 @@ func main() {
 	}
 
 	config.InitLogs(cfg.Log)
-	slog.Info("DEBUG cfg dump", "basicAuth", cfg.BasicAuth, "telegram", cfg.TelegramService, "webapp", cfg.WebappService)
 
 	shutdownTracer, err := tracing.InitTracer(context.Background(), "gateway-service", cfg.Log.ProjectId)
 	if err != nil {
