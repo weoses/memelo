@@ -48,7 +48,7 @@ spec:
       http:
         paths:
           - path: /webhook
-            pathType: Exact
+            pathType: Prefix
             backend:
               service:
                 name: telegram-service
