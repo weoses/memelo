@@ -74,7 +74,7 @@ Config (root `.env`): `FFMPEG_BINARY` / `FFMPEG_CPULIMIT` / `FFMPEG_THREADSLIMIT
 
 ### Telegram webhook
 
-`telegram-service` is webhook-only (no long-polling mode) — it registers `TELEGRAM_WEBHOOK_EXTERNALURL` with Telegram on startup and removes it on shutdown, so that URL must be a real, publicly reachable HTTPS endpoint pointing at the container's `/webhook` path. Without one, the bot never receives updates (this is also why the local compose stack can't fully run Telegram out of the box).
+`telegram-service` is webhook-only (no long-polling mode) — it registers a random per-startup token with Telegram at `TELEGRAM_WEBHOOK_EXTERNALURL/webhook/{token}` and removes it on shutdown, so that URL must be a real, publicly reachable HTTPS endpoint pointing at the container's `/webhook/{token}` path. Requests to `/webhook/{token}` with an unknown or missing token are rejected with 404, so knowing the public domain alone isn't enough to invoke the handler. Without a reachable URL, the bot never receives updates (this is also why the local compose stack can't fully run Telegram out of the box).
 
 This is unrelated to the OpenRouter/Gemini choice above — the bot just forwards uploads to `storage-service`, which does the actual LLM work regardless of which provider is configured there.
 
