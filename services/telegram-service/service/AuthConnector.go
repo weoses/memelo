@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	v1 "github.com/weoses/memelo/gen/proto/v1"
 	"github.com/weoses/memelo/gen/proto/v1/v1connect"
@@ -32,12 +33,7 @@ func (r *AuthResult) HasPermission(code string) bool {
 	if r.Status != AuthStatusOk {
 		return false
 	}
-	for _, p := range r.Permissions {
-		if p == code {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.Permissions, code)
 }
 
 type AuthConnector interface {

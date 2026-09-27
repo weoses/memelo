@@ -7,5 +7,5 @@ elastic:
   tagIndex: melo-prod-tag-metadata
 
 ingress:
-  webappDomain: ""   # e.g. app.example.com
-  webhookDomain: ""  # e.g. hooks.example.com
+  webappDomain: "webapp.prod.cluster.memelo.cloud"   # e.g. app.example.com
+  webhookDomain: "tg-webhook.prod.cluster.memelo.cloud"  # e.g. hooks.example.com
