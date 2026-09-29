@@ -40,7 +40,7 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) 
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			_ = svc.RemoveWebhook()
+			svc.Stop()
 			return srv.Shutdown(ctx)
 		},
 	})

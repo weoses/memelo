@@ -179,7 +179,7 @@ user-account:
   StaticUuid: "00000000-0000-0000-0000-000000000000"
 
 webhook:
-  ExternalUrl: "https://{{ .Values.ingress.webhookDomain }}/webhook"
+  ExternalUrl: "https://{{ .Values.ingress.webhookDomain }}"
 
 temp-storage:
   Endpoint: {{ .Values.s3.endpoint }}

@@ -29,7 +29,7 @@ const (
 type TelegramBotService interface {
 	Handler() http.Handler
 	RegisterWebhook() error
-	RemoveWebhook() error
+	Stop()
 }
 
 type TelegramBotServiceImpl struct {
@@ -84,12 +84,13 @@ func generateWebhookToken() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-func (s *TelegramBotServiceImpl) RemoveWebhook() error {
+// Stop halts update dispatching. The webhook is intentionally left registered:
+// during a rolling update the new pod has already replaced it with its own token,
+// so deleting it here would unregister the new pod's webhook.
+func (s *TelegramBotServiceImpl) Stop() {
 	if s.cancel != nil {
 		s.cancel()
 	}
-	_, err := s.bot.Request(tgbotapi.DeleteWebhookConfig{})
-	return err
 }
 
 func (s *TelegramBotServiceImpl) dispatchUpdates(ctx context.Context, updates <-chan tgbotapi.Update) {
