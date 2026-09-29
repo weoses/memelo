@@ -40,9 +40,13 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Install sops
+        env:
+          SOPS_VERSION: v3.10.2
         run: |
-          curl -Lo /usr/local/bin/sops https://github.com/getsops/sops/releases/latest/download/sops-linux-amd64
-          chmod +x /usr/local/bin/sops
+          curl -fsSLo sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          sudo install -m 0755 sops /usr/local/bin/sops
+          rm sops
+          sops --version
 
       - name: Import SOPS PGP key
         run: echo "${{ secrets.SOPS_PGP_PRIVATE_KEY }}" | gpg --batch --import
@@ -54,11 +58,14 @@ jobs:
 
       - name: Deploy via Helm
         run: |
+          secrets_file="$RUNNER_TEMP/secrets.yaml"
+          trap 'rm -f "$secrets_file"' EXIT
+          sops -d deploy/helm/memelo/secrets/${{ matrix.target_env }}.enc.yaml > "$secrets_file"
           helm upgrade --install memelo deploy/helm/memelo \
             --namespace memelo-${{ matrix.target_env }} --create-namespace \
             -f deploy/helm/memelo/values.yaml \
             -f deploy/helm/memelo/values-${{ matrix.target_env }}.yaml \
-            -f <(sops -d deploy/helm/memelo/secrets/${{ matrix.target_env }}.enc.yaml) \
+            -f "$secrets_file" \
             --set image.tag=${{ github.event.inputs.TAG }} \
             --wait --timeout 5m
 
