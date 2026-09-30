@@ -7,7 +7,12 @@
 # within ~2 minutes. There is no annotation to pin that LB to a pre-existing
 # reserved IP, so DNS must be pointed at whatever IP this Service is
 # assigned after install (see cluster/README.md).
+#
+# externalTrafficPolicy: Local preserves the client source IP, which the
+# memelo webhook ingress needs for its whitelist-source-range (Telegram IPs).
+# With Cluster, nginx only sees node IPs and every webhook request is 403'd.
 controller:
   service:
     enabled: true
     type: LoadBalancer
+    externalTrafficPolicy: Local

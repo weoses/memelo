@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -21,9 +19,8 @@ const (
 		"Send me an image or video to save it as a meme.\n\n" +
 		"Use inline mode to search your collection:"
 
-	// WebhookPathPattern is the mux pattern the webhook handler must be bound to;
-	// the {token} segment is validated against the token generated in RegisterWebhook.
-	WebhookPathPattern = "/webhook/{token}"
+	// WebhookPath is the path the webhook handler is served at, appended to webhook.ExternalUrl.
+	WebhookPath = "/webhook"
 )
 
 type TelegramBotService interface {
@@ -33,13 +30,12 @@ type TelegramBotService interface {
 }
 
 type TelegramBotServiceImpl struct {
-	inline       InlineHandlerService
-	message      MessageHandlerService
-	bot          *tgbotapi.BotAPI
-	webhookCfg   *conf.WebhookConfig
-	webhookToken string
-	log          *slog.Logger
-	cancel       context.CancelFunc
+	inline     InlineHandlerService
+	message    MessageHandlerService
+	bot        *tgbotapi.BotAPI
+	webhookCfg *conf.WebhookConfig
+	log        *slog.Logger
+	cancel     context.CancelFunc
 }
 
 func (s *TelegramBotServiceImpl) Handler() http.Handler {
@@ -48,10 +44,6 @@ func (s *TelegramBotServiceImpl) Handler() http.Handler {
 	updates := make(chan tgbotapi.Update, 100)
 	go s.dispatchUpdates(ctx, updates)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.webhookToken == "" || r.PathValue("token") != s.webhookToken {
-			http.NotFound(w, r)
-			return
-		}
 		var update tgbotapi.Update
 		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
@@ -62,13 +54,7 @@ func (s *TelegramBotServiceImpl) Handler() http.Handler {
 }
 
 func (s *TelegramBotServiceImpl) RegisterWebhook() error {
-	token, err := generateWebhookToken()
-	if err != nil {
-		return err
-	}
-	s.webhookToken = token
-
-	wh, err := tgbotapi.NewWebhook(strings.TrimRight(s.webhookCfg.ExternalUrl, "/") + "/webhook/" + token)
+	wh, err := tgbotapi.NewWebhook(strings.TrimRight(s.webhookCfg.ExternalUrl, "/") + WebhookPath)
 	if err != nil {
 		return err
 	}
@@ -76,16 +62,8 @@ func (s *TelegramBotServiceImpl) RegisterWebhook() error {
 	return err
 }
 
-func generateWebhookToken() (string, error) {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf), nil
-}
-
 // Stop halts update dispatching. The webhook is intentionally left registered:
-// during a rolling update the new pod has already replaced it with its own token,
+// during a rolling update the new pod has already registered it,
 // so deleting it here would unregister the new pod's webhook.
 func (s *TelegramBotServiceImpl) Stop() {
 	if s.cancel != nil {

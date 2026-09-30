@@ -117,6 +117,12 @@ ingress:
   clusterIssuer: letsencrypt-prod
   webappDomain: ""
   webhookDomain: ""
+  # Source CIDRs allowed to reach the telegram webhook ingress; empty disables the filter.
+  # Telegram's published webhook ranges: https://core.telegram.org/bots/webhooks
+  # Requires the ingress controller to see real client IPs (externalTrafficPolicy: Local).
+  webhookAllowedSourceRanges:
+    - 149.154.160.0/20
+    - 91.108.4.0/22
   maxBodySize: "100m"
   proxyReadTimeoutSeconds: 600
 

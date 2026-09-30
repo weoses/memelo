@@ -24,7 +24,7 @@ func Startup(lc fx.Lifecycle, cfg *conf.Config, svc service.TelegramBotService) 
 				return err
 			}
 			mux := http.NewServeMux()
-			mux.Handle(service.WebhookPathPattern, svc.Handler())
+			mux.Handle(service.WebhookPath, svc.Handler())
 			mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})

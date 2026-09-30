@@ -37,6 +37,9 @@ metadata:
     {{- include "memelo.labels" . | nindent 4 }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
+    {{- with .Values.ingress.webhookAllowedSourceRanges }}
+    nginx.ingress.kubernetes.io/whitelist-source-range: {{ join "," . | quote }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   tls:
@@ -48,7 +51,7 @@ spec:
       http:
         paths:
           - path: /webhook
-            pathType: Prefix
+            pathType: Exact
             backend:
               service:
                 name: telegram-service
