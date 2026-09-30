@@ -8,11 +8,24 @@
 # reserved IP, so DNS must be pointed at whatever IP this Service is
 # assigned after install (see cluster/README.md).
 #
-# externalTrafficPolicy: Local preserves the client source IP, which the
-# memelo webhook ingress needs for its whitelist-source-range (Telegram IPs).
-# With Cluster, nginx only sees node IPs and every webhook request is 403'd.
+# Client source IPs: the Vultr LB proxies connections, so nginx sees the LB's
+# private VPC IP unless PROXY protocol is enabled on both the LB and nginx.
+# The memelo webhook ingress needs real client IPs for its
+# whitelist-source-range (Telegram IPs); without them every webhook request
+# is 403'd.
+#
+# vultr-loadbalancer-hostname makes the Service status report a hostname
+# instead of the LB IP, so kube-proxy doesn't short-circuit in-cluster
+# traffic to the LB IP (which would reach nginx without a PROXY header and
+# be rejected — e.g. cert-manager's HTTP-01 self-check). That DNS name must
+# resolve to the LB IP.
 controller:
+  config:
+    use-proxy-protocol: "true"
   service:
     enabled: true
     type: LoadBalancer
     externalTrafficPolicy: Local
+    annotations:
+      service.beta.kubernetes.io/vultr-loadbalancer-proxy-protocol: "true"
+      service.beta.kubernetes.io/vultr-loadbalancer-hostname: "lb.cluster.memelo.cloud"
